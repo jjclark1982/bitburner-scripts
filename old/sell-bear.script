@@ -1,0 +1,11 @@
+symbols = ["ECP","MGCP","BLD","CLRK","OMTK","FSIG","KGI","FLCM","STM","DCOMM","HLS","VITA","ICRS","UNV","AERO","OMN","SLRS","GPH","NVMD","WDS","LXO","RHOC","APHE","SYSC","CTK","NTLK","OMGA","SGC","JGN","CTYS","MDYN","TITN","FNS"];
+
+c = 'constructor'
+f = [c][c][c]
+makeObj = f('a', 'o = {}; for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+// setObj = f('o', 'a', 'for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+funcs = makeObj(["stock.buy", stock.buy, "stock.sell", stock.sell, "stock.short", stock.short, "stock.sellShort", stock.sellShort, "stock.placeOrder", stock.placeOrder, "stock.cancelOrder", stock.cancelOrder, "stock.getPosition", stock.getPosition, "stock.getPrice", stock.getPrice, "tprint", tprint]);
+
+sellAll = f('symbol', 'price=this.stock.getPrice(symbol); pos=this.stock.getPosition(symbol); avgPx=pos[1]; if (price < 0.955*avgPx){this.stock.sell(symbol, pos[0])}').bind(funcs);
+
+symbols.forEach(sellAll);

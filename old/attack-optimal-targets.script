@@ -1,0 +1,171 @@
+//Define Variables
+currentScanLength = 0;
+scanArray = ['home'];
+Servers = [];
+ServersM = [];  // Money
+ServersHL = []; // HackingLevel
+ServersHP = []; // HackingPorts
+ServersP = [];  // Profits
+basehackinglevel = -101;
+target = 'foodnstuff';
+host = getHostname();
+mults = getHackingMultipliers();
+
+//Skill Multiplier Constants
+hackmult = mults.money;
+growmult = mults.growth;
+//Bitnode Multiplier Constants, update after changing Bitnodes
+bitnodehackmult = 1.0000;
+bitnodegrowmult = 1.0000;
+bitnodeweakenmult = 1.0000;
+
+
+//Scan Loop
+while (currentScanLength < scanArray.length) {
+    currentHost = scanArray[currentScanLength];
+    newScan = scan(currentHost);
+    for (j = 0; j < newScan.length; j++) {
+        if (scanArray.indexOf(newScan[j]) == -1) {
+            scanArray.push(newScan[j]);
+            money = getServerMaxMoney(newScan[j]);
+            if (money > 0) {
+                Servers.push(newScan[j]);
+                ServersM.push(money);
+                ServersHP.push(getServerNumPortsRequired(newScan[j]));
+                ServersHL.push(getServerRequiredHackingLevel(newScan[j]));
+                time = 2 * getWeakenTime(newScan[j]) + getGrowTime(newScan[j]) + getHackTime(newScan[j]);
+                profit = round(money / time);
+                ServersP.push(profit);
+            }
+        }
+    }
+    currentScanLength++;
+}
+
+//Main Loop
+while (true) {
+
+    portBusters = ['BruteSSH.exe', 'FTPCrack.exe', 'relaySMTP.exe', 'HTTPWorm.exe', 'SQLInject.exe'];
+    numPortBreakers = 0;
+    for (i = 0; i < portBusters.length; i++) {
+        if (fileExists(portBusters[i], 'home')) {
+            numPortBreakers++;
+        }
+    }
+
+    hackinglevel = getHackingLevel();
+    print(basehackinglevel);
+
+    //Recalc & RetargetProfits if Hacking level has increased by 100
+    if (hackinglevel > basehackinglevel + 100) {
+        basehackinglevel = hackinglevel;
+        //Reset Profits
+        ServersP = [];
+        for (j = 0; j < Servers.length; j++) {
+            time = 2 * getWeakenTime(Servers[j]) + getGrowTime(Servers[j]) + getHackTime(Servers[j]);
+            profit = round(ServersM[j] / time);
+            ServersP.push(profit);
+        }
+
+        print(Servers);
+        print('Create Eligable Target List');
+        targetlist = [];
+        targetlistP = [];
+        for (j = 0; j < Servers.length; j++) {
+            if (ServersHP[j] <= numPortBreakers && ServersHL[j] <= hackinglevel) {
+                targetlist.push(Servers[j]);
+                targetlistP.push(ServersP[j]);
+            }
+        }
+
+        print(targetlist);
+        print('Find Optimal Target List');
+
+        OptimalTargetList = [];
+        OptimalTargetListM = [];
+        OptimalTargetListG = [];
+        OptimalTargetListHL = [];
+        OptimalTargetListMS = [];
+
+        for (i = 0; i < Math.min(targetlist.length,10); i++) {
+            targetmaxprofit = 0;
+            for (j = 0; j < targetlist.length; j++) {
+                if (targetlistP[j] > targetmaxprofit) {
+                    targetmaxprofit = targetlistP[j];
+                }
+            }
+            index = targetlistP.indexOf(targetmaxprofit);
+            OptimalTargetList.push(targetlist[index]);
+            OptimalTargetListG.push(getServerGrowth(targetlist[index]));
+            OptimalTargetListHL.push(getServerRequiredHackingLevel(targetlist[index]));
+            OptimalTargetListMS.push(Math.max(round(getServerBaseSecurityLevel(targetlist[index])/3),1));
+            OptimalTargetListM.push(getServerMaxMoney(targetlist[index]));
+            targetlistP[index] = 0;
+        }
+        print(OptimalTargetList);
+
+    }
+
+
+    //Loop Through Targets
+    for (k = 0; k < Math.min(OptimalTargetList.length,10); k++) {
+        homeram = getServerRam(host);
+
+        if (homeram[0] - homeram[1] < 2) {
+            print('Not enough RAM available');
+            k = 1000;
+            break;
+        }
+
+        freememory = homeram[0] - homeram[1];
+        target = OptimalTargetList[k];
+        minsecurity = OptimalTargetListMS[k];
+        reqHack = OptimalTargetListHL[k];
+        maxmoney = OptimalTargetListM[k];
+        growth = OptimalTargetListG[k];
+
+        //Calculate number of Hack Threads Required
+        perhack = (100-minsecurity) * ((hackinglevel-reqHack+1)/hackinglevel) / 24000 * hackmult * bitnodehackmult;
+        hacks  = Math.ceil(1/perhack);
+
+        security = minsecurity + hacks * 0.002;
+        //Calculate number of Grow Threads Required
+        growpercent = Math.min(1 + 0.03/security,1.0035);
+        pergrow = Math.pow(growpercent,growth/100 * growmult * bitnodegrowmult);
+        var1 = maxmoney * Math.log(pergrow);
+        lambert = Math.log(var1)-Math.log(Math.log(var1))-Math.log(1-Math.log(Math.log(var1))/Math.log(var1));
+        grows = Math.ceil(lambert/Math.log(pergrow));
+
+        //Calculate number of Weaken Threads Required
+        weakens = Math.ceil((((hacks * 0.002) + (grows * 0.004)) / (0.05 * bitnodeweakenmult)));
+        maxweakens = (100 - minsecurity) / (0.05 * bitnodeweakenmult);
+        if (weakens > maxweakens) {weakens = maxweakens}
+
+        //Adjust if max threads > max memory
+        if (weakens * 1.55 > freememory) {
+            weakens = Math.max(Math.floor(freememory / 1.555),1);
+        }
+        if (hacks * 1.5 > freememory) {
+            hacks = Math.max(Math.floor(freememory / 1.555),1);
+        }
+        if (grows * 1.55 > freememory) {
+            grows = Math.max(Math.floor(freememory / 1.555),1);
+        }
+
+        script = '';
+        threads = 1;
+        if (isRunning('weaken.script',host,target) == false && isRunning('hack.script',host,target) == false  && isRunning('grow.script',host,target) == false) {
+            if (getServerSecurityLevel(target) > getServerBaseSecurityLevel(target) / 3 + 6) {
+                script = 'weaken.script';
+                threads = weakens;
+            } else if (getServerMoneyAvailable(target) >= 0.75 * getServerMaxMoney(target)) {
+                script = 'hack.script';
+                threads = hacks;
+            } else {
+                script = 'grow.script';
+                threads = grows;
+            }    
+        }
+        exec(script, host, threads, target);
+    }
+}

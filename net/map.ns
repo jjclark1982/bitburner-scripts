@@ -1,0 +1,16 @@
+// scan-dfs.script [start];
+// depth-first search, like scan-analyze
+
+import {scanNetwork} from "lib.ns";
+
+export async function main(ns) {
+    const entry = ns.getHostname();
+    if (ns.args.length == 0) {
+        let hosts = scanNetwork(ns, entry, null, true);
+    }
+    else {
+        const target = ns.args[0];
+        let hosts = scanNetwork(ns, entry, target, false);
+    }
+    //ns.tprint("Discovered "+hosts.length+" servers: "+hosts);
+}

@@ -1,0 +1,11 @@
+import {getAllHosts} from "lib.ns";
+
+export async function main(ns) {
+    for (const host of getAllHosts(ns)) {
+        for (const file of ns.ls(host)) {
+            if (file.match(/\.cct$/)) {
+                ns.tprint(`${host}: ${file}`);
+            }
+        }
+    }
+}

@@ -1,0 +1,34 @@
+// cloud-spawn.script [targets] [scripts]
+targets = args[0];
+scripts = ["farm.script"];
+
+count = 1;
+fundsFraction = 0.25;
+funds = fundsFraction * getServerMoneyAvailable('home') / count;
+power = Math.floor(Math.log2(funds/50000));
+size = Math.pow(2, power);
+
+tprint("Purchasing "+count+"x servers with "+size+"GB RAM")
+
+servers = getPurchasedServers();
+
+delCount = count + servers.length - 25;
+for (i = 0; i < delCount; i++) {
+    killall(servers[i]);
+}
+for (i = 0; i < delCount; i++) {
+    deleteServer(servers[i]);
+}
+
+hostname = "pserv-"+(servers.length+i);
+hostname = purchaseServer(hostname, size);
+tprint("Purchased server "+hostname);
+scp(scripts[0], hostname);
+threads = size / 2.4; // getScriptRam(...)
+targetCount = 8;
+for (j = Math.max(0,targets.length-1-targetCount); j < targets.length; j++) {
+    target = targets[j];
+    moneyThresh = 0.8 * target.maxMoney;
+    securityThresh = Math.max(10, target.minSecurityLevel+2);
+    exec(scripts[0], hostname, threads/targetCount, target.name, moneyThresh, securityThresh);
+}

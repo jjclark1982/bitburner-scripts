@@ -1,0 +1,27 @@
+// scan-dfs.script [target];
+// depth-first search, like scan-analyze
+
+target = args[0];
+toScan = [[getHostname()]];
+scanned = [];
+
+c = 'constructor';
+f = [c][c][c];
+notIncludes = f('x', 'return !this.includes(x)');
+padding = '------------------------------------------------------------';
+
+makeObj = f('a', 'o = {}; for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+scope = makeObj(["scan", scan, "scanned", scanned, "notIncludes", notIncludes.bind(scanned), "toScan", toScan]);
+// iterate = f('route', 'var d=route.length, host=route[d-1]; this.scanned.push(host); var results=this.scan(host).reverse().filter(this.notIncludes).map(function(h){return route.concat(h)}); return results;').bind(scope);
+
+traceroute = f('target', 'while(this.toScan.length > 0){var route=this.toScan.pop(), d=route.length, host=route[d-1]; if (host==target){return route} this.scanned.push(host); var results=this.scan(host).reverse().filter(this.notIncludes).map(function(h){return route.concat(h)}); this.toScan = this.toScan.concat(results);}').bind(scope);
+tprint(traceroute(target));
+
+// while (toScan.length > 0) {
+//     route = toScan.pop();
+//     (route[route.length-1] == target) && tprint(route);
+//     // tprint(padding.slice(-3*route.length+2)+'> '+route[route.length-1]);
+//     toScan = toScan.concat(iterate(route));
+// }
+
+// //tprint("Discovered "+scanned.length+" servers: "+scanned);

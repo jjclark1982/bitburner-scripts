@@ -1,0 +1,26 @@
+servers = ["foodnstuff", "sigma-cosmetics", "joesguns", "nectar-net", "hong-fang-tea", "harakiri-sushi"];
+
+i = 0;
+while (i < servers.length) {
+    //Wait for player to reach the correct hacking level
+    while (getHackingLevel() < getServerRequiredHackingLevel(servers[i])) {
+        sleep(20000);
+    }
+
+    //Copy our generic hacking script and weaken script over to the target server
+    scp("early-hack-template.script", servers[i]);
+    scp("weaken.script", servers[i]);
+
+    //NUKE the target server to gain root access
+    nuke(servers[i]);
+    
+    //Execute our scripts on the target server
+    if (servers[i] == "joesguns") {
+        exec("early-hack-template.script", servers[i], 2, servers[i], 50000000, 10);
+    } else {
+        exec("early-hack-template.script", servers[i], 2, servers[i], 2000000, 10);
+    }
+    exec("weaken.script", servers[i], 1, servers[i]);
+
+    ++i;    
+}

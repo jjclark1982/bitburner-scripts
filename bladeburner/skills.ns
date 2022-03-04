@@ -1,0 +1,41 @@
+export async function main(ns) {
+    ns.disableLog("sleep");
+    while (true) {
+        await upgradeSkills(ns);
+        await ns.sleep(60*1000);
+    }
+}
+
+export async function upgradeSkills(ns) {
+    while (upgradeSkill(ns)) {
+        await ns.sleep(100);
+    }
+}
+
+export function upgradeSkill(ns) {
+    const skillPriorities = {
+        "Overclock": 1,
+        "Evasive System": 3,
+        "Reaper": 4,
+        "Blade's Intuition": 3,
+        "Digital Observer": 4,
+        "Short-Circuit": 6,
+        "Cloak": 10,
+        "Tracer": 12,
+    };
+    if (ns.bladeburner.getRank() < 20000 ||
+            ns.bladeburner.getSkillLevel("Overclock") >= 90) {
+        delete skillPriorities.Overclock;
+    }
+    const firstSkills = Object.keys(skillPriorities).filter((name)=>{
+        return ns.bladeburner.getSkillUpgradeCost(name) <= ns.bladeburner.getSkillPoints();
+    }).sort((a,b)=>{
+        const va = ns.bladeburner.getSkillUpgradeCost(a) * skillPriorities[a];
+        const vb = ns.bladeburner.getSkillUpgradeCost(b) * skillPriorities[b];
+        return va - vb;
+    });
+    if (firstSkills.length > 0) {
+        return ns.bladeburner.upgradeSkill(firstSkills[0]);
+    }
+    return false;
+}

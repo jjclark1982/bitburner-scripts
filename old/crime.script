@@ -1,0 +1,22 @@
+// statNames = ["str", "def", "dex", "agi"];
+statNames = [ "dex", "agi"];
+
+// // travelToCity("Sector-12");
+// while(getStats().dexterity < 20) {
+//     for (i = 0; i < statNames.length; i++) {
+//         (gymWorkout)("Powerhouse Gym", statNames[i]);
+//         sleep(1*60*1000);
+//     }
+// }
+
+//crimes = "shoplift, rob store, mug, larceny, deal drugs, bond forgery, traffick arms, homicide, grand theft auto, kidnap, assassinate, heist".split(", ");
+
+crime = args.length > 0 && args[0] || "deal drugs";
+
+while(true) {
+    delay = commitCrime(crime);
+    sleep(0.9*delay);
+    while(isBusy()){
+        sleep(0.1*delay);
+    }
+}

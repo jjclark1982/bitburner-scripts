@@ -1,0 +1,23 @@
+symbols = ["ECP","MGCP","BLD","CLRK","OMTK","FSIG","KGI","FLCM","STM","DCOMM","HLS","VITA","ICRS","UNV","AERO","OMN","SLRS","GPH","NVMD","WDS","LXO","RHOC","APHE","SYSC","CTK","NTLK","OMGA","SGC","JGN","CTYS","MDYN","TITN"];
+
+c = 'constructor'
+f = [c][c][c]
+makeObj = f('a', 'o = {}; for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+// setObj = f('o', 'a', 'for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+funcs = makeObj(["stock.getPrice", stock.getPrice, "stock.buy", stock.buy, "stock.sell", stock.sell, "stock.short", stock.short, "stock.sellShort", stock.sellShort, "stock.placeOrder", stock.placeOrder, "stock.cancelOrder", stock.cancelOrder, "stock.getPosition", stock.getPosition, "stock.placeOrder", stock.placeOrder]);
+
+// sellAll = f('symbol', 'pos=this.stock.getPosition(symbol); this.stock.sell(symbol, pos[0])').bind(funcs);
+
+
+moneyToSpend = getServerMoneyAvailable('home') - (args.length > 0 && args[0] || 1000000);
+moneyPerStock = moneyToSpend / symbols.length;
+
+if (moneyPerStock < 500000) {
+    exit();
+}
+
+
+// buyFixedValue = f('moneyPerStock', 'symbol', 'price=this.stock.getPrice(symbol); shares=(moneyPerStock-100000)/price; this.stock.buy(symbol, shares);').bind(funcs, moneyPerStock);
+buyLimit = f('moneyPerStock', 'symbol', 'price=this.stock.getPrice(symbol); shares=(moneyPerStock-100000)/price; this.stock.placeOrder(symbol, shares, price*1.05, "stopbuy");').bind(funcs, moneyPerStock);
+
+symbols.forEach(buyLimit);

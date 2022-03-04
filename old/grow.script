@@ -1,0 +1,12 @@
+// grow.script [target] [growTime]
+target = args[0];
+growTime = args[2]*1000;
+
+while (true) {
+    weakenTime = growTime*20/16;
+    delay = weakenTime-growTime;
+    sleep(delay);
+    startTime = Date.now();
+    grow(args[0]);
+    growTime = Date.now() - startTime;
+}

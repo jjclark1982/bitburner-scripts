@@ -1,0 +1,11 @@
+// cloud-setup.script [scripts...]
+
+servers = getPurchasedServers();
+for (i = 0; i < servers.length; i++) {
+    server = servers[i];
+    killall(server);
+    for (j = 0; j < args.length; j++) {
+        script = args[j];
+        scp(script, server);
+    }
+}

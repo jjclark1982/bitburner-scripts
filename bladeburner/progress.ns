@@ -1,0 +1,13 @@
+import {upgradeSkills} from "/bladeburner/skills.ns";
+import {startBestAction} from "/bladeburner/actions.ns";
+
+export async function main(ns) {
+    if (ns.bladeburner.joinBladeburnerDivision()) {
+        ns.disableLog("sleep");
+        while (true) {
+            await upgradeSkills(ns);
+            await startBestAction(ns);
+            await ns.sleep(60*1000);
+        }
+    }
+}

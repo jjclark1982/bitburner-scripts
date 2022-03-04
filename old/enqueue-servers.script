@@ -1,0 +1,29 @@
+while (read(1) !== 'NULL PORT DATA') {
+    // clear the queue
+}
+
+portBusters = ['BruteSSH.exe', 'FTPCrack.exe', 'relaySMTP.exe', 'HTTPWorm.exe', 'SQLInject.exe'];
+canBust = 0;
+for (i = 0; i < portBusters.length; i++) {
+    if (fileExists(portBusters[i], "home")) {
+        canBust++;
+    }
+}
+
+// sorted by (required ports), then (required hacking level)
+hostsByPort = [
+    ["foodnstuff", "sigma-cosmetics", "joesguns", "nectar-net", "hong-fang-tea", "harakiri-sushi"],
+    ["neo-net", "CSEC", "zer0", "max-hardware", "iron-gym"],
+    ["phantasy", "silver-helix", "omega-net", "avmnite-02h", "crush-fitness", "the-hub", "johnson-ortho"],
+    ["I.I.I.I", "comptek", "netlink", "rothman-uni", "catalyst", "summit-uni", "rho-construction", "millenium-fitness"],
+    ["aevum-police", "alpha-ent", "syscore", "lexo-corp", "snap-fitness", "global-pharm", "unitalife", "univ-energy"],
+    ["zb-institute", "galactic-cyber", "solaris", "zeus-med", "aerocorp", "deltaone", "omnia", "defcomm", "icarus"]
+];
+
+maxLevel = Math.min(hostsByPort.length, canBust+1);
+for (i = 0; i < maxLevel; i++) {
+    for (j = 0; j < hostsByPort[i].length; j++) {
+        host = hostsByPort[i][j];
+        write(1, host);
+    }
+}

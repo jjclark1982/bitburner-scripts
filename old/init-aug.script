@@ -1,0 +1,87 @@
+// toScan = [getHostname()];
+// scanned = [];
+// hostsByPort = [[], [], [], [], [], []];
+
+// f = ''.constructor.constructor;
+// json = f('return JSON')();
+// makeObj = f('a', 'o = {}; for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+// setObj = f('o', 'a', 'for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+// notIncludes = f('x', 'return !this.includes(x)');
+// getters = makeObj(["serverExists", serverExists, "hasRootAccess", hasRootAccess, "getServerMoneyAvailable", getServerMoneyAvailable, "getServerMaxMoney", getServerMaxMoney, "getServerGrowth", getServerGrowth, "getServerSecurityLevel", getServerSecurityLevel, "getServerBaseSecurityLevel", getServerBaseSecurityLevel, "getServerMinSecurityLevel", getServerMinSecurityLevel, "getServerRequiredHackingLevel", getServerRequiredHackingLevel, "getServerNumPortsRequired", getServerNumPortsRequired, "getServerRam", getServerRam, "getHackTime", getHackTime, "getGrowTime", getGrowTime, "getWeakenTime", getWeakenTime]);
+// getInfo = f('host', 'return {name: host, maxMoney: this.getServerMaxMoney(host), growth: this.getServerGrowth(host), baseSecurityLevel: this.getServerBaseSecurityLevel(host), minSecurityLevel: this.getServerMinSecurityLevel(host), requiredHackingLevel: this.getServerRequiredHackingLevel(host), numPortsRequired: this.getServerNumPortsRequired(host), maxRam: this.getServerRam(host)[0], hackTime: this.getHackTime(host), growTime: this.getGrowTime(host), weakenTime: this.getWeakenTime(host)}').bind(getters);
+
+portBusters = ['BruteSSH.exe', 'FTPCrack.exe', 'relaySMTP.exe', 'HTTPWorm.exe', 'SQLInject.exe'];
+portBusterFuncs = [brutessh, ftpcrack, relaysmtp, httpworm, sqlinject];
+
+function crack(target) {
+    if (!hasRootAccess(target)) {
+        tprint("Cracking server "+target);
+        for (i = 0; i < portBusters.length; i++) {
+            if (fileExists(portBusters[i], 'home')) {
+                portBusterFuncs[i](target);
+            }
+        }
+        nuke(target);
+    }
+}
+
+function playerPortLevel() {
+    portLevel = fileExists('BruteSSH.exe','home') + fileExists('FTPCrack.exe','home') + fileExists('relaySMTP.exe','home') + fileExists('HTTPWorm.exe','home') + fileExists('SQLInject.exe','home');
+    return portLevel;
+}
+// if (false) {
+//     while (toScan.length > 0) {
+//         host = toScan.shift();
+//         if (!scanned.includes(host)) {
+//             tprint("Scanning "+host);
+//             scanned.push(host);
+//             results = scan(host);
+//             // newResults = results.filter(notIncludes.bind(scanned));
+//             toScan = toScan.concat(results);
+            
+//             portReq = getServerNumPortsRequired(host);
+//             hostsByPort[portReq].push(host);
+//         }
+//     }
+// }
+
+// tprint("Discovered "+scanned.length+" servers: "+json.stringify(hostsByPort));
+
+hostsByPort = [
+  ["foodnstuff","sigma-cosmetics","joesguns","hong-fang-tea","harakiri-sushi","nectar-net"],
+  ["iron-gym","max-hardware","zer0","CSEC","neo-net"],
+  ["omega-net","silver-helix","phantasy","the-hub","johnson-ortho","crush-fitness","avmnite-02h"],
+  ["netlink","comptek","catalyst","summit-uni","rothman-uni","I.I.I.I","millenium-fitness","rho-construction"],
+  ["syscore","lexo-corp","aevum-police","alpha-ent","global-pharm","snap-fitness","unitalife","univ-energy","nova-med","zb-def","applied-energetics","run4theh111z","."],
+  ["zb-institute","galactic-cyber","aerocorp","omnia","deltaone","icarus","solaris","defcomm","zeus-med","taiyang-digital","infocomm","microdyne","titan-labs","helios","stormtech","vitalife","fulcrumtech","4sigma","omnitek","kuai-gong","powerhouse-fitness","clarkeinc","blade","b-and-a","nwo","megacorp","fulcrumassets","ecorp","The-Cave"]
+]
+
+portLevel = playerPortLevel();
+for (i = 0; i < hostsByPort.length; i++) {
+    while (portLevel < i) {
+        sleep(60*1000);
+        portLevel = playerPortLevel();
+    }
+    for (j = 0; j < hostsByPort[i].length; j++) {
+        host = hostsByPort[i][j];
+        crack(host);
+        target = "joesguns";
+        if (getServerMaxMoney(host) > 0 && getServerRequiredHackingLevel(host) <= getHackingLevel()) {
+            target = host;
+        }
+        moneyThresh = 0.8 * getServerMaxMoney(target);
+        securityThresh = Math.min(10, getServerMinSecurityLevel(target)+2);
+
+        script = "farm.script";
+        scp(script, host);
+
+        ram = getServerRam(host);
+        freeRam = ram[0] - ram[1];
+        threads = freeRam / getScriptRam(script, host);
+        threads = Math.floor(threads);
+        if (threads >= 1) {
+            tprint("Running "+threads+"x "+script+" "+target+" on "+host);
+            exec(script, host, threads, target, moneyThresh, securityThresh);
+        }
+    }
+}

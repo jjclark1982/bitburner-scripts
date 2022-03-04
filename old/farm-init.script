@@ -1,0 +1,23 @@
+target = args[0];
+maxMoney = args[1];
+minSecurityLevel = args[2];
+host = getHostname();
+script = 'farm.script';
+
+while (!hasRootAccess(target)) {
+    sleep(60*1000);
+}
+
+moneyThresh = 0.8 * maxMoney;
+securityThresh = Math.max(10, minSecurityLevel+2);
+ram = getServerRam(host);
+freeRam = ram[0] - ram[1];
+scriptRam = 2.4; //getScriptRam(script, host);
+ramFraction = 0.1;
+threads = ramFraction * (freeRam / scriptRam);
+threads = Math.floor(threads);
+
+tprint("Running "+threads+"x "+script+" on "+host);
+if (threads > 0) {
+    run(script, threads, target, moneyThresh, securityThresh);
+}

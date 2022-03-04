@@ -1,0 +1,5 @@
+export async function main(ns) {
+    if (ns.bladeburner.joinBladeburnerDivision()) {
+        ns.spawn('/bladeburner/progress.ns', 1);
+    }
+}

@@ -1,0 +1,17 @@
+while(true) {
+    run("buy-stocks.script");
+    
+    sleep(1000*60*30);
+    
+    run("sell-bear.script");
+    
+    sleep(1000*30);
+    
+    run("buy-stocks.script");
+    
+    sleep(1000*60*60*4);
+    
+    run("sell-stocks.script");
+    
+    sleep(1000*30);
+}

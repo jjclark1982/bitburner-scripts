@@ -1,0 +1,16 @@
+export async function main(ns) {
+    let player = ns.getPlayer();
+    player.karma = ns.heart.break();
+    const factions = player.factions;
+    player.factions = {};
+    for (const f of factions) {
+        player.factions[f] = `${ns.getFactionFavor(f)} favor, ${parseInt(ns.getFactionRep(f))} rep`;
+    }
+    player.augmentations = ns.getOwnedAugmentations(false);
+    //player.augmentations = {};
+    //for (const name of ns.getOwnedAugmentations(false)) {
+    //     player.augmentations[name] = ns.getAugmentationStats(name);
+    //}
+    //player.sourceFiles = ns.getOwnedSourceFiles();
+    ns.tprint(JSON.stringify(player, null, 2));
+}

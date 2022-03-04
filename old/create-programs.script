@@ -1,0 +1,28 @@
+programs = [
+    ["BruteSSH.exe", 50],
+    ["AutoLink.exe", 25],
+    ["FTPCrack.exe", 100],
+    ["relaySMTP.exe", 250],
+    ["HTTPWorm.exe", 500],
+    ["SQLInject.exe", 750],
+    ["DeepScanV2.exe", 750],
+    ["ServerProfiler.exe", 750]
+];
+
+for (i=0; i<programs.length; i++) {
+    program = programs[i];
+    while (!fileExists(program[0], 'home')) {
+        if (!fileExists(program[0], 'home')) {
+            print("working towards "+program);
+            if (!isBusy()) {
+                if (getHackingLevel() < program[1]) {
+                    universityCourse("Rothman University", "Study Computer Science");
+                }
+                else {
+                    createProgram(program[0]);
+                }
+            }
+            sleep(60*1000);
+        }
+    }
+}

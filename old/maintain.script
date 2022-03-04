@@ -1,0 +1,4 @@
+while(true){
+    weaken(args[0]);
+    grow(args[0]);
+}

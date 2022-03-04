@@ -1,0 +1,88 @@
+toScan = [getHostname()];
+scanned = [];
+
+newFunc = ''.constructor.constructor;
+notIncludes = newFunc('x', 'return !this.includes(x)');
+
+while (toScan.length > 0) {
+    host = toScan.shift();
+    scanned.push(host);
+    results = scan(host);
+    newResults = results.filter(notIncludes.bind(scanned));
+    toScan = toScan.concat(newResults);
+}
+
+tprint("Discovered "+scanned.length+" servers: "+scanned);
+
+/*
+home
+iron-gym
+foodnstuff
+sigma-cosmetics
+joesguns
+hong-fang-tea
+harakiri-sushi
+darkweb
+nectar-net
+max-hardware
+CSEC
+zer0
+phantasy
+omega-net
+neo-net
+silver-helix
+netlink
+the-hub
+comptek
+johnson-ortho
+avmnite-02h
+crush-fitness
+catalyst
+zb-institute
+syscore
+summit-uni
+I.I.I.I
+rothman-uni
+alpha-ent
+lexo-corp
+millenium-fitness
+rho-construction
+aevum-police
+global-pharm
+aerocorp
+galactic-cyber
+snap-fitness
+unitalife
+deltaone
+omnia
+zeus-med
+univ-energy
+solaris
+icarus
+defcomm
+taiyang-digital
+infocomm
+nova-med
+zb-def
+applied-energetics
+microdyne
+run4theh111z
+titan-labs
+helios
+vitalife
+stormtech
+fulcrumtech
+kuai-gong
+4sigma
+omnitek
+.
+powerhouse-fitness
+clarkeinc
+blade
+b-and-a
+nwo
+The-Cave
+megacorp
+fulcrumassets
+ecorp
+*/

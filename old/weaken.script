@@ -1,0 +1,5 @@
+// weaken.script [target]
+
+while(true) {
+    weaken(args[0]);
+}

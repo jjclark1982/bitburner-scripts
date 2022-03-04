@@ -1,0 +1,27 @@
+// remote-manage.script [hosts...]
+
+scripts = ["weaken", "grow", "hack"];
+
+while (true) {
+    for (i = 0; i < args.length; i++) {
+        host = args[i];
+        moneyThresh = getServerMaxMoney(host)*0.8;
+        securityThresh = Math.max(10, getServerMinSecurityLevel(host)+1);
+
+        if (getServerSecurityLevel(host) > securityThresh) {
+            script = "weaken.script";
+        } else if (getServerMoneyAvailable(host) < moneyThresh) {
+            script = "grow.script";
+        } else {
+            script = "hack.script";
+        }
+        
+        ram = getServerRam(host);
+        freeRam = ram[0] - ram[1];
+        threads = Math.floor(freeRam / getScriptRam(script, host));
+        print("Running "+threads+"x "+script+" on "+host);
+        if (threads >= 1) {
+            exec(script, host, threads, host, moneyThresh, securityThresh);
+        }
+    }
+}

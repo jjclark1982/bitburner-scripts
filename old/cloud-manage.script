@@ -1,0 +1,44 @@
+// cloud-manage.script 
+
+target = args[0];
+moneyThresh = args[1];
+securityThresh = args[2];
+
+servers = getPurchasedServers();
+while(true) {
+    for (i = 0; i < servers.length; i++) {
+        server = servers[i];
+        ram = getServerRam(server);
+        freeRam = ram[0] - ram[1];
+        threads = Math.floor(freeRam / getScriptRam(script, server));
+        tprint("Running "+threads+"x "+script+" on "+server);
+        if (threads > 0) {
+            exec(script, server, threads, target, moneyThresh, securityThresh);
+        }
+    }
+}
+
+while(true) {
+    script = "";
+    scriptRam=1.55;
+    delay = 0;
+    
+    if (getServerSecurityLevel(target) > securityThresh) {
+        script = "weaken.script";
+        delay = getWeakenTime(target);
+    } else if (getServerMoneyAvailable(target) < moneyThresh) {
+        script = "grow.script";
+        delay = getGrowTime(target);
+    } else {
+        script = "hack.script";
+        delay = getHackTime(target);
+    }
+    ram = getServerRam(server);
+    freeRam = ram[0] - ram[1];
+
+    threads = Math.floor(freeRam / scriptRam);
+    if (threads > 0) {
+        exec(script, server, threads, target, moneyThresh, securityThresh);
+    }
+    sleep((delay+1)*1000);
+}

@@ -1,0 +1,48 @@
+// universityCourse("Rothman University", "Algorithms");
+// sleep(5*60*1000);
+// universityCourse("Rothman University", "Leadership");
+// sleep(5*60*1000);
+
+while(true){
+    (travelToCity)("Sector-12");
+    (universityCourse)("Rothman University", "Leadership");
+    sleep(2*60*1000);
+    (gymWorkout)("Powerhouse Gym", "str");
+    sleep(2*60*1000);
+    (gymWorkout)("Powerhouse Gym", "def");
+    sleep(2*60*1000);
+    (gymWorkout)("Powerhouse Gym", "dex");
+    sleep(2*60*1000);
+    (gymWorkout)("Powerhouse Gym", "agi");
+    sleep(2*60*1000);
+}
+
+repGoals = [
+    // ["CyberSec", 10000, "hacking"],
+    ["Netburners", 12500, "hacking"],
+    // ["Sector-12", 12500, "hacking"],
+    ["Aevum", 7500, "hacking"],
+    ["Slum Snakes", 22500, "security"],
+    // ["NiteSec", 45000, "hacking"],
+    // ["Tetrads", 62500, "security"],
+    ["BitRunners", 250000, "hacking"],
+    ["The Black Hand", 100000, "hacking"],
+    ["Tian Di Hui", 7500, "hacking"],
+    ["Bachman & Associates", 100000, "hacking"]
+];
+
+while (true) {
+    for (i = 0; i < repGoals.length; i++) {
+        goal = repGoals[i];
+        faction = goal[0];
+        rep = goal[1];
+        workType = goal[2] || "hacking";
+        //joinFaction(faction);
+        if(getFactionRep(faction) < rep) {
+            print("working for "+faction+" until "+rep+" rep");
+            if (workForFaction(faction, workType)) {
+                sleep(5*60*1000);
+            }
+        }
+    }
+}

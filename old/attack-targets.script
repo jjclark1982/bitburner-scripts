@@ -1,0 +1,111 @@
+// usage:
+// run find-targets.script
+// run cloud-run-one.script attack-targets.script [targets...]
+
+
+//Define Variables
+currentScanLength = 0;
+scanArray = ['home'];
+Servers = [];
+ServersM = [];  // Money
+ServersHL = []; // HackingLevel
+ServersHP = []; // HackingPorts
+ServersP = [];  // Profits
+basehackinglevel = -101;
+hackinglevel = getHackingLevel();
+target = 'foodnstuff';
+host = getHostname();
+mults = getHackingMultipliers();
+
+//Skill Multiplier Constants
+hackmult = mults.money;
+growmult = mults.growth;
+//Bitnode Multiplier Constants, update after changing Bitnodes
+bitnodehackmult = 1.0000;
+bitnodegrowmult = 1.0000;
+bitnodeweakenmult = 1.0000;
+
+
+
+OptimalTargetList = [];
+OptimalTargetListM = [];
+OptimalTargetListG = [];
+OptimalTargetListHL = [];
+OptimalTargetListMS = [];
+
+
+for (i = 0; i < args.length; i++) {
+    arg = args[i];
+    OptimalTargetList.push(arg);
+    OptimalTargetListG.push(getServerGrowth(arg));
+    OptimalTargetListHL.push(getServerRequiredHackingLevel(arg));
+    OptimalTargetListMS.push(Math.max(round(getServerBaseSecurityLevel(arg)/3),1));
+    OptimalTargetListM.push(getServerMaxMoney(arg));
+}
+
+
+
+//Main Loop
+while (true) {
+    //Loop Through Targets
+    for (k = 0; k < Math.min(OptimalTargetList.length,10); k++) {
+        homeram = getServerRam(host);
+
+        if (homeram[0] - homeram[1] < 2) {
+            print('Not enough RAM available');
+            k = 1000;
+            break;
+        }
+
+        freememory = homeram[0] - homeram[1];
+        target = OptimalTargetList[k];
+        minsecurity = OptimalTargetListMS[k];
+        reqHack = OptimalTargetListHL[k];
+        maxmoney = OptimalTargetListM[k];
+        growth = OptimalTargetListG[k];
+
+        //Calculate number of Hack Threads Required
+        perhack = (100-minsecurity) * ((hackinglevel-reqHack+1)/hackinglevel) / 24000 * hackmult * bitnodehackmult;
+        hacks  = Math.ceil(1/perhack);
+
+        security = minsecurity + hacks * 0.002;
+        //Calculate number of Grow Threads Required
+        growpercent = Math.min(1 + 0.03/security,1.0035);
+        pergrow = Math.pow(growpercent,growth/100 * growmult * bitnodegrowmult);
+        var1 = maxmoney * Math.log(pergrow);
+        lambert = Math.log(var1)-Math.log(Math.log(var1))-Math.log(1-Math.log(Math.log(var1))/Math.log(var1));
+        grows = Math.ceil(lambert/Math.log(pergrow));
+
+        //Calculate number of Weaken Threads Required
+        weakens = Math.ceil((((hacks * 0.002) + (grows * 0.004)) / (0.05 * bitnodeweakenmult)));
+        maxweakens = (100 - minsecurity) / (0.05 * bitnodeweakenmult);
+        if (weakens > maxweakens) {weakens = maxweakens}
+
+        //Adjust if max threads > max memory
+        if (weakens * 1.55 > freememory) {
+            weakens = Math.max(Math.floor(freememory / 1.555),1);
+        }
+        if (hacks * 1.5 > freememory) {
+            hacks = Math.max(Math.floor(freememory / 1.555),1);
+        }
+        if (grows * 1.55 > freememory) {
+            grows = Math.max(Math.floor(freememory / 1.555),1);
+        }
+
+        script = '';
+        threads = 1;
+        if (isRunning('weaken.script',host,target) == false && isRunning('hack.script',host,target) == false  && isRunning('grow.script',host,target) == false) {
+            if (getServerSecurityLevel(target) > getServerBaseSecurityLevel(target) / 3 + 6) {
+                script = 'weaken.script';
+                threads = weakens;
+            } else if (getServerMoneyAvailable(target) >= 0.75 * getServerMaxMoney(target)) {
+                script = 'hack.script';
+                threads = hacks;
+            } else {
+                script = 'grow.script';
+                threads = grows;
+            }    
+        }
+        exec(script, host, threads, target);
+    }
+}

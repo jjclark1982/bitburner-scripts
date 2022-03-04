@@ -1,0 +1,100 @@
+// scan-dfs.script [start];
+// depth-first search, like scan-analyze
+
+toScan = [getHostname()];
+depth = [1];
+if (args.length > 0) {
+    toScan = [args[0]];
+}
+scanned = [];
+
+newFunc = ''.constructor.constructor;
+notIncludes = newFunc('x', 'return !this.includes(x)');
+replace = newFunc('return this');
+padding = '------------------------------------------------------------';
+
+while (toScan.length > 0) {
+    host = toScan.pop();
+    d = depth.pop();
+    scanned.push(host);
+    tprint(padding.slice(-3*d+2)+'> '+host+' ('+getServerRequiredHackingLevel(host)+')');
+    results = scan(host).reverse();
+    newResults = results.filter(notIncludes.bind(scanned));
+    toScan = toScan.concat(newResults);
+    depth = depth.concat(newResults.map(replace.bind(d+1)));
+}
+
+tprint("Discovered "+scanned.length+" servers: "+scanned);
+
+/*
+-> home
+----> iron-gym
+-------> nectar-net
+----------> phantasy
+-------------> netlink
+----------------> catalyst
+-------------------> alpha-ent
+----------------------> global-pharm
+-------------------------> unitalife
+----------------------> aerocorp
+-------------------------> deltaone
+----------------------------> zeus-med
+-------------------------------> taiyang-digital
+----------------------------------> applied-energetics
+-------------------------------------> helios
+----------------------------------------> kuai-gong
+----------------------------------> microdyne
+-------------------------------------> vitalife
+----------------------------------------> 4sigma
+-------------------------------------------> powerhouse-fitness
+-------------------------------------------> clarkeinc
+----------------------------------------------> The-Cave
+----------------------------------------> omnitek
+-------------------------------------------> blade
+----------------------------------------------> megacorp
+-------------------------------------------> b-and-a
+----------------------------> univ-energy
+-------------------------------> infocomm
+----------------------------------> run4theh111z
+-------------------------------------> stormtech
+-------------------------------------> fulcrumtech
+----------------------------------------> .
+-------------------------------------------> nwo
+----------------------------------------------> fulcrumassets
+----------------------------------------------> ecorp
+-------------------------> omnia
+----------------------------> solaris
+-------------------------------> nova-med
+----------------------------> icarus
+-------------------------------> zb-def
+----------------------------------> titan-labs
+----------------------------> defcomm
+----------------------> galactic-cyber
+----------------> zb-institute
+-------------------> lexo-corp
+----------------------> snap-fitness
+-------------> the-hub
+----> foodnstuff
+----> sigma-cosmetics
+----> joesguns
+-------> max-hardware
+----------> omega-net
+-------> CSEC
+----------> neo-net
+-------------> comptek
+----------------> syscore
+-------------------> millenium-fitness
+-------------> johnson-ortho
+-------------> avmnite-02h
+----------------> summit-uni
+----------------> I.I.I.I
+----> hong-fang-tea
+----> harakiri-sushi
+-------> zer0
+----------> silver-helix
+-------------> crush-fitness
+----------------> rothman-uni
+-------------------> rho-construction
+-------------------> aevum-police
+----> darkweb
+*/

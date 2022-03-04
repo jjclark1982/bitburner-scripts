@@ -1,0 +1,12 @@
+// run spawn-farms.ns host [target ...]
+
+import {spawnFarms, mostProfitableTargets, getAllHosts} from "lib.ns";
+
+export async function main(ns) {
+    let host = 'home';
+    if (ns.args.length > 0) {
+        host = ns.args[0];
+    }
+    const targets = ns.args.slice(1);
+    spawnFarms(ns, host, targets);
+}

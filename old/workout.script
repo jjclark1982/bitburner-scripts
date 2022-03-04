@@ -1,0 +1,9 @@
+statNames = ["str", "def", "dex", "agi"];
+
+// travelToCity("Sector-12");
+while(true) {
+    for (i = 0; i < statNames.length; i++) {
+        (gymWorkout)("Powerhouse Gym", statNames[i]);
+        sleep(1*60*1000);
+    }
+}

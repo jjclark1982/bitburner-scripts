@@ -1,0 +1,54 @@
+// init-bitnode.script
+// goal: get cashRoot starter kit and upgrade home RAM
+
+function money(){
+    return (getServerMoneyAvailable)("home");
+}
+function killTime() {
+    // universityCourse("Rothman University", "Study Computer Science");
+    sleep((commitCrime)("larceny"));
+    // sleep(60*1000);
+}
+
+run("init-aug.script");
+
+programs = [
+    ["BruteSSH.exe", 800000],
+    ["FTPCrack.exe", 2000000],
+    ["relaySMTP.exe", 5000000]
+];
+for (i=0; i<programs.length; i++) {
+    program = programs[i];
+    if (!fileExists(program[0], 'home')) {
+        print("waiting to get "+program);
+        while (money() < program[1]) {
+            killTime();
+        }
+        (purchaseTor)();
+        (purchaseProgram)(program[0]);
+    }
+}
+
+while (getServerRam('home')[0] < 128) {
+    print("upgrading ram");
+    while (money() < (getUpgradeHomeRamCost)()) {
+        killTime();
+    }
+    (upgradeHomeRam)();
+}
+
+
+
+while(getFactionRep("Sector-12") < 12500 || money() < 125000000) {
+    working = (workForFaction)("Sector-12", "hacking");
+    if (!working) {
+        while (!(checkFactionInvitations)().includes("Sector-12")) {
+            print("waiting to join faction");
+            killTime();
+        }
+        (joinFaction)("Sector-12");
+    }
+    sleep(5*60*1000);
+}
+(purchaseAugmentation)("Sector-12", "CashRoot Starter Kit");
+(installAugmentations)("init.script");

@@ -1,0 +1,42 @@
+run("hacknet.script");
+
+run("init-aug.script");
+
+while (getHackingLevel() < 50 ) {
+// for (i=0; i<10; i++) {
+    universityCourse("Rothman University", "Algorithms");
+    sleep(60*1000);
+}
+
+run("find-farms.script", 1, 64);
+
+
+programs = [
+    ["BruteSSH.exe", 50],
+    ["FTPCrack.exe", 100],
+    ["relaySMTP.exe", 250],
+    ["HTTPWorm.exe", 500],
+    ["SQLInject.exe", 750],
+    ["AutoLink.exe", 25]
+];
+
+purchaseTor();
+
+for (i=0; i<programs.length; i++) {
+    program = programs[i];
+    while (!fileExists(program[0], 'home')) {
+        print("working towards "+program);
+        purchaseProgram(program[0]);
+        if (!isBusy()) {
+            if (getHackingLevel() < program[1]) {
+                universityCourse("Rothman University", "Algorithms");
+            }
+            else {
+                createProgram(program[0]);
+            }
+        }
+        sleep(60*1000);
+    }
+}
+
+run("init-farms.script", 1);

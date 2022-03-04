@@ -1,0 +1,18 @@
+// cloud-run.script [script] [target] [arg1] [arg2]
+
+script = args[0];
+target = args[1];
+arg1 = args[2];
+arg2 = args[3];
+
+servers = getPurchasedServers();
+for (i = 0; i < servers.length; i++) {
+    server = servers[i];
+    ram = getServerRam(server);
+    freeRam = ram[0] - ram[1];
+    threads = Math.floor(freeRam / getScriptRam(script, server));
+    tprint("Running "+threads+"x "+script+" on "+server);
+    if (threads > 0) {
+        exec(script, server, threads, target, arg1, arg2);
+    }
+}

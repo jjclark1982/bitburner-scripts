@@ -1,0 +1,109 @@
+export async function main(ns) {
+    ns.disableLog("sleep");
+    while (true) {
+        await startBestAction(ns);
+        await ns.sleep(60*1000);
+    }
+}
+
+export function startBestAction(ns) {
+    if (ns.isBusy() && !ns.getOwnedAugmentations().includes("The Blade's Simulacrum")) {
+        return;
+    }
+    const action = selectAction(ns);
+    const currentAction = ns.bladeburner.getCurrentAction();
+    if (currentAction.name == action.name) {
+        return;
+    }
+    ns.bladeburner.startAction(action.type, action.name);
+}
+
+export function selectAction(ns) {
+    const stamina = ns.bladeburner.getStamina();
+    const percentage = stamina[0] / stamina[1];
+    if (percentage < 0.6) {
+        ns.print("Selected regeneration");
+        return {
+            type: "general",
+            name: "Hyperbolic Regeneration Chamber"
+        };
+    }
+    
+    let city = ns.bladeburner.getCity();
+    if (ns.bladeburner.getCityChaos(city) > 100 ||
+            ns.bladeburner.getCityEstimatedPopulation(city) < 1 ||
+            ns.bladeburner.getCityEstimatedCommunities(city) < 1) {
+        city = randomCity();
+        ns.bladeburner.switchCity(city);
+    }
+
+    const actionTypes = {
+        "blackop": ns.bladeburner.getBlackOpNames(), // lowest rank first
+        "operation": ns.bladeburner.getOperationNames().reverse(), // highest rank first
+        "contract": ns.bladeburner.getContractNames().reverse(), // highest rank first
+        //"general": ns.bladeburner.getGeneralActionNames() // "Training" first
+    };
+    const actions = [];
+    for (const actionType in actionTypes) {
+        for (const name of actionTypes[actionType]) {
+            actions.push({
+                type: actionType,
+                name: name,
+                chance: ns.bladeburner.getActionEstimatedSuccessChance(actionType, name),
+                count: ns.bladeburner.getActionCountRemaining(actionType, name)
+            });
+        }
+    }
+    let blackopSeen = false;
+    const viableActions = actions.filter((a)=> {
+        if (a.type == "blackop") {
+            if (a.name == "Operation Daedalus") {
+                return false;
+            }
+            if (blackopSeen) {
+                return false;
+            }
+            if (ns.bladeburner.getBlackOpRank(a.name) <= ns.bladeburner.getRank() && a.count > 0) {
+                blackopSeen = true;
+                return (a.chance[1] > 0.99);
+            }
+        }
+        else if (a.name == "Raid") {
+            return false;
+        }
+        else {
+            return (a.count > 5 && a.chance[1] > 0.99);
+        }
+    });
+    if (viableActions.length > 0) {
+        const action = viableActions[0];
+        ns.print(`Selected action: ${JSON.stringify(action)}`);
+        return action;
+    }
+    if (ns.bladeburner.getCityChaos(city) > 10) {
+        return {
+            type: "general",
+            name: "Diplomacy"
+        };
+    }
+    //ns.print("Selected training");
+    return {
+        type: "general",
+        name: "Training"
+    };
+}
+
+function takeRandom(items) {
+    return items[Math.floor(Math.random()*items.length)];
+}
+    
+function randomCity() {
+    return takeRandom([
+        "Sector-12",
+        "Aevum",
+        "Volhaven",
+        "Ishima",
+        "New Tokyo",
+        "Chongqing"
+    ]);
+}

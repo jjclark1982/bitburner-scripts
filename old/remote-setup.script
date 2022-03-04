@@ -1,0 +1,38 @@
+// remote-setup.script [hosts...]
+
+scripts = ["weaken", "grow", "hack", "maintain", "early-hack-template"];
+
+for (i = 0; i < args.length; i++) {
+    host = args[i];
+    if (getServerMaxMoney(host) > 0) {
+        if (!hasRootAccess(host)) {
+            tprint("Cracking server "+host);
+            portBusters = ['BruteSSH.exe', 'FTPCrack.exe', 'relaySMTP.exe', 'HTTPWorm.exe', 'SQLInject.exe'];
+            for (i = 0; i < portBusters.length; i++) {
+                if (fileExists(portBusters[i], "home")) {
+                    if (i === 0) {
+                        brutessh(host);
+                    }
+                    if (i === 1) {
+                        ftpcrack(host);
+                    }
+                    if (i === 2) {
+                        relaysmtp(host);
+                    }
+                    if (i === 3) {
+                        httpworm(host);
+                    }
+                    if (i === 4) {
+                        sqlinject(host);
+                    }
+                }
+            }
+            nuke(host);
+        }
+        tprint("Preparing server "+host);
+        killall(host);
+        for (k = 0; k < scripts.length; k++) {
+            scp(scripts[k]+".script", host);
+        }
+    }
+}

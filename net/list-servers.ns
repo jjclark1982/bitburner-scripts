@@ -1,0 +1,9 @@
+// scan-bfs.ns
+
+import {getAllHosts, groupByPortReq} from "lib.ns";
+
+export async function main(ns) {
+	const hosts = await getAllHosts(ns);
+    ns.tprint("Discovered " + hosts.length + " servers: " + hosts);
+    ns.tprint(groupByPortReq(ns, hosts));
+}

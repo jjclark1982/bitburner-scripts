@@ -1,0 +1,24 @@
+import {prepareStats} from "lib.ns";
+
+export async function main(ns) {
+    await ns.sleep( 0*1000); ns.run("/progress/contracts.ns");
+    await ns.sleep( 0*1000); ns.run("/hacknet/init.ns");
+    await ns.sleep( 0*1000); ns.run("/sleeves/init.ns");
+    await prepareStats(ns, {
+        "hacking_skill": 10
+    });
+    await ns.sleep( 0*1000); ns.run("/net/crack-servers.ns");
+    await prepareStats(ns, {
+        "strength": 5,
+        "defense": 5,
+        "dexterity": 10,
+        "agility": 10
+    });
+    await ns.sleep( 0*1000); ns.run("/progress/crime.ns");
+    await ns.sleep( 1*1000); ns.run("/progress/programs.ns");
+    await ns.sleep( 1*1000); ns.run("/net/backdoor-servers.ns");
+    await ns.sleep( 1*1000); ns.run("/progress/factions.ns");
+    await ns.sleep( 1*1000); ns.run("/bladeburner/progress.ns");
+    await ns.sleep( 1*1000); ns.run("/stocks/init.ns");
+    await ns.sleep(30*1000); ns.run("spawn-farms.ns");
+}

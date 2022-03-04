@@ -1,0 +1,36 @@
+//startTime = Date.now();
+f = ''.constructor.constructor;
+makeObj = f('a', 'o = {}; for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+setObj = f('o', 'a', 'for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+getters = makeObj(["serverExists", serverExists, "hasRootAccess", hasRootAccess, "getServerMoneyAvailable", getServerMoneyAvailable, "getServerMaxMoney", getServerMaxMoney, "getServerGrowth", getServerGrowth, "getServerSecurityLevel", getServerSecurityLevel, "getServerBaseSecurityLevel", getServerBaseSecurityLevel, "getServerMinSecurityLevel", getServerMinSecurityLevel, "getServerRequiredHackingLevel", getServerRequiredHackingLevel, "getServerNumPortsRequired", getServerNumPortsRequired, "getServerRam", getServerRam, "getHackTime", getHackTime, "getGrowTime", getGrowTime, "getWeakenTime", getWeakenTime, "getHackingLevel", getHackingLevel]);
+getInfo = f('host', 'return {name: host, maxMoney: this.getServerMaxMoney(host), growth: this.getServerGrowth(host), baseSecurityLevel: this.getServerBaseSecurityLevel(host), minSecurityLevel: this.getServerMinSecurityLevel(host), requiredHackingLevel: this.getServerRequiredHackingLevel(host), numPortsRequired: this.getServerNumPortsRequired(host), maxRam: this.getServerRam(host)[0], hackTime: this.getHackTime(host), growTime: this.getGrowTime(host), weakenTime: this.getWeakenTime(host)}').bind(getters);
+
+target = args[0];
+server = getInfo(target);
+
+mults = (getHackingMultipliers)();
+playerHackingMoneyMult = mults.money;
+playerHackingGrowMult = mults.growth;
+bitnodeGrowMult = 1.00;
+bitnodeWeakenMult = 1.00;
+ServerGrowthRate = 1;
+ServerWeakenRate = 1;
+ScriptHackMoney = 0.2;
+playerHackingMoneyMult *= mults.ScriptHackMoney;
+bitnodeGrowMult = mults.ServerGrowthRate;
+bitnodeWeakenMult = mults.ServerWeakenRate;
+
+percentageToSteal = 0.1;
+
+constantGrowthRate = server.growthRate;
+unadjustedGrowthRate = 1.03;
+maxGrowthRate = 1.0035;
+maxMoney = server.maxMoney;
+minSecurity = server.minSecurity;
+serverHackingLevel = server.requiredHackingLevel;
+
+
+threads=1;
+// run("weaken.script", threads, server.name);
+// run("hack.script", threads, server.name);
+// run("grow.script", threads, server.name, server.growTime);()

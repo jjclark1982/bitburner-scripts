@@ -1,0 +1,207 @@
+export function scanNetwork(ns, entry='home', target=null, printMap=false) {
+    let scanned = {};
+    
+    function depthFirstSearch(path) {
+        const host = path[path.length-1];
+        if (host in scanned) {
+            return;
+        }
+        scanned[host] = true;
+        if (printMap) {
+            const padding = '                                                            ';
+            const padding2 = '------------------------------------------------------------';
+            const depth = path.length;
+            ns.tprint(padding.slice(-3*depth)+'--> '+host+' ('+ns.getServerRequiredHackingLevel(host)+')');
+        }
+        if (host == target) {
+            ns.tprint("Route: "+path.join(', '));
+        }
+        for (const neighbor of ns.scan(host).sort((a,b)=>{return ns.getServerRequiredHackingLevel(a)-ns.getServerRequiredHackingLevel(b);})) {
+            depthFirstSearch(path.concat([neighbor]));
+        }
+    }
+    
+    depthFirstSearch([entry]);
+    const allHosts = Object.keys(scanned);
+    return allHosts;
+}
+
+export function getAllHosts(ns, entry = 'home') {
+    let toScan = [entry];
+    let scanned = {};
+    while (toScan.length > 0) {
+        let host = toScan.shift();
+        if (host in scanned) {
+            continue;
+        }
+        scanned[host] = true;
+        toScan = toScan.concat(ns.scan(host));
+    }
+    const allHosts = Object.keys(scanned);
+    return allHosts;
+}
+
+export function groupByPortReq(ns, hosts) {
+    let comparator = function(h1, h2) {
+        return ns.getServerRequiredHackingLevel(h1) - ns.getServerRequiredHackingLevel(h2);
+    };
+
+    let hostsByPort = [];
+    for (const host of hosts) {
+        let ports = ns.getServerNumPortsRequired(host);
+        if (hostsByPort[ports] === undefined) {
+            hostsByPort[ports] = [];
+        }
+        hostsByPort[ports].push(host);
+    }
+    for (let i in hostsByPort) {
+        hostsByPort[i] = hostsByPort[i].sort(comparator);
+    }
+    return hostsByPort;
+}
+
+export function getServerProfit(ns, host) {
+    return ns.getServerMaxMoney(host) / (2*ns.getWeakenTime(host) + ns.getGrowTime(host) + ns.getHackTime(host));
+}
+
+export function getServerInfo(ns, host) {
+    const server = {
+        hostname: host,
+        exists: ns.serverExists(host),
+        hasAdminRights: ns.hasRootAccess(host),
+        moneyAvailable: ns.getServerMoneyAvailable(host),
+        maxMoney: ns.getServerMaxMoney(host),
+        serverGrowth: ns.getServerGrowth(host),
+        serverSecurityLevel: ns.getServerSecurityLevel(host),
+        serverBaseSecurityLevel: ns.getServerBaseSecurityLevel(host),
+        serverMinSecurityLevel: ns.getServerMinSecurityLevel(host),
+        requiredHackingSkill: ns.getServerRequiredHackingLevel(host),
+        serverNumPortsRequired: ns.getServerNumPortsRequired(host),
+        maxRam: ns.getServerRam(host)[0],
+        ramUsed: ns.getServerRam(host)[1],
+        hackTime: ns.getHackTime(host),
+        growTime: ns.getGrowTime(host),
+        weakenTime: ns.getWeakenTime(host),
+        profit: getServerProfit(ns, host)
+    };
+    return server;
+}
+
+export function mostProfitableTargets(ns, count=Infinity, hosts=allHosts) {
+    if (!hosts) {
+        hosts = getAllHosts();
+    }
+    const mostProfitableServers = hosts.filter(function(host){
+        return ns.hasRootAccess(host) && host != "home";
+    }).filter(function(host){
+        return ns.getServerMaxMoney(host) > 0;
+    }).filter(function(host){
+        return ns.getServerRequiredHackingLevel(host) <= ns.getHackingLevel();
+    }).sort(function(a,b){
+        return getServerProfit(ns,b) - getServerProfit(ns,a);
+    });
+    return mostProfitableServers.slice(0, count);
+}
+
+function takeRandom(items) {
+    return items[Math.floor(Math.random()*items.length)];
+}
+
+export function mostProfitableTarget(ns, hosts=allHosts) {
+    // return mostProfitableTargets(ns)[0];
+    return takeRandom(mostProfitableTargets(ns, 5, hosts));
+}
+
+export function playerPortLevel(ns) {
+    return ns.fileExists('BruteSSH.exe','home') + ns.fileExists('FTPCrack.exe','home') + ns.fileExists('relaySMTP.exe','home') + ns.fileExists('HTTPWorm.exe','home') + ns.fileExists('SQLInject.exe','home');
+}
+
+export function spawnFarms(ns, host, targets=[], numTargets=8) {
+    if (targets.length == 0) {
+        targets = mostProfitableTargets(ns, numTargets, getAllHosts(ns));
+    }
+
+    const script = 'farm.script';
+    ns.scp(script, 'home', host);
+
+    const ram = ns.getServerRam(host);
+    let freeRam = ram[0] - ram[1];
+    if (host == 'home') {
+        freeRam -= 16;
+    }
+    const scriptRam = ns.getScriptRam(script, host);
+    const ramFraction = 1.0;
+    const threads = Math.floor(ramFraction * (freeRam / scriptRam) / targets.length);
+    
+    for (const target of targets) {
+        spawnFarm(ns, host, target, threads);
+    }    
+}
+
+export function spawnFarm(ns, host, target, threads=null) {
+    const script = 'farm.script';
+    if (threads == null) {
+        const scriptRam = 2.2; // ns.getScriptRam(script, host);
+        threads = Math.floor(freeRam / scriptRam);
+    }
+    const maxMoney = ns.getServerMaxMoney(target);
+    const moneyThresh = 0.8 * maxMoney;
+    const minSecurityLevel = ns.getServerMinSecurityLevel(target);
+    const securityThresh = Math.max(10, minSecurityLevel+2);
+
+    if (threads > 0) {
+        ns.tprint(`Running ${threads}x ${script} on ${host}: ${target}`);
+        ns.exec(script, host, threads, target, moneyThresh, securityThresh);
+    }
+}
+
+export function crack(ns, target) {
+    const portBusters = {
+        'BruteSSH.exe': ns.brutessh,
+        'FTPCrack.exe': ns.ftpcrack,
+        'relaySMTP.exe': ns.relaysmtp,
+        'HTTPWorm.exe': ns.httpworm,
+        'SQLInject.exe': ns.sqlinject
+    };
+    if (ns.hasRootAccess(target)) {
+        return true;
+    }
+    const numPorts = ns.getServerNumPortsRequired(target);
+    if (playerPortLevel(ns) < numPorts) {
+        return false;
+    }
+    const hackLevel = ns.getServerRequiredHackingLevel(target);
+    //if (ns.getHackingLevel(ns) < hackLevel) {
+    //    return false;
+    //}
+    ns.tprint(`Cracking server ${target} (${numPorts}:${hackLevel})`);
+    for (const busterFile in portBusters) {
+        if (ns.fileExists(busterFile, 'home')) {
+            const portBuster = portBusters[busterFile];
+            portBuster(target);
+        }
+    }
+    ns.nuke(target);
+    return ns.hasRootAccess(target);
+}
+
+export async function prepareStats(ns, targetStats) {
+    for (const stat in targetStats) {
+        const statTarget = targetStats[stat];
+        while (ns.getPlayer()[stat] < statTarget) {
+            if (!ns.isBusy()) {
+                if (stat == 'hacking_skill') {
+                    ns.universityCourse("Rothman University", "Algorithms");
+                }
+                else if (stat == 'charisma') {
+                    ns.universityCourse("Rothman University", "Leadership");
+                }
+                else {
+                    ns.gymWorkout("Powerhouse Gym", stat);
+                }
+            }
+            await ns.sleep(1*1000);
+        }
+        ns.stopAction();
+    }
+}

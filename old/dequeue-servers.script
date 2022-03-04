@@ -1,0 +1,11 @@
+servers = [];
+
+while (true) {
+    host = read(1);
+    if (host === 'NULL PORT DATA') {
+        break;
+    }
+    servers.push(host);
+}
+
+tprint(servers);

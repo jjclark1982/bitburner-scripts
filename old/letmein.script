@@ -1,0 +1,29 @@
+// letmein.script [host...]
+for (h = 0; h < args.length; h++) {
+    host = args[h];
+    if (!hasRootAccess(host)) {
+        tprint("Cracking server "+host);
+        portBusters = ['BruteSSH.exe', 'FTPCrack.exe', 'relaySMTP.exe', 'HTTPWorm.exe', 'SQLInject.exe'];
+        for (i = 0; i < portBusters.length; i++) {
+            if (fileExists(portBusters[i], "home")) {
+                if (i === 0) {
+                    brutessh(host);
+                }
+                if (i === 1) {
+                    ftpcrack(host);
+                }
+                if (i === 2) {
+                    relaysmtp(host);
+                }
+                if (i === 3) {
+                    httpworm(host);
+                }
+                if (i === 4) {
+                    sqlinject(host);
+                }
+            }
+        }
+        nuke(host);
+        tprint("Cracked server "+host);
+    }
+}

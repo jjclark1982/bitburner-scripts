@@ -1,0 +1,2 @@
+tprint(getPlayer());
+tprint(getServer(args[0]));

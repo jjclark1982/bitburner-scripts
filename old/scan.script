@@ -1,0 +1,1 @@
+tprint(scan(args[0]));

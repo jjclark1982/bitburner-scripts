@@ -1,0 +1,43 @@
+keepRam = args.length > 0 && args[0] || 0;
+c = 'constructor';
+f = [c][c][c];
+// json = f('return JSON')();
+makeObj = f('a', 'o = {}; for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+setObj = f('o', 'a', 'for (var i = 0; i < a.length; i=i+2) {o[a[i]] = a[i+1]} return o;');
+
+allHosts = ["iron-gym","foodnstuff","sigma-cosmetics","joesguns","hong-fang-tea","harakiri-sushi","nectar-net","max-hardware","CSEC","zer0","phantasy","omega-net","neo-net","silver-helix","netlink","the-hub","comptek","johnson-ortho","avmnite-02h","crush-fitness","catalyst","zb-institute","syscore","summit-uni","I.I.I.I","rothman-uni","alpha-ent","lexo-corp","millenium-fitness","rho-construction","aevum-police","global-pharm","aerocorp","galactic-cyber","snap-fitness","unitalife","deltaone","omnia","zeus-med","univ-energy","solaris","icarus","defcomm","taiyang-digital","infocomm","nova-med","zb-def","applied-energetics","microdyne","run4theh111z","titan-labs","helios","vitalife","stormtech","fulcrumtech","kuai-gong","4sigma","omnitek",".","powerhouse-fitness","clarkeinc","blade","b-and-a","nwo","The-Cave","megacorp","ecorp"]; // "fulcrumassets"
+// allHosts = ["fulcrumassets"];
+
+getters = makeObj(["serverExists", serverExists, "hasRootAccess", hasRootAccess, "getServerMoneyAvailable", getServerMoneyAvailable, "getServerMaxMoney", getServerMaxMoney, "getServerGrowth", getServerGrowth, "getServerSecurityLevel", getServerSecurityLevel, "getServerBaseSecurityLevel", getServerBaseSecurityLevel, "getServerMinSecurityLevel", getServerMinSecurityLevel, "getServerRequiredHackingLevel", getServerRequiredHackingLevel, "getServerNumPortsRequired", getServerNumPortsRequired, "getServerRam", getServerRam, "getHackTime", getHackTime, "getGrowTime", getGrowTime, "getWeakenTime", getWeakenTime, "getHackingLevel", getHackingLevel]);
+getInfo = f('host', 'return {name: host, maxMoney: this.getServerMaxMoney(host), growth: this.getServerGrowth(host), baseSecurityLevel: this.getServerBaseSecurityLevel(host), minSecurityLevel: this.getServerMinSecurityLevel(host), requiredHackingLevel: this.getServerRequiredHackingLevel(host), numPortsRequired: this.getServerNumPortsRequired(host), maxRam: this.getServerRam(host)[0], hackTime: this.getHackTime(host), growTime: this.getGrowTime(host), weakenTime: this.getWeakenTime(host)}').bind(getters);
+allServers = allHosts.map(getInfo);
+
+hasMoney = f('server', 'return server.maxMoney > 0');
+canHack = f('server', 'return (this.hasRootAccess(server.name) && server.requiredHackingLevel < this.getHackingLevel())').bind(getters);
+byHackReq = f('a', 'b', 'return a.requiredHackingLevel - b.requiredHackingLevel');
+hackableServers = allServers.filter(hasMoney).filter(canHack).sort(byHackReq);
+
+// serversByHackReq = serversWithMoney.sort(byHackReq);
+// getName = f('server', 'return server.name');
+// hostsByHackReq = serversByHackReq.map(getName);
+// tprint(json.stringify(hostsByHackReq));
+// hackableHosts = ["foodnstuff","sigma-cosmetics","joesguns","nectar-net","hong-fang-tea","harakiri-sushi","neo-net","zer0","max-hardware","iron-gym","phantasy","silver-helix","omega-net","crush-fitness","johnson-ortho","the-hub","comptek","rothman-uni","netlink","aevum-police","catalyst","summit-uni","rho-construction","millenium-fitness","alpha-ent","syscore","zb-institute","lexo-corp","snap-fitness","global-pharm","zb-def","nova-med","microdyne","titan-labs","unitalife","solaris","univ-energy","helios","applied-energetics","zeus-med","galactic-cyber","aerocorp","deltaone","icarus","vitalife","defcomm","omnia","taiyang-digital","infocomm","stormtech","kuai-gong","fulcrumtech","omnitek","powerhouse-fitness","b-and-a","blade","nwo","4sigma","clarkeinc","ecorp","megacorp","fulcrumassets"];
+
+host = getHostname();
+ram = getServerRam(host);
+freeRam = ram[0] - ram[1] - keepRam;
+script = "farm.script";
+scriptRam = 2.4;
+threads = Math.floor(freeRam / scriptRam / hackableServers.length);
+
+for (i = 0; i < hackableServers.length; i++) {
+    server = hackableServers[i];
+    target = server.name;
+    moneyThresh = 0.8 * server.maxMoney;
+    securityThresh = Math.max(10, server.minSecurityLevel+2);
+
+    print("Running "+threads+"x "+script+" "+target+" on "+host);
+    if (threads > 0) {
+        run(script, threads, target, moneyThresh, securityThresh);
+    }
+}

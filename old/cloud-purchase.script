@@ -1,0 +1,30 @@
+// cloud-purchase.script [files...]]
+
+count = 1; // (args.length > 0) && args[0] || 1;
+fundsFraction = 0.93;
+funds = fundsFraction * getServerMoneyAvailable('home') / count;
+power = Math.floor(Math.log2(funds/50000));
+size = Math.pow(2, power);
+
+tprint("Purchasing "+count+"x servers with "+size+"GB RAM")
+
+servers = getPurchasedServers();
+
+delCount = count + servers.length - 25;
+for (i = 0; i < delCount; i++) {
+    killall(servers[i]);
+}
+for (i = 0; i < delCount; i++) {
+    deleteServer(servers[i]);
+}
+
+for (i = 0; i < count; i++) {
+    hostname = "pserv"; //-"+(servers.length+i);
+    hostname = purchaseServer(hostname, size);
+    for (j = 0; j < args.length; j++) {
+        scp(args[j], hostname);
+    }
+    if (args.length > 0) {
+        exec(args[0], hostname, 1);
+    }
+}
