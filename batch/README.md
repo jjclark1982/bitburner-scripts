@@ -9,9 +9,8 @@ TODO: integrate this and make it more efficient
 `hack.js`, `grow.js`, `weaken.js` - Single-purpose scripts which run once and terminate. These are deployed automatically by other scripts.
 TODO: rename `weaken.js` to `weak.js`?
 
-`rank-targets.js` - Library of functions for planning batches and estimating profitability.
+`analyze.js` - Library of functions for planning batches and estimating profitability.
 When run as an executable, prints the most profitable targets.
-TODO: rename to `plan.js` or `analyze.js`
 
 `pool.js` - Library of functions for running scripts on any available host.
 When run as an executable, prints the servers currently available.

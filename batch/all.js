@@ -1,4 +1,4 @@
-import { mostProfitableServers, planHack, planWeaken, planGrow, BATCH_SCRIPTS } from "batch/rank-targets.js";
+import { mostProfitableServers, planHack, planWeaken, planGrow, BATCH_SCRIPTS } from "batch/analyze.js";
 import { getServerPool, runBatchOnPool, copyToPool } from "batch/pool.js";
 
 const FLAGS = [
