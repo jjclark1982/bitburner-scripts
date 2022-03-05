@@ -63,9 +63,11 @@ export async function main(ns) {
         // ns.print(` Admin Access: ${server.hasAdminRights ? '✓' : '✗'}, Backdoor: ${server.backdoorInstalled ? '✓' : '✗'}`);
         ns.print(` money:    ${ns.nFormat(money, "$0.000a")} / ${ns.nFormat(maxMoney, "$0.000a")} (${(money / maxMoney * 100).toFixed(2)}%)`);
         ns.print(` security: ${minSec} + ${(sec - minSec).toFixed(2)}`);
-        ns.print(` hack:     ${ns.tFormat(ns.getHackTime(host))} (t=${Math.ceil(ns.hackAnalyzeThreads(host, money))})`);
-        ns.print(` grow:     ${ns.tFormat(ns.getGrowTime(host))} (t=${Math.ceil(ns.growthAnalyze(host, maxMoney / Math.max(1,money)))})`);
-        ns.print(` weaken:   ${ns.tFormat(ns.getWeakenTime(host))} (t=${Math.ceil((sec - minSec) * 20)})`);
+        if (!server.purchasedByPlayer) {
+            ns.print(` hack:     ${ns.tFormat(ns.getHackTime(host))} (t=${Math.ceil(ns.hackAnalyzeThreads(host, money))})`);
+            ns.print(` grow:     ${ns.tFormat(ns.getGrowTime(host))} (t=${Math.ceil(ns.growthAnalyze(host, maxMoney / Math.max(1,money)))})`);
+            ns.print(` weaken:   ${ns.tFormat(ns.getWeakenTime(host))} (t=${Math.ceil((sec - minSec) * 20)})`);
+        }
         
         await ns.sleep(flags.refreshrate);
     }
