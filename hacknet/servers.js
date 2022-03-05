@@ -2,7 +2,7 @@ export let MAX_BREAKEVEN_TIME = 1 * 60 * 60 * 1.000; // 1 hours in seconds
 export let MAX_CACHE_TIME = 1 * 60 * 60 * 1.000; // 1 hour in seconds
 
 export async function main(ns) {
-    ns.disableLog("sleep");
+    ns.disableLog("asleep");
     if (ns.args.length > 0) {
         MAX_BREAKEVEN_TIME = 60 * 60 * ns.args[0];
     }

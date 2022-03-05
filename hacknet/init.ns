@@ -1,4 +1,0 @@
-export async function main(ns) {
-    //ns.run("/hacknet/nodes.ns");
-    ns.spawn("/hacknet/servers.ns", 1);
-}

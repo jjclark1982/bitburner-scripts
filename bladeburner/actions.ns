@@ -32,7 +32,7 @@ export function selectAction(ns) {
     let city = ns.bladeburner.getCity();
     if (ns.bladeburner.getCityChaos(city) > 100 ||
             ns.bladeburner.getCityEstimatedPopulation(city) < 1 ||
-            ns.bladeburner.getCityEstimatedCommunities(city) < 1) {
+            ns.bladeburner.getCityCommunities(city) < 1) {
         city = randomCity();
         ns.bladeburner.switchCity(city);
     }

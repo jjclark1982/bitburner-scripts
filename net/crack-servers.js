@@ -1,6 +1,6 @@
 // crack-all-servers.ns
 
-import {getAllHosts, playerPortLevel, crack, mostProfitableTarget, spawnFarms} from "lib.ns";
+import {getAllHosts, playerPortLevel, crack, mostProfitableTarget} from "lib.ns";
 
 export async function main(ns) {
     ns.disableLog("sleep");
@@ -33,11 +33,11 @@ export async function crackAllServers(ns) {
             }
             else {
                 crack(ns, server.hostname);
-                let targets = [mostProfitableTarget(ns, getAllHosts(ns))];
-                if (server.maxMoney > 0 && server.level <= playerLevel) {
-                    targets = [server.hostname];
-                }
-                spawnFarms(ns, server.hostname, targets);
+                // let targets = [mostProfitableTarget(ns, getAllHosts(ns))];
+                // if (server.maxMoney > 0 && server.level <= playerLevel) {
+                //     targets = [server.hostname];
+                // }
+                // spawnFarms(ns, server.hostname, targets);
             }
             await ns.sleep(100);
         }

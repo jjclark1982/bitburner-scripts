@@ -1,4 +1,4 @@
-import {connectToHost} from "/net/tunnel.ns";
+import {connectToHost} from "/net/tunnel.js";
 import {crack, playerPortLevel} from "lib.ns";
 
 const factionHosts = ['CSEC', 'avmnite-02h', 'I.I.I.I', 'run4theh111z', 'fulcrumassets'];
@@ -19,7 +19,7 @@ export async function installBackdoors(ns) {
         }
         crack(ns, host);
         ns.print(`Need ${server.requiredHackingSkill} hacking skill for ${host}`);
-        while (server.requiredHackingSkill > ns.getPlayer().hacking_skill) {
+        while (server.requiredHackingSkill > ns.getPlayer().hacking) {
             await ns.sleep(60*1000);
         }
         const prevHost = ns.getHostname();
