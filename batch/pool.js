@@ -1,5 +1,6 @@
 import {getAllHosts} from "lib.ns";
 const SCRIPT_RAM = 1.75;
+let batchID = 0;
 
 /*
 
@@ -99,16 +100,35 @@ export function runOnPool(params) {
 export function runBatchOnPool(ns, jobs, safetyFactor=1.1) {
     // run the entire batch, if there is more than enough ram for the entire batch.
     // a job is of the format {startTime, script, threads, args}
+
+    batchID++;
+
     let totalThreads = 0;
+    let earliestStartTime = Infinity;
     for (const job of jobs) {
         totalThreads += job.threads;
+        if (job.startTime !== undefined && job.startTime < earliestStartTime) {
+            earliestStartTime = job.startTime;
+        }
+    }
+    // if planned start time was in the past, shift entire batch to future
+    // and update times in-place
+    const startTimeAdjustment = Date.now() - earliestStartTime;
+    if (startTimeAdjustment > 0) {
+        ns.print(`Batch ${batchID} adjusting start time by ${startTimeAdjustment}`);
+        for (const job of jobs) {
+            job.startTime += startTimeAdjustment + 50;
+            job.endTime += startTimeAdjustment + 50;
+        }
     }
     const pool = getServerPool(ns);
     if (totalThreads * safetyFactor > pool.totalThreads) {
-        ns.tprint("pool not large enough for entire batch");
+        ns.tprint("Batch skipped: not enough RAM in server pool.");
         return false;
     }
-    for (const job of jobs) {
+    for (const [index, job] of jobs.entries()) {
+        job.args.push(batchID);
+        job.args.push(index);
         runOnPool({ns, ...job});
     }
 }
