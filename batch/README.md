@@ -16,7 +16,5 @@ When run as an executable, prints the most profitable targets.
 When run as an executable, prints the servers currently available.
 TODO: Use CLI to run an arbitrary script on the pool.
 
-`all.js` - Daemon which attacks the most profitable targets.
-TODO: specify targets on CLI
-
-`manage.js` - Daemon which runs scripts on a single host to attack a single target. (deprecated)
+`manage.js` - Daemon which attacks the most profitable targets.
+Can specify individual targets on CLI.
