@@ -17,11 +17,16 @@ export function autocomplete(data, args) {
 export async function main(ns) {
     ns.disableLog("scan");
     ns.disableLog("asleep");
+    ns.disableLog("exec");
+    ns.clearLog();
+    // ns.tail();
+
     const args = ns.flags(FLAGS);
     args.ns = ns;
     if (args.help) {
         ns.tprint("This script manages batches of hack/weaken/grow/weaken cycles against multiple target servers.");
-        ns.tprint(`Usage: run ${ns.getScriptName()}`);
+        ns.tprint(`Usage: run ${ns.getScriptName()} [target...]`);
+        ns.tprint(`Exmaple: run ${ns.getScriptName()} ecorp foodnstuff`);
         return;
     }
     if (args._.length > 0) {
@@ -31,9 +36,6 @@ export async function main(ns) {
     if (args.targets === undefined) {
         args.targets = mostProfitableServers(ns).slice(0,8);
     }
-
-    // ns.clearLog();
-    // ns.tail();
 
     await copyToPool(ns, BATCH_SCRIPTS);
 
