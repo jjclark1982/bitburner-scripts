@@ -41,7 +41,7 @@ export async function main(ns) {
 
     while (true) {
         runMultiHWGW(args);
-        await ns.asleep(4 * args.tDelta);
+        await ns.asleep(5 * args.tDelta);
     }
 }
 
@@ -76,7 +76,7 @@ export function runHWGW(params) {
     const batch = [hJob, w1Job, gJob, w2Job];
 
     runBatchOnPool(ns, batch);
-    t0_by_target[params.target] = w2Job.endTime;
+    t0_by_target[params.target] = w2Job.endTime + tDelta;
 
     const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;
     return threadsUsed;

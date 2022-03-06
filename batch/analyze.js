@@ -34,10 +34,8 @@ export function mostProfitableServers(ns) {
 }
 
 function getServerProfit(ns, target) {
-	// TODO: run this without calling ns.getServer so many times
-
 	// profitability for a HWGW batch:
-	// money hacked per ideal batch / ram used per ideal batch
+	// money per second for an ideal batch / ram used for an ideal batch
 
 	const server = ns.getServer(target);
 
@@ -84,12 +82,14 @@ export function planHack(params) {
     const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player);
     const hackThreads = Math.ceil(moneyPercent / hackPercentPerThread);
     const hackSecurity = ns.hackAnalyzeSecurity(hackThreads);
+	const effectivePct = hackThreads * hackPercentPerThread * 1.1;
 
 	return makeJob({
 		...params,
 		script: HACK,
 		threads: hackThreads,
 		security: hackSecurity,
+		money: effectivePct,
 		time: hackTime
 	});
 }
@@ -106,15 +106,13 @@ export function planWeaken(params) {
     const weakSecPerThread = -ns.weakenAnalyze(1, cores);
     const weakSecurity = server.minDifficulty - server.hackDifficulty;
     const weakThreads = Math.ceil(weakSecurity / weakSecPerThread);
-    // if (weakThreads == 0) {
-    //     weakTime = 0;
-    // }
 
 	return makeJob({
 		...params,
 		script: WEAKEN,
 		threads: weakThreads,
 		security: weakSecurity,
+		money: 0,
 		time: weakTime
 	});
 }
@@ -127,10 +125,15 @@ export function planGrow(params) {
         server.hackDifficulty = server.minDifficulty + difficulty;
     }
 
+    const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player);
+    const hackThreads = Math.ceil(moneyPercent / hackPercentPerThread);
+	const effectivePct = hackThreads * hackPercentPerThread * 1.1;
+	server.moneyAvailable = server.moneyMax * (1 - effectivePct);
+
     const growTime = ns.formulas.hacking.growTime(server, player);
     const growPercentPerThread = ns.formulas.hacking.growPercent(server, 1, player, cores);
-    const growPercent = (1 / (1 - (moneyPercent*1.1))); // 10% margin to correct for errors
-    const growThreads = Math.ceil(((1-growPercent) / (1-growPercentPerThread)));
+    const growPercent = (1 / (1 - effectivePct));
+    const growThreads = Math.ceil((growPercent-1) / (growPercentPerThread-1)) + 1;
     const growSecurity = ns.growthAnalyzeSecurity(growThreads);
 
 	return makeJob({
@@ -138,17 +141,19 @@ export function planGrow(params) {
 		script: GROW,
 		threads: growThreads,
 		security: growSecurity,
+		money: growPercent,
 		time: growTime
 	});
 }
 
 export function makeJob(params) {
-	const {script, target, threads, security, time, endTime} = params;
+	const {script, target, threads, security, money, time, endTime} = params;
 	const job = {
 		script: script,
 		args: [target],
 		threads: threads,
 		security: security,
+		money: money,
 		time: time
 	};
 	if (endTime !== undefined) {
