@@ -1,4 +1,4 @@
-import {getAllHosts} from "lib.ns";
+import { getAllHosts } from "batch/pool.js";
 
 export const HACK = "/batch/hack.js";
 export const GROW = "/batch/grow.js";

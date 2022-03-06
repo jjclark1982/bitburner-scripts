@@ -1,6 +1,5 @@
-import {getAllHosts} from "lib.ns";
-const SCRIPT_RAM = 1.75;
-let batchID = 0;
+const SCRIPT_RAM = 1.75; // Default thread cost for estimating capacity of pool
+let batchID = 0;         // Global counter used to ensure unique processes
 
 /*
 
@@ -14,7 +13,6 @@ for each target:
     schedule a net-positive HWGW batch that will fit in available RAM
     allocate each job to one or more hosts when needed
 
-TODO: clean up hard-coded use of "home"
 */
 
 const FLAGS = [
@@ -175,4 +173,23 @@ export function runBatchOnPool(ns, jobs, safetyFactor=1.1) {
         job.args.push(index+1);
         runOnPool({ns, ...job});
     }
+}
+
+export function getAllHosts(ns, entry = 'home') {
+    if (getAllHosts.cache === undefined) {
+        getAllHosts.cache = {};
+    }
+    const scanned = getAllHosts.cache;
+
+    let toScan = [entry];
+    while (toScan.length > 0) {
+        const host = toScan.shift();
+        if (host in scanned) {
+            continue;
+        }
+        scanned[host] = true;
+        toScan = toScan.concat(ns.scan(host));
+    }
+    const allHosts = Object.keys(scanned);
+    return allHosts;
 }
