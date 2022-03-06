@@ -73,19 +73,23 @@ export function getServerPool(ns, scriptRam=SCRIPT_RAM) {
     let totalThreads = 0;
     const servers = getAllHosts(ns).map(function(hostname){
         const server = ns.getServer(hostname);
+        server.sortKey = server.maxRam;
+        if (server.hostname === "home" || server.hashRate) {
+            // Reserve RAM on home and hacknet servers, and use them last.
+            server.maxRam = server.maxRam / 2;
+            server.sortKey = -server.sortKey;
+        }
         server.availableRam = server.maxRam - server.ramUsed;
         server.availableThreads = Math.floor(server.availableRam / scriptRam);
         totalThreads += server.availableThreads;
         return server;
     }).filter(function(server){
         return (
-            server.availableRam >= SCRIPT_RAM &&
             server.hasAdminRights &&
-            !server.hashRate &&
-            server.hostname !== "home"
+            server.availableThreads > 0
         )
     }).sort(function(a,b){
-        return b.maxRam - a.maxRam
+        return b.sortKey - a.sortKey;
     });
     servers.totalThreads = totalThreads;
     return servers;
@@ -173,6 +177,7 @@ export function runBatchOnPool(ns, jobs, safetyFactor=1.1) {
         job.args.push(index+1);
         runOnPool({ns, ...job});
     }
+    return true;
 }
 
 export function getAllHosts(ns, entry = 'home') {

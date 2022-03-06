@@ -194,7 +194,7 @@ export function crack(ns, target) {
     //if (ns.getHackingLevel(ns) < hackLevel) {
     //    return false;
     //}
-    ns.tprint(`Cracking server ${target} (${numPorts}:${hackLevel})`);
+    ns.print(`Cracking server ${target} (${numPorts}:${hackLevel})`);
     for (const busterFile in portBusters) {
         if (ns.fileExists(busterFile, 'home')) {
             const portBuster = portBusters[busterFile];
