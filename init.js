@@ -33,7 +33,7 @@ export async function main(ns) {
         "dexterity": 10,
         "agility": 10
     });
-    await ns.sleep( 0*1000); ns.run("/progress/crime.ns");
+    await ns.sleep( 0*1000); ns.run("/progress/crime.js");
     await ns.sleep( 1*1000); ns.run("/progress/programs.ns");
     await ns.sleep( 1*1000); ns.run("/net/backdoor-servers.js");
     await ns.sleep( 1*1000); ns.run("/progress/factions.ns");
