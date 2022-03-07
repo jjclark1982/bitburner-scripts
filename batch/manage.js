@@ -34,6 +34,7 @@ export async function main(ns) {
     ns.disableLog("scan");
     ns.disableLog("asleep");
     ns.disableLog("exec");
+    ns.disableLog("scp");
     ns.clearLog();
     // ns.tail();
 
@@ -54,12 +55,12 @@ export async function main(ns) {
 
     while (true) {
         const serverPool = getServerPool({ns});
-        runMultiHWGW({...args, serverPool});
+        await runMultiHWGW({...args, serverPool});
         await ns.asleep(4 * args.tDelta);
     }
 }
 
-export function runMultiHWGW(params) {
+export async function runMultiHWGW(params) {
     let {ns, serverPool, targets} = params;
 
     if (targets === undefined) {
@@ -72,16 +73,16 @@ export function runMultiHWGW(params) {
         if (serverPool.threadsUsed > serverPool.totalThreads * 0.9) {
             break;
         }
-        serverPool.threadsUsed += runHWGW({...params, target});
+        serverPool.threadsUsed += await runHWGW({...params, target});
     }
 }
 
-export function runHWGW(params) {
+export async function runHWGW(params) {
     const {ns, target, tDelta} = params;
 
     if (t0_by_target[params.target] === undefined) {
         const w0Job = planWeaken(params);
-        runBatchOnPool({ns}, [w0Job]);
+        await runBatchOnPool({ns}, [w0Job]);
         t0_by_target[params.target] = Date.now() + w0Job.time;
     }
     const t0 = t0_by_target[params.target];
@@ -93,7 +94,7 @@ export function runHWGW(params) {
 
     const batch = [hJob, w1Job, gJob, w2Job];
 
-    runBatchOnPool({ns}, batch);
+    await runBatchOnPool({ns}, batch);
     t0_by_target[params.target] = w2Job.endTime + tDelta;
 
     const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;

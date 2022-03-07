@@ -36,7 +36,7 @@ export async function main(ns) {
     }
     const serverPool = getServerPool({ns, scriptRam});
     for (const server of serverPool) {
-        ns.print(sprintf("%-18s %7s RAM (%s threads)",
+        ns.print(sprintf("%-18s %8s RAM (%s threads)",
             server.hostname+":",
             ns.nFormat(server.availableRam*1e9, "0.0 b"),
             ns.nFormat(server.availableThreads, "0,0")
@@ -56,7 +56,6 @@ export async function main(ns) {
 }
 
 export async function copyToPool({ns}, scriptNames) {
-    // TODO: handle copying these same files to servers added to the pool later
     for (const server of getServerPool({ns})) {
         await ns.scp(scriptNames, "home", server.hostname);
     }
@@ -99,7 +98,9 @@ export function runOnPoolNow({ns, script, threads, args, verbose}) {
         const threadsToUse = Math.min(threadsNeeded, server.availableThreads);
         if (threadsToUse > 0) {
             if (!ns.ls(server.hostname).includes(script)) {
-                ns.tprint(`Script '${script}' not present on server ${server.hostname}`);
+                //ns.tprint(`Script '${script}' not present on server ${server.hostname}`);
+                // script not on this server yet. try other servers.
+                continue;
             }
             if (verbose) {
                 ns.tprint(`Running on ${server.hostname}: ${threadsToUse}x ${script} ${args.join(' ')}`);
@@ -128,7 +129,7 @@ export function runOnPool(params) {
     }, startTime - now);
 }
 
-export function runBatchOnPool(params, jobs) {
+export async function runBatchOnPool(params, jobs) {
     // Run the entire batch, if there is more than enough RAM for the entire batch.
     // A job is of the format {script, threads, args, startTime}
     let {ns, serverPool, safetyFactor=1.1} = params
@@ -147,6 +148,7 @@ export function runBatchOnPool(params, jobs) {
         if (scriptRam > maxScriptRam) {
             maxScriptRam = scriptRam;
         }
+        await copyToPool({ns}, job.script);
     }
 
     // If planned start time was in the past, shift entire batch to future

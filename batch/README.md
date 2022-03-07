@@ -27,10 +27,7 @@ Library for running scripts on any available host.
 
 #### API Usage:
 ```js
-import { runBatchOnPool, copyToPool } from "batch/pool.js";
-
-// Copy the script to all servers.
-await copyToPool(ns, "script.js");
+import { runBatchOnPool } from "batch/pool.js";
 
 // Define a job.
 const job = {
@@ -44,14 +41,14 @@ const job = {
 // Will cancel if there is not enough RAM for the entire batch.
 // Will adjust the `startTime` of the entire batch if any are in the past.
 const batch = [job];
-runBatchOnPool({ns}, batch);
+await runBatchOnPool({ns}, batch);
 ```
 
 #### CLI Usage:
 Convenience interface to launch a single job on the pool.
 ```bash
 > run /batch/pool.js --threads 1000 /batch/grow.js ecorp
-[home ~/]> run batch/pool.js /batch/grow.js --threads 1000 ecorp
+
 /batch/pool.js: Running on omnitek: 292x /batch/grow.js ecorp
 /batch/pool.js: Running on helios: 146x /batch/grow.js ecorp
 /batch/pool.js: Running on fulcrumtech: 73x /batch/grow.js ecorp
