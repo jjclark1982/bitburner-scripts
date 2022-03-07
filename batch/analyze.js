@@ -18,7 +18,7 @@ export async function main(ns) {
 
 export function mostProfitableTargets(ns) {
 	const player = ns.getPlayer();
-	const mostProfitableServers = getAllHosts(ns).filter(function(host){
+	const mostProfitableServers = getAllHosts({ns}).filter(function(host){
 		const server = ns.getServer(host);
 		return (
 			server.hasAdminRights &&

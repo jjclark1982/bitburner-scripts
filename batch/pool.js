@@ -1,20 +1,6 @@
 const SCRIPT_RAM = 1.75; // Default thread cost for estimating capacity of pool
 let batchID = 0;         // Global counter used to ensure unique processes
 
-/*
-
-batch-based hacking using a pool of hosts
-
-list all usable hosts
-    calculate total number of 1.75gb RAM slots
-    skip hacknet servers and home server
-identify most profitable targets
-for each target:
-    schedule a net-positive HWGW batch that will fit in available RAM
-    allocate each job to one or more hosts when needed
-
-*/
-
 const FLAGS = [
     ["help", false],
     ["threads", 1]
@@ -29,7 +15,6 @@ export function autocomplete(data, args) {
 export async function main(ns) {
     ns.disableLog("ALL");
     ns.clearLog();
-    // ns.tail();
 
     const params = ns.flags(FLAGS);
     params.ns = ns;
@@ -49,30 +34,38 @@ export async function main(ns) {
     if (params.script) {
         scriptRam = ns.getScriptRam(params.script, "home");
     }
-    const servers = getServerPool(ns, scriptRam);
-    // for (const server of servers) {
-    //     ns.print(`${server.hostname}: ${server.availableThreads}`);
-    // }
-    ns.tprint(`Servers in pool: ${servers.length}`);
-    ns.tprint(`Total threads available: ${servers.totalThreads}`);
+    const serverPool = getServerPool({ns, scriptRam});
+    for (const server of serverPool) {
+        ns.print(sprintf("%-18s %7s RAM (%s threads)",
+            server.hostname+":",
+            ns.nFormat(server.availableRam*1e9, "0.0 b"),
+            ns.nFormat(server.availableThreads, "0,0")
+        ));
+    }
+    ns.print(`\nTotal servers in pool: ${serverPool.length}`);
+    ns.print(`Total threads available: ${ns.nFormat(serverPool.totalThreads, "0,0")}`);
 
     if (params.script) {
-        await copyToPool(ns, params.script);
+        await copyToPool({ns}, params.script);
         runOnPoolNow({...params, verbose: true});
     }
-    await ns.asleep(100);
+    else {
+        ns.tail();
+        await ns.asleep(100);
+    }
 }
 
-export async function copyToPool(ns, scriptNames) {
+export async function copyToPool({ns}, scriptNames) {
     // TODO: handle copying these same files to servers added to the pool later
-    for (const server of getServerPool(ns)) {
+    for (const server of getServerPool({ns})) {
         await ns.scp(scriptNames, "home", server.hostname);
     }
 }
 
-export function getServerPool(ns, scriptRam=SCRIPT_RAM) {
+export function getServerPool({ns, scriptRam}) {
+    scriptRam ||= SCRIPT_RAM;
     let totalThreads = 0;
-    const servers = getAllHosts(ns).map(function(hostname){
+    const servers = getAllHosts({ns}).map(function(hostname){
         const server = ns.getServer(hostname);
         server.sortKey = server.maxRam;
         if (server.hostname === "home" || server.hashRate) {
@@ -97,14 +90,17 @@ export function getServerPool(ns, scriptRam=SCRIPT_RAM) {
 }
 
 export function runOnPoolNow({ns, script, threads, args, verbose}) {
-    // run the script on one or more hosts, selected based on current availability.
-    const ramPerThread = ns.getScriptRam(script, "home");
-    let ramNeeded = ramPerThread * threads;
+    // Run the script on one or more hosts, selected based on current availability.
+    const scriptRam = ns.getScriptRam(script, "home");
+    const ramNeeded = scriptRam * threads;
     let threadsNeeded = threads;
-    const pool = getServerPool(ns, ramPerThread);
-    for (const server of pool) {
+    const serverPool = getServerPool({ns, scriptRam});
+    for (const server of serverPool) {
         const threadsToUse = Math.min(threadsNeeded, server.availableThreads);
         if (threadsToUse > 0) {
+            if (!ns.ls(server.hostname).includes(script)) {
+                ns.tprint(`Script '${script}' not present on server ${server.hostname}`);
+            }
             if (verbose) {
                 ns.tprint(`Running on ${server.hostname}: ${threadsToUse}x ${script} ${args.join(' ')}`);
             }
@@ -121,59 +117,62 @@ export function runOnPoolNow({ns, script, threads, args, verbose}) {
 }
 
 export function runOnPool(params) {
-    let {ns, startTime, endTime} = params;
+    let {ns, startTime} = params;
     const now = Date.now();
     if (startTime === undefined) {
         startTime = now + 1;
     }
 
     setTimeout(function(){
-        //ns.print(`Expected start time of ${params.script} ${JSON.stringify(params.args)}`);
         runOnPoolNow(params);
     }, startTime - now);
-
-    // if (endTime !== undefined) {
-    //     setTimeout(function(){
-    //         ns.print(`${now} Expected end time of ${params.script} ${JSON.stringify(params.args)}`);
-    //     }, endTime - now);
-    // }
 }
 
-export function runBatchOnPool(ns, jobs, safetyFactor=1.1) {
-    // run the entire batch, if there is more than enough ram for the entire batch.
-    // a job is of the format {startTime, script, threads, args}
+export function runBatchOnPool(params, jobs) {
+    // Run the entire batch, if there is more than enough RAM for the entire batch.
+    // A job is of the format {script, threads, args, startTime}
+    let {ns, serverPool, safetyFactor=1.1} = params
 
     batchID++;
 
     let totalThreads = 0;
     let earliestStartTime = Infinity;
+    let maxScriptRam = SCRIPT_RAM;
     for (const job of jobs) {
         totalThreads += job.threads;
         if (job.startTime !== undefined && job.startTime < earliestStartTime) {
             earliestStartTime = job.startTime;
         }
+        const scriptRam = ns.getScriptRam(job.script, "home");
+        if (scriptRam > maxScriptRam) {
+            maxScriptRam = scriptRam;
+        }
     }
-    // if planned start time was in the past, shift entire batch to future
-    // and update times in-place
+
+    // If planned start time was in the past, shift entire batch to future
+    // and update times in-place.
     const startTimeAdjustment = Date.now() - earliestStartTime;
     if (startTimeAdjustment > 0) {
-        // TODO: investigate why this is reaching nummers as high as 700
-        //  - maybe it is not being propagated back to manage.js 
         ns.print(`Batch ${batchID} adjusting start time by ${startTimeAdjustment + 100}`);
         for (const job of jobs) {
             job.startTime += startTimeAdjustment + 100;
             job.endTime += startTimeAdjustment + 100;
         }
     }
-    // abort if the entire batch will not fit in ram.
-    // (difficult to be sure because conditions may change before scheduled jobs start)
-    const pool = getServerPool(ns);
-    if (totalThreads * safetyFactor > pool.totalThreads) {
+
+    // Abort if the entire batch will not fit in RAM.
+    // (Difficult to be sure because conditions may change before scheduled jobs start.)
+    if (serverPool === undefined) {
+        serverPool = getServerPool({ns, scriptRam:maxScriptRam});
+    }
+    if (totalThreads * safetyFactor > serverPool.totalThreads) {
         ns.tprint("Batch skipped: not enough RAM in server pool.");
         return false;
     }
+
+    // Schedule each job in the batch.
     for (const [index, job] of jobs.entries()) {
-        // append batch id and job index to ensure unique process id
+        // Append batch id and job index to ensure unique process id.
         job.args.push(batchID);
         job.args.push(index+1);
         runOnPool({ns, ...job});
@@ -181,7 +180,7 @@ export function runBatchOnPool(ns, jobs, safetyFactor=1.1) {
     return true;
 }
 
-export function getAllHosts(ns, entry = 'home') {
+export function getAllHosts({ns}, entry = 'home') {
     if (getAllHosts.cache === undefined) {
         getAllHosts.cache = {};
     }

@@ -1,6 +1,22 @@
 import { mostProfitableTargets, planHack, planWeaken, planGrow, BATCH_SCRIPTS } from "batch/analyze.js";
 import { getServerPool, runBatchOnPool, copyToPool } from "batch/pool.js";
 
+
+/*
+
+batch-based hacking using a pool of hosts
+
+list all usable hosts
+    calculate total number of 1.75gb RAM slots
+    skip hacknet servers and home server
+identify most profitable targets
+for each target:
+    schedule a net-positive HWGW batch that will fit in available RAM
+    allocate each job to one or more hosts when needed
+
+*/
+
+
 const FLAGS = [
     ["help", false],
     ["tDelta", 100],
@@ -34,29 +50,29 @@ export async function main(ns) {
         delete args._;
     }
 
-    await copyToPool(ns, BATCH_SCRIPTS);
+    await copyToPool({ns}, BATCH_SCRIPTS);
 
     while (true) {
-        runMultiHWGW(args);
+        const serverPool = getServerPool({ns});
+        runMultiHWGW({...args, serverPool});
         await ns.asleep(4 * args.tDelta);
     }
 }
 
 export function runMultiHWGW(params) {
-    let {ns, targets} = params;
-    const serverPool = getServerPool(ns);
+    let {ns, serverPool, targets} = params;
 
     if (targets === undefined) {
         // continually recalculate most profitable targets
         targets = mostProfitableTargets(ns).slice(0,8);
     }
 
-    let threadsUsed = 0;
+    serverPool.threadsUsed ||= 0;
     for (const target of targets) {
-        threadsUsed += runHWGW({...params, target});
-        if (threadsUsed > serverPool.totalThreads * 0.9) {
+        if (serverPool.threadsUsed > serverPool.totalThreads * 0.9) {
             break;
         }
+        serverPool.threadsUsed += runHWGW({...params, target});
     }
 }
 
@@ -65,7 +81,7 @@ export function runHWGW(params) {
 
     if (t0_by_target[params.target] === undefined) {
         const w0Job = planWeaken(params);
-        runBatchOnPool(ns, [w0Job]);
+        runBatchOnPool({ns}, [w0Job]);
         t0_by_target[params.target] = Date.now() + w0Job.time;
     }
     const t0 = t0_by_target[params.target];
@@ -77,7 +93,7 @@ export function runHWGW(params) {
 
     const batch = [hJob, w1Job, gJob, w2Job];
 
-    runBatchOnPool(ns, batch);
+    runBatchOnPool({ns}, batch);
     t0_by_target[params.target] = w2Job.endTime + tDelta;
 
     const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;

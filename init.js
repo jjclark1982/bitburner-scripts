@@ -15,7 +15,7 @@ create or buy all programs (can terminate)
 backdoor faction servers (can terminate)
 join factions
 
-TODO: farm servers
+farm servers
 
 */
 
@@ -39,6 +39,7 @@ export async function main(ns) {
     await ns.sleep( 1*1000); ns.run("/progress/factions.ns");
     await ns.sleep( 1*1000); ns.run("/bladeburner/progress.ns");
     await ns.sleep( 1*1000); ns.run("/stocks/init.ns");
-    await ns.sleep(30*1000); ns.run("spawn-farms.ns");
+
+    await ns.sleep( 5*1000); ns.run("/batch/manage.js");
 }
 
