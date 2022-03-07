@@ -5,7 +5,7 @@ export function buyServer(ns, fundsFraction=0.6, count=1) {
     const power = Math.floor(Math.log2(funds/(50000*costMult)));
     const size = Math.min(Math.pow(2, power), ns.getPurchasedServerMaxRam());
 
-    ns.tprint(`Purchasing ${count}x servers with ${size}GB RAM`);
+    ns.tprint(`Purchasing ${count}x servers with ${ns.nFormat(size*1e9, "0.0 b")} RAM`);
 
     let servers = ns.getPurchasedServers();
 
