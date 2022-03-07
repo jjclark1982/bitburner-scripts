@@ -9,14 +9,14 @@ export const SCRIPT_RAM = 1.75;
 /** @param {NS} ns **/
 export async function main(ns) {
 	const hosts = {};
-	for (const host of mostProfitableServers(ns)) {
+	for (const host of mostProfitableTargets(ns)) {
 		hosts[host] = getServerProfit(ns, host);
 	}
 
 	ns.tprint(JSON.stringify(hosts, null, 2));
 }
 
-export function mostProfitableServers(ns) {
+export function mostProfitableTargets(ns) {
 	const player = ns.getPlayer();
 	const mostProfitableServers = getAllHosts(ns).filter(function(host){
 		const server = ns.getServer(host);

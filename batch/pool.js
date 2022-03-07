@@ -64,6 +64,7 @@ export async function main(ns) {
 }
 
 export async function copyToPool(ns, scriptNames) {
+    // TODO: handle copying these same files to servers added to the pool later
     for (const server of getServerPool(ns)) {
         await ns.scp(scriptNames, "home", server.hostname);
     }

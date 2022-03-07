@@ -1,4 +1,4 @@
-import { mostProfitableServers, planHack, planWeaken, planGrow, BATCH_SCRIPTS } from "batch/analyze.js";
+import { mostProfitableTargets, planHack, planWeaken, planGrow, BATCH_SCRIPTS } from "batch/analyze.js";
 import { getServerPool, runBatchOnPool, copyToPool } from "batch/pool.js";
 
 const FLAGS = [
@@ -33,21 +33,23 @@ export async function main(ns) {
         args.targets = args._;
         delete args._;
     }
-    if (args.targets === undefined) {
-        args.targets = mostProfitableServers(ns).slice(0,8);
-    }
 
     await copyToPool(ns, BATCH_SCRIPTS);
 
     while (true) {
         runMultiHWGW(args);
-        await ns.asleep(5 * args.tDelta);
+        await ns.asleep(4 * args.tDelta);
     }
 }
 
 export function runMultiHWGW(params) {
-    const {ns, targets} = params;
+    let {ns, targets} = params;
     const serverPool = getServerPool(ns);
+
+    if (targets === undefined) {
+        // continually recalculate most profitable targets
+        targets = mostProfitableTargets(ns).slice(0,8);
+    }
 
     let threadsUsed = 0;
     for (const target of targets) {
