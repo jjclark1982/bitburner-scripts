@@ -42,11 +42,11 @@ runBatchOnPool(ns, [job]);
 
 #### CLI Usage:
 Convenience interface to launch a single job on the pool.
-```
+```bash
 run /batch/pool.js --threads 1000 /batch/grow.js ecorp
 ```
 
-### `analyze.js
+### `analyze.js`
 
 Library of functions for planning batches and estimating profitability.
 
