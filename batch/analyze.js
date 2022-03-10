@@ -134,6 +134,7 @@ export function planGrow(params) {
     const growPercentPerThread = ns.formulas.hacking.growPercent(server, 1, player, cores);
     const growPercent = (1 / (1 - effectivePct));
     const growThreads = Math.ceil((growPercent-1) / (growPercentPerThread-1)) + 1;
+	// growThreads = calculateGrowThreads(ns, target, player, effectivePct);
     const growSecurity = ns.growthAnalyzeSecurity(growThreads);
 
 	return makeJob({
@@ -144,6 +145,28 @@ export function planGrow(params) {
 		money: growPercent,
 		time: growTime
 	});
+}
+
+export function calculateGrowThreads(ns, server, playerObject, moneyPct) {
+	// iteratively find the number of grow threads needed.
+	// slower but more accurate than estimation with (moneyPct-1) / (growPercentPerThread-1)
+	let cores = 1;
+    let threads = 1;
+    let newMoney = 0;
+
+    let serverObject = ns.getServer(server);
+    serverObject.hackDifficulty = serverObject.minDifficulty;
+    serverObject.moneyAvailable = serverObject.moneyMax * (1 - moneyPct);
+
+    while (true) {
+        let serverGrowth = ns.formulas.hacking.growPercent(serverObject, threads, playerObject, cores);
+        newMoney = (serverObject.moneyAvailable + threads) * serverGrowth;
+        if (newMoney >= serverObject.moneyMax)
+            break;
+        threads++;
+    }
+
+    return threads;
 }
 
 export function makeJob(params) {

@@ -14,30 +14,38 @@ export function autocomplete(data, args) {
 /** @param {NS} ns **/
 export async function main(ns) {
     ns.disableLog("ALL");
-    ns.clearLog();
+    // ns.clearLog();
 
-    const params = ns.flags(FLAGS);
-    params.ns = ns;
-    if (params.help) {
+    const params = {
+        ns: ns,
+        threads: 1
+    };
+    if (ns.args.includes("--help")) {
         ns.tprint("Run a script on any available server, splitting threads into different processes if needed.");
         ns.tprint(`Usage: run ${ns.getScriptName()} [--threads n] script [args...]`);
         ns.tprint(`Exmaple: run ${ns.getScriptName()} --threads 1000 /batch/grow.js ecorp`);
         return;
     }
 
-    if (params._.length > 0) {
-        params.script = params._.shift();
-        params.args = params._;
-        delete params._;
+    if (ns.args[0] == '--threads') {
+        params.threads = ns.args[1];
+        ns.args = ns.args.slice(2);
+    }
+
+    if (ns.args.length > 0) {
+        params.script = ns.args.shift();
+        params.args = ns.args;
     }
     let scriptRam = SCRIPT_RAM;
     if (params.script) {
         scriptRam = ns.getScriptRam(params.script, "home");
     }
     const serverPool = getServerPool({ns, scriptRam});
+    ns.print("\n\n");
+    ns.print("Server Pool:");
     for (const server of serverPool) {
-        ns.print(sprintf("%-18s %8s RAM (%s threads)",
-            server.hostname+":",
+        ns.print(sprintf("%-20s %8s RAM (%s threads)",
+            "  " + server.hostname + ":",
             ns.nFormat(server.availableRam*1e9, "0.0 b"),
             ns.nFormat(server.availableThreads, "0,0")
         ));
@@ -63,7 +71,6 @@ export async function copyToPool({ns}, scriptNames) {
 
 export function getServerPool({ns, scriptRam}) {
     scriptRam ||= SCRIPT_RAM;
-    let totalThreads = 0;
     const servers = getAllHosts({ns}).map(function(hostname){
         const server = ns.getServer(hostname);
         server.sortKey = server.maxRam;
@@ -73,17 +80,24 @@ export function getServerPool({ns, scriptRam}) {
             server.sortKey = -server.sortKey;
         }
         server.availableRam = server.maxRam - server.ramUsed;
-        server.availableThreads = Math.floor(server.availableRam / scriptRam);
-        totalThreads += server.availableThreads;
+        if (server.hasAdminRights) {
+            server.availableThreads = Math.floor(server.availableRam / scriptRam);
+        }
+        else {
+            server.availableThreads = 0;
+        }
         return server;
     }).filter(function(server){
         return (
-            server.hasAdminRights &&
             server.availableThreads > 0
         )
     }).sort(function(a,b){
         return b.sortKey - a.sortKey;
     });
+    let totalThreads = 0;
+    for (const server of servers) {
+        totalThreads += server.availableThreads;
+    }
     servers.totalThreads = totalThreads;
     return servers;
 }
@@ -183,10 +197,11 @@ export async function runBatchOnPool(params, jobs) {
 }
 
 export function getAllHosts({ns}, entry = 'home') {
-    if (getAllHosts.cache === undefined) {
-        getAllHosts.cache = {};
-    }
-    const scanned = getAllHosts.cache;
+    // if (getAllHosts.cache === undefined) {
+    //     getAllHosts.cache = {};
+    // }
+    // const scanned = getAllHosts.cache;
+    const scanned = {};
 
     let toScan = [entry];
     while (toScan.length > 0) {

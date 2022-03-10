@@ -14,13 +14,15 @@ for each target:
     schedule a net-positive HWGW batch that will fit in available RAM
     allocate each job to one or more hosts when needed
 
+TODO: include a "maxThreads" limit when planning a batch, maybe use it to dynamically adjust moneyPercent
+
 */
 
 
 const FLAGS = [
     ["help", false],
     ["tDelta", 100],
-    ["moneyPercent", 0.25]
+    ["moneyPercent", 0.10]
 ];
 const t0_by_target = {};
 
