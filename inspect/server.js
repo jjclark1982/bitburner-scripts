@@ -55,7 +55,14 @@ export async function main(ns) {
     
         ns.print(`${host}:`);
         if (server.organizationName) {
-            ns.print(` Organization: ${server.organizationName} (${StockSymbols[server.organizationName]})`);
+            let ticker = StockSymbols[server.organizationName];
+            if (ticker) {
+                ticker = ` (${ticker})`;
+            }
+            else {
+                ticker = '';
+            }
+            ns.print(` Organization: ${server.organizationName}${ticker}`);
             server.stockSymbol = StockSymbols[server.organizationName];
         }
         ns.print(` Required Hacking Skill: ${server.requiredHackingSkill} ${ns.getPlayer().hacking >= server.requiredHackingSkill ? '✓' : '✗'}`);
