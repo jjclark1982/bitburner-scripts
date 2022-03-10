@@ -2,7 +2,14 @@ import {prepareStats} from "lib.ns";
 
 // init.js
 // main script to run when starting game.
-/* if home server ram is sufficient:
+
+
+/*
+
+if home server ram is sufficient:
+
+sell a small amount of corp shares, if possible
+
 manage coding contracts
 manage hacknet servers (default to 1-hour payback time)
 manage sleeves
@@ -23,6 +30,7 @@ export async function main(ns) {
     await ns.sleep( 0*1000); ns.run("/progress/contracts.ns");
     await ns.sleep( 0*1000); ns.run("/hacknet/servers.js");
     await ns.sleep( 0*1000); ns.run("/sleeves/init.js");
+    await ns.sleep( 0*1000); ns.run("/corporation/init.js");
     await prepareStats(ns, {
         "hacking": 10
     });
