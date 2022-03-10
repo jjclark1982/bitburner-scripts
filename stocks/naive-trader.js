@@ -101,7 +101,7 @@ export function getBearStocks(stocks, threshold=0.47) {
 }
 
 
-export function stock.sells(ns, stocksToSell) {
+export function sellStocks(ns, stocksToSell) {
     for (const stock of stocksToSell) {
         if (stock.shares > 0) {
             const salePrice = ns.stock.sell(stock.symbol, stock.shares);
@@ -117,7 +117,7 @@ export function stock.sells(ns, stocksToSell) {
     }
 }
 
-export function stock.buys(ns, stocksToBuy, moneyToSpend, maxTransactions=4) {
+export function buyStocks(ns, stocksToBuy, moneyToSpend, maxTransactions=4) {
     //let moneyRemaining = moneyToSpend;
     //const moneyPerStock = (moneyToSpend / stocksToBuy.length) - 100000;
     const bestStocks = stocksToBuy.sort((a,b)=>{
@@ -157,11 +157,11 @@ export function tendStocks(ns) {
     });
     
     const stocksToSell = getBearStocks(allStocks);
-    stock.sells(ns, stocksToSell);
+    sellStocks(ns, stocksToSell);
     
     const stocksToBuy = getBullStocks(allStocks);
     const moneyToSpend = ns.getServerMoneyAvailable('home') - (ns.args.length > 0 && ns.args[0] || 1000000);
-    stock.buys(ns, stocksToBuy, moneyToSpend);    
+    buyStocks(ns, stocksToBuy, moneyToSpend);    
 
     const portfolioValue = getPortfolioValue(allStocks);
     const cashValue = ns.getServerMoneyAvailable('home');

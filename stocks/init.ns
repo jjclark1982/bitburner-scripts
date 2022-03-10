@@ -3,6 +3,6 @@ export async function main(ns) {
         ns.run("/stocks/trader.ns");
     }
     else {
-        ns.run("/stocks/naive-trader.ns");  
+        ns.run("/stocks/naive-trader.js");  
     }
 }

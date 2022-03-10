@@ -28,7 +28,7 @@ function tendStocks(ns) {
     ns.print(`Net worth: ${ns.nFormat(totalValue, "$0.000a")} = ${ns.nFormat(portfolioValue, "$0.0a")} stocks + ${ns.nFormat(cashValue, "$0.0a")} cash`);
 }
 
-function getAllStocks(ns) {
+export function getAllStocks(ns) {
     // make a lookup table of all stocks and all their properties
     const stockSymbols = ns.stock.getSymbols();
     const stocks = {};
@@ -85,7 +85,7 @@ function getBearStocks(stocks, threshold=0.48) {
 }
 
 
-function sellStocks(ns, stocksToSell) {
+export function sellStocks(ns, stocksToSell) {
     for (const stock of stocksToSell) {
         if (stock.shares > 0) {
             const salePrice = ns.stock.sell(stock.symbol, stock.shares);
