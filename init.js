@@ -46,8 +46,9 @@ export async function main(ns) {
     await ns.sleep( 1*1000); ns.run("/net/backdoor-servers.js");
     await ns.sleep( 1*1000); ns.run("/progress/factions.ns");
     await ns.sleep( 1*1000); ns.run("/bladeburner/progress.ns");
-    await ns.sleep( 1*1000); ns.run("/stocks/init.ns");
 
-    await ns.sleep( 5*1000); ns.run("/batch/manage.js");
+    // await ns.sleep( 5*1000); ns.run("/net/buy-server.js");
+    await ns.sleep( 1*1000); ns.run("/batch/manage.js", 1, "phantasy", "--moneyPercent", "0.03");
+
+    await ns.sleep( 5*1000); ns.run("/stocks/init.ns");
 }
-

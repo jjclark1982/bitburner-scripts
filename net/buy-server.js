@@ -1,9 +1,9 @@
-export function buyServer(ns, fundsFraction=0.6, count=1) {
+export function buyServer(ns, fundsFraction=0.8, count=1) {
     const funds = fundsFraction * ns.getServerMoneyAvailable('home') / count;
     let costMult = 1;
     costMult = ns.getBitNodeMultipliers().PurchasedServerCost;
     const power = Math.floor(Math.log2(funds/(50000*costMult)));
-    const size = Math.min(Math.pow(2, power), ns.getPurchasedServerMaxRam());
+    const size = Math.min(ns.getPurchasedServerMaxRam(), Math.pow(2, power));
 
     ns.tprint(`Purchasing ${count}x servers with ${ns.nFormat(size*1e9, "0.0 b")} RAM`);
 
