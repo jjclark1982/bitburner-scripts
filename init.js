@@ -22,7 +22,7 @@ farm servers
 export async function main(ns) {
     await ns.sleep( 0*1000); ns.run("/progress/contracts.ns");
     await ns.sleep( 0*1000); ns.run("/hacknet/servers.js");
-    await ns.sleep( 0*1000); ns.run("/sleeves/init.ns");
+    await ns.sleep( 0*1000); ns.run("/sleeves/init.js");
     await prepareStats(ns, {
         "hacking": 10
     });
