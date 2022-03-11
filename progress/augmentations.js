@@ -6,6 +6,8 @@
     while this list is not empty,
     buy the most expensive aug in the list
 
+    TODO: identify augs that are not puchaseable yet,
+    sort them by (stat value / rep cost)
 */
 
 const FLAGS = [
@@ -39,25 +41,30 @@ export async function buyAugs(ns, domain, shouldBuy) {
     let bestAugs = selectAugs(ns, domain, plannedAugs);
     while (bestAugs.length > 0) {
         const aug = bestAugs.shift();
-        ns.tprint(`Purchasing '${aug.name}' from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`);
+        const action = (shouldBuy? 'Purchasing' : '');
+        ns.tprint(`${action} '${aug.name}' from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`);
         plannedAugs[aug.name] = true;
-        if (shouldBuy) {
+        if (shouldBuy && aug.price < ns.getPlayer().money) {
             ns.purchaseAugmentation(aug.canPurchaseFrom, aug.name);
-            await ns.sleep(100);
             bestAugs = selectAugs(ns, domain, plannedAugs);
         }
+        await ns.sleep(100);
     }
 }
 
-export function selectAugs(ns, domain, exclude={}) {
+export function selectAugs(ns, domain, plannedAugs) {
+    const exclude = {};
+    for (const aug of Object.keys(plannedAugs)) {
+        exclude[aug] = true;
+    }
     for (const aug of ns.getOwnedAugmentations(true)) {
         exclude[aug] = true;
     }
     exclude["NeuroFlux Governor"] = false;
-    const bestAugs = Object.values(listPotentialAugs(ns)).filter(function(aug) {
+    const bestAugs = Object.values(listPotentialAugs(ns, plannedAugs)).filter(function(aug) {
         return (
             aug.canPurchaseFrom != null &&
-            aug.price < ns.getPlayer().money &&
+            // aug.price < ns.getPlayer().money &&
             aug.value[domain] > 1.0 &&
             !exclude[aug.name]
         )
@@ -67,7 +74,7 @@ export function selectAugs(ns, domain, exclude={}) {
     return bestAugs;
 }
 
-export function listPotentialAugs(ns) {
+export function listPotentialAugs(ns, plannedAugs) {
     const player = ns.getPlayer();
     const augs = {};
     for (const faction of player.factions) {
@@ -86,7 +93,7 @@ export function listPotentialAugs(ns) {
                 faction: estimateFactionValue(aug)
             };
             aug.value.all = aug.value.hacking + aug.value.combat + aug.value.faction;
-            aug.canPurchaseFrom = canPurchaseFrom(ns, aug);
+            aug.canPurchaseFrom = canPurchaseFrom(ns, aug, plannedAugs);
             aug.sortKey = aug.price;
             if (aug.name == "NeuroFlux Governor") {
                 aug.sortKey = aug.price / 10;
@@ -96,10 +103,10 @@ export function listPotentialAugs(ns) {
     return augs;
 }
 
-export function canPurchaseFrom(ns, aug) {
+export function canPurchaseFrom(ns, aug, plannedAugs={}) {
     const ownedAugs = ns.getOwnedAugmentations();
     for (const prereq of ns.getAugmentationPrereq(aug.name)) {
-        if (!ownedAugs.includes(prereq)) {
+        if (!(ownedAugs.includes(prereq) || prereq in plannedAugs)) {
             return null;
         }
     }
@@ -113,6 +120,15 @@ export function canPurchaseFrom(ns, aug) {
 
 export function estimateHackingValue(aug) {
     const stats = aug.stats;
+    if (aug.name === "BitRunners Neurolink") {
+        return 2;
+    }
+    if (aug.name === "CashRoot Starter Kit") {
+        return 2;
+    }
+    if (aug.name === "PCMatrix") {
+        return 1.5;
+    }
     return (
         (stats.hacking_mult || 1.0) *
         (stats.hacking_exp_mult || 1.0) *
