@@ -1,13 +1,20 @@
 /*
-    identify valuable augmentations
-    - ones that increase desired stat
-    - can afford
 
-    while this list is not empty,
-    buy the most expensive aug in the list
+/progress/augmentations.js - Automatically buy augmentations.
+Identifies available augmentations that increase the desired type of stats,
+and buys them starting with the most expensive.
 
-    TODO: identify augs that are not puchaseable yet,
-    sort them by (stat value / rep cost)
+Usage:
+run /progress/augmentations.js [hacking | crime | faction | all] [--buy]
+
+Example: see a list of available augmentations:
+run /progress/augmentations.js all
+
+Example: buy all augmentations that increase hacking:
+run /progress/augmentations.js hacking --buy
+
+
+TODO: identify augs that are not puchaseable yet, sort them by (stat value / rep cost)
 */
 
 const FLAGS = [
