@@ -1,4 +1,4 @@
-import {getAllStocks, sellStocks} from "stocks/trader.ns"
+import {getAllStocks, sellStocks} from "stocks/naive-trader.js"
 
 export async function main(ns) {
     const allStocks = getAllStocks(ns);
