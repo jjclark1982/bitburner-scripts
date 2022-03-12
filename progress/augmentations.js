@@ -5,7 +5,7 @@ Identifies available augmentations that increase the desired type of stats,
 and buys them starting with the most expensive.
 
 Usage:
-run /progress/augmentations.js [hacking | crime | faction | all] [--buy]
+run /progress/augmentations.js [hacking | combat | faction | all] [--buy]
 
 Example: see a list of available augmentations:
 run /progress/augmentations.js all

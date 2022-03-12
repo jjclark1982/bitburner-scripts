@@ -15,6 +15,7 @@ for each target:
     allocate each job to one or more hosts when needed
 
 TODO: include a "maxThreads" limit when planning a batch, maybe use it to dynamically adjust moneyPercent
+TODO: calculate batch stats (init time, RAM/batch, ideal $/batch, total RAM)
 
 */
 
