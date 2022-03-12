@@ -14,7 +14,7 @@ export function autocomplete(data, args) {
 /** @param {NS} ns **/
 export async function main(ns) {
     ns.disableLog("ALL");
-    // ns.clearLog();
+    ns.clearLog();
 
     const params = {
         ns: ns,
@@ -41,15 +41,15 @@ export async function main(ns) {
         scriptRam = ns.getScriptRam(params.script, "home");
     }
     const serverPool = getServerPool({ns, scriptRam});
-    ns.print("\n\n");
-    ns.print("Server Pool:");
+    let poolInfo = "Server Pool:";
     for (const server of serverPool) {
-        ns.print(sprintf("%-20s %8s RAM (%s threads)",
-            "  " + server.hostname + ":",
+        poolInfo += sprintf("\n  %-20s %8s RAM (%s threads)",
+            server.hostname + ":",
             ns.nFormat(server.availableRam*1e9, "0.0 b"),
             ns.nFormat(server.availableThreads, "0,0")
-        ));
+        );
     }
+    ns.print(poolInfo);
     ns.print(`\nTotal servers in pool: ${serverPool.length}`);
     ns.print(`Total threads available: ${ns.nFormat(serverPool.totalThreads, "0,0")}`);
 
