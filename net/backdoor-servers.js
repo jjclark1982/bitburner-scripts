@@ -1,7 +1,7 @@
 import {connectToHost} from "/net/tunnel.js";
 import {crack, playerPortLevel} from "lib.ns";
 
-const factionHosts = ['CSEC', 'avmnite-02h', 'I.I.I.I', 'run4theh111z', 'fulcrumassets'];
+const factionHosts = ['CSEC', 'avmnite-02h', 'I.I.I.I', 'run4theh111z', 'powerhouse-fitness', 'fulcrumassets'];
 
 export async function installBackdoors(ns) {
     ns.disableLog("sleep");
