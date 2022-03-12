@@ -23,7 +23,8 @@ export async function main(ns) {
             }
         }
         else {
-            ns.sleeve.setToUniversityCourse(i, "Rothman University", "Algorithms");
+            // ns.sleeve.setToUniversityCourse(i, "Rothman University", "Algorithms");
+            ns.sleeve.setToCommitCrime(i, "Mug");
         }
     }
 }
