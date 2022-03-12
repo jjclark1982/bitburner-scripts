@@ -28,7 +28,6 @@ farm servers
 
 export async function main(ns) {
     await ns.sleep( 0*1000); ns.run("/progress/contracts.ns");
-    await ns.sleep( 0*1000); ns.run("/hacknet/servers.js");
     await ns.sleep( 0*1000); ns.run("/sleeves/init.js");
     await ns.sleep( 0*1000); ns.run("/corporation/init.js");
     await prepareStats(ns, {
@@ -41,14 +40,17 @@ export async function main(ns) {
         "dexterity": 10,
         "agility": 10
     });
-    await ns.sleep( 0*1000); ns.run("/progress/crime.js");
+    await ns.sleep( 0*1000); ns.run("/crime/commit.js");
     await ns.sleep( 1*1000); ns.run("/progress/programs.ns");
     await ns.sleep( 1*1000); ns.run("/net/backdoor-servers.js");
     await ns.sleep( 1*1000); ns.run("/progress/factions.ns");
     await ns.sleep( 1*1000); ns.run("/bladeburner/progress.ns");
 
     // await ns.sleep( 5*1000); ns.run("/net/buy-server.js");
-    await ns.sleep( 1*1000); ns.run("/batch/manage.js", 1, "phantasy", "--moneyPercent", "0.03");
+    // await ns.sleep( 5*1000); ns.run("/batch/manage.js", 1, "phantasy", "--moneyPercent", "0.05");
 
+    await ns.sleep( 5*1000); ns.run("/hacknet/servers.js"); //, 1, 4, 1);
     await ns.sleep( 5*1000); ns.run("/stocks/init.ns");
+
+    // await ns.sleep(30*1000); ns.run("/batch/manage.js", 1, "--moneyPercent", "0.01");
 }

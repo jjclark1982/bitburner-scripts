@@ -1,4 +1,6 @@
 // crime.ns "deal drugs"
+import {prepareStats} from "lib.ns";
+
 
 export async function doCrimes(ns, forcedSelection=null) {
     const crimeNames = ["shoplift", "rob store", "mug", "larceny", "deal drugs", "bond forgery", "traffick arms", "homicide", "grand theft auto", "kidnap", "assassinate", "heist"];
@@ -27,7 +29,7 @@ export async function doCrimes(ns, forcedSelection=null) {
         if (player.numPeopleKilled < 100 && crimes.homicide.chance > 0.9) {
             selectedCrime = crimes.homicide;
         }
-        if (selectedCrime == crimes.homicide && player.numPeopleKilled > 100 && karma < -1e6) {
+        if (selectedCrime == crimes.homicide && player.numPeopleKilled > 300 && karma < -1e6) {
             return;
         }
         
@@ -47,13 +49,14 @@ export async function doCrimes(ns, forcedSelection=null) {
 }
 
 export async function main(ns) {
-    //const targetStats = {
-    //    "strength": 5,
-    //    "defense": 5,
-    //    "dexterity": 10,
-    //    "agility": 10
-    //};
-    //await prepareStats(ns, targetStats);
+    const targetStats = {
+       "strength": 20,
+       "defense": 20,
+       "dexterity": 20,
+       "agility": 20
+    };
+    await prepareStats(ns, targetStats);
     ns.stopAction();
     await doCrimes(ns, ns.args[0]);
 }
+
