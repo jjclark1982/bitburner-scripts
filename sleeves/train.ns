@@ -1,8 +1,0 @@
-export async function main(ns) {
-    ns.sleeve.setToUniversityCourse(0, "Rothman University", "Algorithms");
-    ns.sleeve.setToGymWorkout(1, "Powerhouse Gym", "Strength");
-    ns.sleeve.setToGymWorkout(2, "Powerhouse Gym", "Defense");
-    ns.sleeve.setToGymWorkout(3, "Powerhouse Gym", "Dexterity");
-    ns.sleeve.setToGymWorkout(4, "Powerhouse Gym", "Agility");
-    ns.sleeve.setToUniversityCourse(5, "Rothman University", "Leadership");
-}
