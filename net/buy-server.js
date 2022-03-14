@@ -1,9 +1,12 @@
 export function buyServer(ns, fundsFraction=0.8, count=1) {
     const funds = fundsFraction * ns.getServerMoneyAvailable('home') / count;
+
     let costMult = 1;
-    costMult = ns.getBitNodeMultipliers().PurchasedServerCost;
-    const power = Math.floor(Math.log2(funds/(50000*costMult)));
-    const size = Math.min(ns.getPurchasedServerMaxRam(), Math.pow(2, power));
+    // costMult = ns.getBitNodeMultipliers().PurchasedServerCost;
+
+    const size = largestServerSize(ns, funds);
+    // const power = Math.floor(Math.log2(funds/(50000*costMult)));
+    // const size = Math.min(ns.getPurchasedServerMaxRam(), Math.pow(2, power));
 
     ns.tprint(`Purchasing ${count}x servers with ${ns.nFormat(size*1e9, "0.0 b")} RAM`);
 
@@ -29,7 +32,20 @@ export function buyServer(ns, fundsFraction=0.8, count=1) {
 }
 
 export async function main(ns) {
-    const fundsFraction = 0.6;
+    const fundsFraction = ns.args[0] || 0.6;
     const count = 1;
     buyServer(ns, fundsFraction, count);
+}
+
+export function largestServerSize(ns, funds) {
+    let size = 1;
+    let cost;
+    while (size < ns.getPurchasedServerMaxRam()) {
+        size *= 2;
+        cost = ns.getPurchasedServerCost(size);
+        if (cost > funds) {
+            break;
+        }
+    }
+    return size / 2;
 }
