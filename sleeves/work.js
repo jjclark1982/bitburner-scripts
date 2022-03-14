@@ -2,6 +2,10 @@ export async function main(ns) {
     const player = ns.getPlayer();
     const jobs = Object.keys(player.jobs);
     const specialFactions = ["Church of the Machine God", "Bladeburners"]
+    if (ns.gang.inGang()) {
+        specialFactions.push(ns.gang.getGangInformation().faction);
+    }
+
     const factions = player.factions.reverse().filter(function(faction){
         return !specialFactions.includes(faction);
     });
