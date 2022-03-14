@@ -23,9 +23,11 @@ TODO: calculate batch stats (init time, RAM/batch, ideal $/batch, total RAM)
 const FLAGS = [
     ["help", false],
     ["tDelta", 100],
-    ["moneyPercent", 0.10]
+    ["moneyPercent", 0.05],
+    ["reserveRam", false]
 ];
 const t0_by_target = {};
+const next_start_by_target = {};
 
 export function autocomplete(data, args) {
     data.flags(FLAGS);
@@ -59,8 +61,18 @@ export async function main(ns) {
     while (true) {
         const serverPool = getServerPool({ns});
         await runMultiHWGW({...args, serverPool});
-        await ns.asleep(4 * args.tDelta);
+        await ns.asleep(getNextBatchDelay());
     }
+}
+
+function getNextBatchDelay() {
+    let earliestStart = Infinity;
+    for (const startTime of Object.values(next_start_by_target)) {
+        if (startTime < earliestStart) {
+            earliestStart = startTime;
+        }
+    }
+    return earliestStart - Date.now() - 100;
 }
 
 export async function runMultiHWGW(params) {
@@ -99,6 +111,7 @@ export async function runHWGW(params) {
 
     await runBatchOnPool({ns}, batch);
     t0_by_target[params.target] = w2Job.endTime + tDelta;
+    next_start_by_target[params.target] = w1Job.startTime + 5 * tDelta;
 
     const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;
     return threadsUsed;

@@ -13,7 +13,11 @@ export async function main(ns) {
     const args = ns.flags(FLAGS);
     const target = args._.shift();
     if (args.startTime) {
-        await ns.sleep(args.startTime - Date.now());
+        const delay = args.startTime - Date.now();
+        if (delay < -10*1000) {
+            return;
+        }
+        await ns.sleep(delay);
     }
     if (args.verbose) {
         ns.tprint(`  ${Date.now()}: Starting hack   ${JSON.stringify(ns.args)}`);

@@ -170,7 +170,7 @@ export function calculateGrowThreads(ns, server, playerObject, moneyPct) {
 }
 
 export function makeJob(params) {
-	const {script, target, threads, security, money, time, endTime} = params;
+	const {script, target, threads, security, money, time, endTime, reserveRam} = params;
 	const job = {
 		script: script,
 		args: [target],
@@ -182,6 +182,10 @@ export function makeJob(params) {
 	if (endTime !== undefined) {
 		job.endTime = endTime;
 		job.startTime = endTime - time;
+		if (reserveRam) {
+			job.args.push('--startTime');
+			job.args.push(job.startTime);
+		}
 	}
 	return job;
 }

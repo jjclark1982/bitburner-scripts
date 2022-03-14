@@ -132,15 +132,17 @@ export function runOnPoolNow({ns, script, threads, args, verbose}) {
 }
 
 export function runOnPool(params) {
-    let {ns, startTime} = params;
+    let {ns, startTime, args} = params;
+
     const now = Date.now();
-    if (startTime === undefined) {
-        startTime = now + 1;
+    let delay = 0;
+    if (startTime !== undefined && !args.includes('--startTime')) {
+        delay = startTime - now;
     }
 
     setTimeout(function(){
         runOnPoolNow(params);
-    }, startTime - now);
+    }, delay);
 }
 
 export async function runBatchOnPool(params, jobs) {
@@ -173,6 +175,9 @@ export async function runBatchOnPool(params, jobs) {
         for (const job of jobs) {
             job.startTime += startTimeAdjustment + 100;
             job.endTime += startTimeAdjustment + 100;
+            if (job.args.includes('--startTime')) {
+                job.args[job.args.indexOf('--startTime')+1] = job.startTime;
+            }
         }
     }
 
@@ -189,8 +194,7 @@ export async function runBatchOnPool(params, jobs) {
     // Schedule each job in the batch.
     for (const [index, job] of jobs.entries()) {
         // Append batch id and job index to ensure unique process id.
-        job.args.push(batchID);
-        job.args.push(index+1);
+        job.args.push(`batch-${batchID}.${index+1}`);
         runOnPool({ns, ...job});
     }
     return true;
