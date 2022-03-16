@@ -18,7 +18,7 @@ export async function main(ns) {
     const server = ns.getServer(host);
     let availableRam = server.maxRam - server.ramUsed;
     if (host == 'home') {
-        availableRam -= 10.0;
+        availableRam -= (ns.args[1] || 128.0);
     }
     const threads = Math.floor(availableRam / scriptRam);
     await ns.scp(CHARGE, 'home', host);
