@@ -39,6 +39,5 @@ function getBiggestHost(ns) {
     }).sort(function(a,b){
         return (b.maxRam - a.maxRam);
     });
-    host = biggestHosts[0].hostname;
-    return host;
+    return biggestHosts[0].hostname;
 }
