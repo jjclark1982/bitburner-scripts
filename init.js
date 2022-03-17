@@ -30,6 +30,7 @@ export async function main(ns) {
     await ns.sleep( 0*1000); ns.run("/contracts/find-and-solve.js");
     await ns.sleep( 0*1000); ns.run("/sleeves/init.js");
     await ns.sleep( 0*1000); ns.run("/corporation/init.js");
+    await ns.sleep( 1*1000); ns.run("/stanek/spawn.ns");
     await prepareStats(ns, {
         "hacking": 10
     });
@@ -47,7 +48,7 @@ export async function main(ns) {
     await ns.sleep( 1*1000); ns.run("/bladeburner/progress.ns");
 
     // await ns.sleep( 5*1000); ns.run("/net/buy-server.js");
-    // await ns.sleep( 5*1000); ns.run("/batch/manage.js", 1, "phantasy", "--moneyPercent", "0.05");
+    // await ns.sleep( 5*1000); ns.run("/batch/manage.js", 1, "phantasy", "--moneyPercent", "0.01");
 
     await ns.sleep( 5*1000); ns.run("/hacknet/servers.js"); //, 1, 4, 1);
     await ns.sleep( 5*1000); ns.run("/stocks/init.ns");
