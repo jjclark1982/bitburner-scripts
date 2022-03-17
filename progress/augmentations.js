@@ -29,10 +29,13 @@ export function autocomplete(data, args) {
 
 /** @param {NS} ns **/
 export async function main(ns) {
+    ns.disableLog('sleep');
+    ns.clearLog();
     const args = ns.flags(FLAGS);
     const domain = args._.shift();
 
     if (args.help) {
+        // TODO: print usage and exit
         for (const aug of selectAugs(ns, domain)) {
             ns.print(`${aug.name}: ${aug.value[domain] || ''} ${ns.nFormat(aug.price, "$0.0a")}`);
         }
@@ -40,6 +43,9 @@ export async function main(ns) {
     }
     else {
         await buyAugs(ns, domain, args.buy);
+    }
+    if (!args.buy) {
+        ns.tail();
     }
 }
 
@@ -49,11 +55,15 @@ export async function buyAugs(ns, domain, shouldBuy) {
     while (bestAugs.length > 0) {
         const aug = bestAugs.shift();
         const action = (shouldBuy? 'Purchasing' : '');
-        ns.tprint(`${action} '${aug.name}' from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`);
+        ns.print(`${action} '${aug.name}' from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`);
         plannedAugs[aug.name] = true;
         if (shouldBuy && aug.price < ns.getPlayer().money) {
+            ns.tprint(`Purchasing '${aug.name}' from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`);
             ns.purchaseAugmentation(aug.canPurchaseFrom, aug.name);
-            bestAugs = selectAugs(ns, domain, plannedAugs);
+        }
+        bestAugs = selectAugs(ns, domain, plannedAugs);
+        while (bestAugs.length > 0 && bestAugs[0].name in plannedAugs) {
+            bestAugs.shift();
         }
         await ns.sleep(100);
     }
@@ -111,7 +121,7 @@ export function listPotentialAugs(ns, plannedAugs) {
 }
 
 export function canPurchaseFrom(ns, aug, plannedAugs={}) {
-    const ownedAugs = ns.getOwnedAugmentations();
+    const ownedAugs = ns.getOwnedAugmentations(true);
     for (const prereq of ns.getAugmentationPrereq(aug.name)) {
         if (!(ownedAugs.includes(prereq) || prereq in plannedAugs)) {
             return null;
