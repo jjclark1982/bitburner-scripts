@@ -1,4 +1,10 @@
-// crime.ns "deal drugs"
+/*
+
+Usage:
+/crime/commit.js "deal drugs"
+
+*/
+
 import {prepareStats} from "lib.ns";
 
 
