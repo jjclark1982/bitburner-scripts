@@ -1,4 +1,9 @@
+import { trainSleeve } from "sleeves/train.js";
+import { workSleeve, clearSleeves } from "sleeves/work.js";
+
 export async function main(ns) {
+    const player = ns.getPlayer();
+    clearSleeves(ns);
     for (let i = 0; i < ns.sleeve.getNumSleeves(); i++) {
         const stats = ns.sleeve.getSleeveStats(i);
         if (stats.shock > 20) {
@@ -7,14 +12,11 @@ export async function main(ns) {
         else if (stats.sync < 100) {
             ns.sleeve.setToSynchronize(i);
         }
-        else if (i == 0) {ns.sleeve.setToUniversityCourse(0, "Rothman University", "Algorithms");}
-        else if (i == 1) {ns.sleeve.setToGymWorkout(1, "Powerhouse Gym", "Strength");}
-        else if (i == 2) {ns.sleeve.setToGymWorkout(2, "Powerhouse Gym", "Defense");}
-        else if (i == 3) {ns.sleeve.setToGymWorkout(3, "Powerhouse Gym", "Dexterity");}
-        else if (i == 4) {ns.sleeve.setToGymWorkout(4, "Powerhouse Gym", "Agility");}
-        else if (i == 5) {ns.sleeve.setToUniversityCourse(5, "Rothman University", "Leadership");}
+        else if (stats.hacking < 50 || player.hacking < 50) {
+            trainSleeve(ns, i);
+        }
         else {
-            ns.sleeve.setToCommitCrime(i, "Mug");
+            workSleeve(ns, i);
         }
     }
 }
