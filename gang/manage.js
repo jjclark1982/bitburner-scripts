@@ -50,7 +50,7 @@ function updateMember(ns, member) {
     else if (gang.wantedLevelGainRate > 0) {
         ns.gang.setMemberTask(member.name, "Vigilante Justice");
     }
-    else if (member.str > 50000) {
+    else if (member.str > 50000 && gang.territory < 0.99) {
         ns.gang.setMemberTask(member.name, "Territory Warfare");
     }
     else {
@@ -99,6 +99,11 @@ function getEquipments(ns) {
 function updateTerritory(ns) {
     const gang = ns.gang.getGangInformation();
     const allGangs = ns.gang.getOtherGangInformation();
+
+    if (gang.territory > 0.99 && gang.territoryWarfareEngaged) {
+        ns.gang.setTerritoryWarfare(false);
+        return;
+    }
 
     let anyStronger = false;
     for (const gangName of Object.keys(allGangs)) {
