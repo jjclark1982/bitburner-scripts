@@ -62,6 +62,9 @@ export async function buyAugs(ns, domain, shouldBuy) {
             ns.purchaseAugmentation(aug.canPurchaseFrom, aug.name);
         }
         bestAugs = selectAugs(ns, domain, plannedAugs);
+        if (shouldBuy) {
+            delete plannedAugs["NeuroFlux Governor"];
+        }
         while (bestAugs.length > 0 && bestAugs[0].name in plannedAugs) {
             bestAugs.shift();
         }
