@@ -72,6 +72,17 @@ function computeVolatility(history) {
     return maxChange;
 }
 
+export function getNetWorth(ns) {
+    const allStocks = getAllStocks(ns);
+    const portfolioValue = getPortfolioValue(allStocks);
+    const cashValue = ns.getPlayer().money;
+    return {
+        cash: cashValue,
+        stocks: portfolioValue,
+        total: cashValue + portfolioValue
+    }
+}
+
 export function getPortfolioValue(stocks) {
     let value = 0;
     for (const stock of Object.values(stocks)) {
