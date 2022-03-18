@@ -76,7 +76,7 @@ export function getServerPool({ns, scriptRam}) {
         server.sortKey = server.maxRam;
         if (server.hostname === "home" || server.hashRate) {
             // Reserve RAM on home and hacknet servers, and use them last.
-            server.maxRam = server.maxRam / 2;
+            server.maxRam = Math.max(server.maxRam / 2, server.maxRam - 10240);
             server.sortKey = -server.sortKey;
         }
         server.availableRam = server.maxRam - server.ramUsed;
