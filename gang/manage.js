@@ -47,10 +47,10 @@ function updateMember(ns, member) {
     else if (member.str_exp < 10000) {
         ns.gang.setMemberTask(member.name, "Train Combat")
     }
-    else if (gang.wantedLevelGainRate > 0) {
+    else if (gang.wantedPenalty < 0.95 && gang.wantedLevelGainRate > 0) {
         ns.gang.setMemberTask(member.name, "Vigilante Justice");
     }
-    else if (member.str > 50000 && gang.territory < 0.99) {
+    else if (gang.territory < 0.99 && member.str > 50000) {
         ns.gang.setMemberTask(member.name, "Territory Warfare");
     }
     else {
