@@ -6,11 +6,9 @@ export function autocomplete(data) {
 
 /** @param {NS} ns **/
 export async function main(ns) {
-    const fragments = ns.stanek.activeFragments();
-    const xy = [];
-    for (const fragment of fragments) {
-        xy.push(fragment.x);
-        xy.push(fragment.y);
+    if (ns.args.length == 0 && ns.getPurchasedServers().length == 0) {
+        // do not automatically pick a host right after augmentation
+        return;
     }
 
     const host = ns.args[0] || getBiggestHost(ns);
@@ -19,7 +17,6 @@ export async function main(ns) {
     if (host == 'home') {
         reservedRam = (ns.args[1] || 128.0);
     }
-    const script = "/stanek/charge-x-y.js";
-    const args = xy;
-    await runMaxThreadsOnHost({ns, host, script, args, reservedRam});
+    const script = "/net/share.js";
+    await runMaxThreadsOnHost({ns, host, script, reservedRam});
 }
