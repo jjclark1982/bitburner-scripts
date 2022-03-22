@@ -4,9 +4,9 @@ export async function main(ns) {
         const corp = ns.corporation.getCorporation();
         // use a public corporation as a piggy bank:
         if (corp.public) {            
-            // sell a small amount of shares when they amount to more cash than we have on hand
-            if (corp.shareSaleCooldown <= 0 && corp.sharePrice * 1e6 > player.money) {
-                ns.corporation.sellShares(1e6);
+            // sell some shares when they amount to more cash than we have on hand
+            if (corp.shareSaleCooldown <= 0 && corp.sharePrice * 1e7 > player.money) {
+                ns.corporation.sellShares(1e7);
             }
             // buyback shares when we can.
             else if (corp.issuedShares > 0) {
