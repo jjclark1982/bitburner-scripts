@@ -11,19 +11,6 @@ export function autocomplete(data, args) {
 }
 
 /** @param {NS} ns **/
-// export async function main(ns) {
-//     let hostname;
-//     if (ns.args.length > 0) {
-//         hostname = ns.args[0];
-//     }
-//     const server = ns.getServer(hostname);
-//     if (server.organizationName) {
-//         server.stockSymbol = StockSymbols[server.organizationName];
-//     }
-//     ns.tprint(JSON.stringify(server, null, 2));
-//     ns.tprint(ns.getServerSecurityLevel(hostname));
-// }
-
 export async function main(ns) {
     const flags = ns.flags(FLAGS);
     if (flags._.length === 0 || flags.help) {
@@ -50,8 +37,7 @@ export async function main(ns) {
         const minSec = server.minDifficulty;
         const sec = server.hackDifficulty;
 
-        ns.print("server = " + JSON.stringify(server, null, 2));
-        ns.print("\n\n\n\n\n\n\n\n\n\n\n");
+        ns.print("server = " + JSON.stringify(server, null, 2), "\n\n\n\n\n\n\n\n\n\n\n");
     
         ns.print(`${host}:`);
         if (server.organizationName) {
@@ -69,7 +55,7 @@ export async function main(ns) {
         ns.print(` Ports Open: ${server.openPortCount} / ${server.numOpenPortsRequired} ${server.hasAdminRights ? '(admin ✓)' : ''} ${server.backdoorInstalled ? '(backdoor ✓)' : ''}\n`);
         // ns.print(` Admin Access: ${server.hasAdminRights ? '✓' : '✗'}, Backdoor: ${server.backdoorInstalled ? '✓' : '✗'}`);
         ns.print(` money:    ${ns.nFormat(money, "$0.000a")} / ${ns.nFormat(maxMoney, "$0.000a")} (${(money / maxMoney * 100).toFixed(2)}%)`);
-        ns.print(` security: ${minSec} + ${(sec - minSec).toFixed(2)}`);
+        ns.print(` security: ${ns.nFormat(minSec, "0.[00]")} + ${(sec - minSec).toFixed(2)}`);
         if (!server.purchasedByPlayer) {
             ns.print(` hack:     ${ns.tFormat(ns.getHackTime(host))} (t=${Math.ceil(ns.hackAnalyzeThreads(host, money))})`);
             ns.print(` grow:     ${ns.tFormat(ns.getGrowTime(host))} (t=${Math.ceil(ns.growthAnalyze(host, maxMoney / Math.max(1,money)))})`);
