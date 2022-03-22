@@ -4,7 +4,8 @@
 
 List the best augmentations available now, most expensive first.
 
-run /augmentations/plan.js [ hacking | combat | cha | faction | blade | hacknet | neuro ] ... [--buy]
+Usage:
+run /augmentations/plan.js [ hacking | combat | cha | faction | blade | hacknet | neuro | all ... ] [ --buy ]
 
 */
 
@@ -36,17 +37,17 @@ export async function main(ns) {
     const filters = args._;
     if (args.help || filters.length == 0) {
         ns.tprint([
-            `${ns.getScriptName()}: Select augmentations to buy.`,
+            `Select augmentations to buy.`,
             '',
             'Usage: ',
-            `${ns.getScriptName()} [--buy] [ ${Object.keys(FILTERS).join(' | ')} ] ... `,
+            `${ns.getScriptName()} [ ${Object.keys(FILTERS).join(' | ')} ... ] [ --buy ]`,
             '',
             `Example: See all augs that increase hacking, including NeuroFlux Governor`,
             `> run ${ns.getScriptName()} hacking neuroflux`,
             '',
             `Example: Buy all augs that increase hacking, including NeuroFlux Governor repeatedly`,
             `> run ${ns.getScriptName()} hacking neuroflux --buy`,
-            ''
+            ' '
         ].join("\n"));
         return;
     }
@@ -73,7 +74,8 @@ export async function main(ns) {
 }
 
 export async function buyAugs(ns, filters) {
-    let selectedAugs = selectAugs(ns, filters);
+    const plannedAugs = {};
+    let selectedAugs = selectAugs(ns, filters, plannedAugs);
     while (selectedAugs.length > 0) {
         const aug = selectedAugs.shift();
         plannedAugs[aug.name] = true;
@@ -81,10 +83,12 @@ export async function buyAugs(ns, filters) {
             ns.tprint(`Purchasing '${aug.name}' from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`);
             ns.purchaseAugmentation(aug.canPurchaseFrom, aug.name);
         }
-        selectedAugs = selectAugs(ns, domain, plannedAugs);
-        delete plannedAugs["NeuroFlux Governor"];
+        selectedAugs = selectAugs(ns, filters, plannedAugs);
+        if (ns.getAugmentationPrice("NeuroFlux Governor") < ns.getPlayer().money) {
+            delete plannedAugs["NeuroFlux Governor"];
+        }
         while (selectedAugs.length > 0 && selectedAugs[0].name in plannedAugs) {
-            bestAugs.shift();
+            selectedAugs.shift();
         }
         await ns.sleep(100);
     }
@@ -321,9 +325,9 @@ export function estimateNeurofluxValue(aug) {
 export function estimateAllValue(aug) {
     delete aug.value.all;
     const total = totalValue(aug);
-    if (total === 1.0) {
-        console.log("some aug had no ALL value: ", aug);
-    }
+    // if (total === 1.0) {
+    //     console.log("some aug had no ALL value: ", aug);
+    // }
     return total;
 }
 
