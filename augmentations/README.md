@@ -71,11 +71,13 @@ List the best augmentations available soon, sorted by least reputation required.
 
 Example: Show all augs that improve combat or crime, and the closest faction to selling them
 ```
-> run /augmentations/buy.js combat crime
+> run /augmentations/future.js combat crime faction
 
-Future Augmentation Plan: combat, crime
-  'NeuroFlux Governor' from Tetrads for 1,564 more reputation
-  'LuminCloaking-V2 Skin Implant' from Tetrads for 2,995 more reputation
-  'Combat Rib III' from The Syndicate for 3,686 more reputation
+Future Augmentation Plan: combat, crime, faction
+       1,777 more reputation with Speakers for the Dead for 'The Shadow's Simulacrum'
+      37,042 more reputation with Tian Di Hui for 'Neuroreceptor Management Implant'
+      62,465 more reputation with NiteSec for 'Graphene BrachiBlades Upgrade'
+      70,744 more reputation with The Syndicate for 'Bionic Legs'
+      89,045 more reputation with The Black Hand for 'The Black Hand'
   ...
 ```

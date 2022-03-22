@@ -46,7 +46,8 @@ export function main(ns) {
     const summary = [`Future Augmentation Plan: ${filters.join(', ')}`];
     for (const aug of futureAugs) {
         const faction = aug.neededFactions[0];
-        summary.push(`  '${aug.name}' from ${faction.name} for ${ns.nFormat(faction.repNeeded, '0,')} more reputation`);
+        const rep = sprintf("%+12s", ns.nFormat(faction.repNeeded, '0,0'));
+        summary.push(`${rep} more reputation with ${faction.name} for '${aug.name}'`);
     }
     ns.print(summary.join("\n"), "\n");
 }
