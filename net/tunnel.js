@@ -1,4 +1,43 @@
-// run tunnel.ns [target]
+const FLAGS = [
+    ["help", false],
+    ["verbose", true],
+    ["silent", false]
+];
+
+export function autocomplete(data, args) {
+    data.flags(FLAGS);
+    return [...data.servers];
+}
+
+export async function main(ns) {
+    const flags = ns.flags(FLAGS);
+    const verbose = flags.verbose && !flags.silent;
+    const target = flags._[0];
+
+    if (flags.help) {
+        ns.tprint([
+            "Connect to any server.",
+            "",
+            "Usage:",
+            `alias tunnel="run ${ns.getScriptName()}"`,
+            "tunnel [host]",
+            " "
+        ].join("\n"));
+        return;
+    }
+
+    connectToHost(ns, target, verbose);
+}
+
+export function connectToHost(ns, target, verbose=false) {
+    const entry = ns.getCurrentServer();
+    const path = pathToTarget(ns, entry, target);
+    for (const host of path.slice(1)) {
+        if (ns.connect(host) && verbose) {
+            ns.tprint(`Connected to ${host}`);
+        }
+    }
+}
 
 export function pathToTarget(ns, entry, target) {
     let scanned = {};
@@ -21,23 +60,4 @@ export function pathToTarget(ns, entry, target) {
     }
     
     return findTargetFrom(entry) || [];
-}
-
-export function connectToHost(ns, target, silent=false) {
-    const entry = ns.getCurrentServer();
-    const path = pathToTarget(ns, entry, target);
-    for (const host of path.slice(1)) {
-        if (ns.connect(host) && !silent) {
-            ns.tprint(`Connected to ${host}`);
-        }
-    }
-}
-
-export async function main(ns) {
-    const target = ns.args[0];
-    connectToHost(ns, target);
-}
-
-export function autocomplete(data, args) {
-    return [...data.servers];
 }

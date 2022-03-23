@@ -45,7 +45,7 @@ export async function main(ns) {
     });
     await ns.sleep( 0*1000); ns.run("/crime/commit.js");
     await ns.sleep( 1*1000); ns.run("/progress/programs.ns");
-    await ns.sleep( 1*1000); ns.run("/net/backdoor-servers.js");
+    await ns.sleep( 1*1000); ns.run("/net/install-backdoors.js");
     await ns.sleep( 1*1000); ns.run("/progress/factions.ns");
     await ns.sleep( 1*1000); ns.run("/bladeburner/progress.ns");
 
