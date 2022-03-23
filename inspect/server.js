@@ -54,11 +54,11 @@ export async function main(ns) {
         ns.print(` Required Hacking Skill: ${server.requiredHackingSkill} ${ns.getPlayer().hacking >= server.requiredHackingSkill ? '✓' : '✗'}`);
         ns.print(` Ports Open: ${server.openPortCount} / ${server.numOpenPortsRequired} ${server.hasAdminRights ? '(admin ✓)' : ''} ${server.backdoorInstalled ? '(backdoor ✓)' : ''}\n`);
         // ns.print(` Admin Access: ${server.hasAdminRights ? '✓' : '✗'}, Backdoor: ${server.backdoorInstalled ? '✓' : '✗'}`);
-        ns.print(` money:    ${ns.nFormat(money, "$0.000a")} / ${ns.nFormat(maxMoney, "$0.000a")} (${(money / maxMoney * 100).toFixed(2)}%)`);
+        ns.print(` money:    ${ns.nFormat(money, "$0.[000]a")} / ${ns.nFormat(maxMoney, "$0.[000]a")} (${((money / maxMoney * 100) || 0).toFixed(2)}%)`);
         ns.print(` security: ${ns.nFormat(minSec, "0.[00]")} + ${(sec - minSec).toFixed(2)}`);
         if (!server.purchasedByPlayer) {
             ns.print(` hack:     ${ns.tFormat(ns.getHackTime(host))} (t=${Math.ceil(ns.hackAnalyzeThreads(host, money))})`);
-            ns.print(` grow:     ${ns.tFormat(ns.getGrowTime(host))} (t=${Math.ceil(ns.growthAnalyze(host, maxMoney / Math.max(1,money)))})`);
+            ns.print(` grow:     ${ns.tFormat(ns.getGrowTime(host))} (t=${Math.ceil(ns.growthAnalyze(host, Math.max(1, maxMoney) / Math.max(1,money))) || 0})`);
             ns.print(` weaken:   ${ns.tFormat(ns.getWeakenTime(host))} (t=${Math.ceil((sec - minSec) * 20)})`);
         }
         

@@ -1,8 +1,8 @@
 export function acceptInvites(ns) {
     for (const faction of ns.checkFactionInvitations()) {
         if (!(exclusiveFactions[faction])) {
-            ns.tprint(`Joining faction ${faction}.`);
             ns.joinFaction(faction);
+            ns.tprint(`Joined faction ${faction}.`);
         }
     }
 }
