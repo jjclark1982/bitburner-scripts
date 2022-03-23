@@ -1,4 +1,3 @@
-import {getAllHosts} from "lib.ns";
 import {solvers} from "contracts/solvers.js";
 
 export async function main(ns) {
@@ -7,6 +6,14 @@ export async function main(ns) {
     while (true) {
         attemptAllContracts(ns);
         await ns.sleep(60*1000);
+    }
+}
+
+export function attemptAllContracts(ns) {
+    const contracts = getContracts(ns);
+    ns.print(`Found ${contracts.length} contracts.`);
+    for (const contract of contracts) {
+        attemptContract(ns, contract);
     }
 }
 
@@ -22,19 +29,10 @@ export function getContracts(ns) {
                     triesRemaining: ns.codingcontract.getNumTriesRemaining(file, host)
                 };
                 contracts.push(contract);
-                //ns.print(JSON.stringify(contract,null,2));
             }
         }
     }
     return contracts;
-}
-
-export function attemptAllContracts(ns) {
-    const contracts = getContracts(ns);
-    ns.print(`Found ${contracts.length} contracts.`);
-    for (const contract of contracts) {
-        attemptContract(ns, contract);
-    }
 }
 
 export function attemptContract(ns, contract) {
@@ -55,3 +53,19 @@ export function attemptContract(ns, contract) {
     }
 }
 
+function getAllHosts(ns) {
+    getAllHosts.cache ||= {};
+    const scanned = getAllHosts.cache;
+    const toScan = ['home'];
+    while (toScan.length > 0) {
+        const host = toScan.shift();
+        scanned[host] = true;
+        for (const nextHost of ns.scan(host)) {
+            if (!(nextHost in scanned)) {
+                toScan.push(nextHost);
+            }
+        }
+    }
+    const allHosts = Object.keys(scanned);
+    return allHosts;
+}
