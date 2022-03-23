@@ -117,8 +117,3 @@ StockSymbols["Sigma Cosmetics"] = "SGC";
 StockSymbols["Catalyst Ventures"] = "CTYS";
 StockSymbols["Microdyne Technologies"] = "MDYN";
 StockSymbols["Titan Laboratories"] = "TITN";
-
-/** @param {NS} ns **/
-export async function main(ns) {
-
-}
