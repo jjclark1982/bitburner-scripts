@@ -29,9 +29,9 @@ export function workSleeve(ns, i) {
     else if (j < factions.length) {
         const faction = factions[j];
         // ns.tprint(`sleeve ${i} working for faction ${faction}`)
-        ns.sleeve.setToFactionWork(i, faction, "Hacking Contracts");
+        ns.sleeve.setToFactionWork(i, faction, "Field Work");
         if (ns.sleeve.getTask(i).task == "Idle") {
-            ns.sleeve.setToFactionWork(i, faction, "Field Work");
+            ns.sleeve.setToFactionWork(i, faction, "Hacking Contracts");
         }
     }
     else {
