@@ -49,6 +49,7 @@ export async function main(ns) {
             '',
             `Price: ${ns.nFormat(ns.getAugmentationPrice(augName), "$0.0a")}`,
             `Required Reputation: ${ns.nFormat(ns.getAugmentationRepReq(augName), "0,0")}`,
+            `Factions: ${JSON.stringify(getAugmentationFactions(ns, augName), null, 2)}`,
             `Prereqs: ${JSON.stringify(ns.getAugmentationPrereq(augName), null, 2)}`,
             `Stats: ${JSON.stringify(ns.getAugmentationStats(augName), null, 2)}`,
             ''
@@ -70,6 +71,16 @@ export async function main(ns) {
         return !installedAugs.includes(aug);
     });
     ns.print("Purchased Augmentations: ", JSON.stringify(purchasedAugs, null, 2), "\n");
+}
+
+export function getAugmentationFactions(ns, augName) {
+    const factions = [];
+    for (const faction of ns.getPlayer().factions) {
+        if (ns.getAugmentationsFromFaction(faction).includes(augName)) {
+            factions.push(faction);
+        }
+    }
+    return factions;
 }
 
 const AugmentationNames = [

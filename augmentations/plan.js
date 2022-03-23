@@ -33,6 +33,9 @@ export function autocomplete(data, args) {
 
 /** @param {NS} ns **/
 export async function main(ns) {
+    ns.disableLog('sleep');
+    ns.clearLog();
+
     const args = ns.flags(FLAGS);
     const filters = args._;
     if (args.help || filters.length == 0) {
@@ -58,8 +61,6 @@ export async function main(ns) {
         }
     }
 
-    ns.clearLog();
-    ns.tail();
 
     const augPlan = planAugs(ns, filters);
     const summary = [`Augmentation Plan: ${filters.join(', ')}`];
@@ -71,6 +72,9 @@ export async function main(ns) {
     if (args.buy) {
         await buyAugs(ns, filters);
     }
+    else {
+        ns.tail();
+    }
 }
 
 export async function buyAugs(ns, filters) {
@@ -80,8 +84,8 @@ export async function buyAugs(ns, filters) {
         const aug = selectedAugs.shift();
         plannedAugs[aug.name] = true;
         if (aug.price < ns.getPlayer().money) {
-            ns.tprint(`Purchasing '${aug.name}' from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`);
             ns.purchaseAugmentation(aug.canPurchaseFrom, aug.name);
+            ns.tprint(`Purchased '${aug.name}' from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`);
         }
         selectedAugs = selectAugs(ns, filters, plannedAugs);
         if (ns.getAugmentationPrice("NeuroFlux Governor") < ns.getPlayer().money) {
@@ -117,7 +121,8 @@ export function selectAugs(ns, filters, plannedAugs) {
         exclude[aug] = true;
     }
     exclude["NeuroFlux Governor"] = false;
-    const bestAugs = Object.values(getPotentialAugs(ns, plannedAugs)).filter(function(aug) {
+    const knownAugs = getKnownAugs(ns, plannedAugs);
+    const buyableAugs = Object.values(knownAugs).filter(function(aug) {
         return (
             aug.canPurchaseFrom != null &&
             totalValue(aug, filters) > 1.0 &&
@@ -126,12 +131,13 @@ export function selectAugs(ns, filters, plannedAugs) {
     }).sort(function(a,b){
         return b.sortKey - a.sortKey
     });
-    return bestAugs;
+    return buyableAugs;
 }
 
-export function getPotentialAugs(ns, plannedAugs) {
+export function getKnownAugs(ns, plannedAugs) {
     const player = ns.getPlayer();
     const augs = {};
+    // Instantiate all aug objects from current factions
     for (const faction of player.factions) {
         for (const name of ns.getAugmentationsFromFaction(faction)) {
             augs[name] ||= {};
@@ -140,6 +146,7 @@ export function getPotentialAugs(ns, plannedAugs) {
             aug.factions[faction] = [ns.getFactionRep(faction), ns.getAugmentationRepReq(name)];
         }
     }
+    // Populate aug objects with details
     for (const [name, aug] of Object.entries(augs)) {
         aug.name = name;
         aug.repReq = ns.getAugmentationRepReq(name);
@@ -157,6 +164,7 @@ export function getPotentialAugs(ns, plannedAugs) {
             aug.sortKey = 1e3;
         }
     }
+    // Adjust sortKey of prerequisites if their successors could be bought immediately
     for (const [name, aug] of Object.entries(augs)) {
         for (const prereq of aug.prereqs) {
             const plan = {};
@@ -186,6 +194,9 @@ export function canPurchaseFrom(ns, aug, plannedAugs={}) {
 }
 
 export function factionsToWork(aug) {
+    if (aug.canPurchaseFrom) {
+        return [];
+    };
     const neededFactions = Object.entries(aug.factions).map(function([faction, [rep, repReq]]){
         return {
             name: faction,
@@ -202,7 +213,7 @@ export function factionsToWork(aug) {
 }
 
 export function getFutureAugs(ns, filters) {
-    const allAugs = Object.values(getPotentialAugs(ns));
+    const allAugs = Object.values(getKnownAugs(ns));
 
     const futureAugs = allAugs.filter(function(aug){
         return (
@@ -278,8 +289,10 @@ export function estimateFactionValue(aug) {
     return (
         (stats.company_rep_mult || 1.0)
         +
+        Math.sqrt(stats.work_money_mult || 1.0)
+        +
         (stats.faction_rep_mult || 1.0)
-        - 1.0
+        - 2.0
     )
 }
 
@@ -325,7 +338,7 @@ export function estimateNeurofluxValue(aug) {
 export function estimateAllValue(aug) {
     delete aug.value.all;
     const total = totalValue(aug);
-    // if (total === 1.0) {
+    // if (total <= 1.0) {
     //     console.log("some aug had no ALL value: ", aug);
     // }
     return total;
