@@ -3,6 +3,7 @@
 export async function main(ns) {
     ns.disableLog("sleep");
     ns.disableLog("scan");
+    ns.disableLog("getServerNumPortsRequired");
     ns.clearLog();
     await openAllServers(ns);
 }
