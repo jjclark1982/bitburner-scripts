@@ -96,6 +96,15 @@ export async function buyAugs(ns, filters) {
         }
         await ns.sleep(100);
     }
+    ns.tprint([
+        "Finished buying augmentations. Don't forget:",
+        "  - Buy augmentations for sleeves",
+        "  - Buy equipment for gang members",
+        "  - Upgrade home server",
+        "  - Spend hacknet hashes on Bladeburner rank and SP",
+        "  - Spend hacknet hashes on corporation research and funds",
+        "  - Buyback corporation shares"
+    ].join("\n"));
 }
 
 export function planAugs(ns, filters) {
