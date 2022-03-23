@@ -30,7 +30,7 @@ export async function main(ns) {
     await ns.sleep( 0*1000); ns.run("/contracts/find-and-solve.js");
     await ns.sleep( 0*1000); ns.run("/sleeves/init.js");
     await ns.sleep( 0*1000); ns.run("/corporation/init.js");
-    // await ns.sleep( 0*1000); ns.run("/gang/init.js");
+    // await ns.sleep( 0*1000); ns.run("/gang/manage.js");
     await ns.sleep( 1*1000); ns.run("/stanek/spawn.js");
     await ns.sleep( 1*1000); ns.run("/net/spawn-share.js");
     await prepareStats(ns, {

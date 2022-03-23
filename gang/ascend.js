@@ -1,8 +1,10 @@
 /** @param {NS} ns **/
 export async function main(ns) {
+    const growthFactor = ns.args[0];
+
     for (const memberName of ns.gang.getMemberNames()) {
         const member = ns.gang.getMemberInformation(memberName);
-        ascendIfReady(ns, member);
+        ascendIfReady(ns, member, growthFactor);
     }
 }
 
