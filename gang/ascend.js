@@ -14,7 +14,8 @@ export function ascendIfReady(ns, member, factor=2.0) {
         return;
     }
     // TODO: check ascResult.respect
-    if (ascResult.str > factor * member.str_asc_mult) {
+    const largestMult = Math.max(ascResult.hack, ascResult.str, ascResult.def, ascResult.dex, ascResult.agi, ascResult.cha);
+    if (largestMult > factor) {
         ns.gang.ascendMember(member.name);
     }
 }

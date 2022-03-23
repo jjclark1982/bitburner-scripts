@@ -49,7 +49,8 @@ function updateMember(ns, member) {
     else if (member.str_exp < wantedStats.str_exp) {
         ns.gang.setMemberTask(member.name, "Train Combat")
     }
-    else if (gang.wantedPenalty < 0.95 && gang.wantedLevelGainRate > 0) {
+    else if (gang.wantedLevelGainRate > 0) {
+        // gang.wantedPenalty < 0.95
         if (gang.isHacking && (member.hack > member.str)) {
             ns.gang.setMemberTask(member.name, "Ethical Hacking");
         }
