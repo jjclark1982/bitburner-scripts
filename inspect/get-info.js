@@ -1,4 +1,3 @@
-import {StockSymbols} from "stocks/companies.js";
 import { AugmentationNames } from "augmentations/info.js";
 
 const FLAGS = [
@@ -14,10 +13,21 @@ export function autocomplete(data, args) {
 export async function main(ns) {
     const args = ns.flags(FLAGS);
     if (args.help) {
-        ns.print("Show info about a game object.");
-        ns.print(`Usage: run ${ns.getScriptName()} target [--host host]`);
-        ns.print("Example:");
-        ns.print(`> run ${ns.getScriptName()} player`);
+        ns.tprint([
+            "Show info about a game object.",
+            "",
+            `Usage: run ${ns.getScriptName()} [object]`,
+            "",
+            "Example: see player info",
+            `> run ${ns.getScriptName()} player`,
+            "",
+            "Example: see some server info",
+            `> run ${ns.getScriptName()} CSEC`,
+            "",
+            "Example: see some augmentation info",
+            `> run ${ns.getScriptName()} NeuroFlux Governor`,
+            " "
+        ].join("\n"))
         return;
     }
 
