@@ -5,7 +5,7 @@ Usage:
 
 */
 
-import { prepareStats } from "player/train.ns";
+import { prepareStats } from "player/train.js";
 
 const CRIME_NAMES = ["shoplift", "rob store", "mug", "larceny", "deal drugs", "bond forgery", "traffick arms", "homicide", "grand theft auto", "kidnap", "assassinate", "heist"];
 
@@ -59,10 +59,10 @@ export async function doCrimes(ns, forcedSelection=null) {
 
 export async function main(ns) {
     const targetStats = {
-       "strength": 20,
-       "defense": 20,
-       "dexterity": 20,
-       "agility": 20
+       "strength": 5,
+       "defense": 5,
+       "dexterity": 10,
+       "agility": 10
     };
     await prepareStats(ns, targetStats);
     ns.stopAction();
