@@ -1,15 +1,16 @@
-"Finished buying augmentations. Don't forget:",
-"  - Buy augmentations for sleeves",
-"  - Buy equipment for gang members",
-"  - Upgrade home server",
-"  - Spend hacknet hashes on Bladeburner rank and SP",
-"  - Spend hacknet hashes on corporation research and funds",
-"  - Buyback corporation shares"
-
+/*
+Finished buying augmentations. Don't forget:
+  - Buy augmentations for sleeves
+  - Buy equipment for gang members
+  - Upgrade home server
+  - Spend hacknet hashes on Bladeburner rank and SP
+  - Spend hacknet hashes on corporation research and funds
+  - Buyback corporation shares
+*/
 
 /** @param {NS} ns **/
 export async function main(ns) {
-    await ns.sleep( 0*1000); ns.run("/hacknet/spend-hashes.js", 1, "Exchange for Bladeburner Rank", "Exchange for Corporation Research", "Exchange for Bladeburner SP", "Sell for Corporation Funds", "Sell for Money");
+    await ns.sleep( 0*1000); ns.run("/hacknet/spend-hashes.js", 1, "Bladeburner", "Exchange for Corporation Research", "Sell for Corporation Funds", "Sell for Money");
     await ns.sleep( 1*1000); ns.run("/sleeves/buy-augs.js");
     await ns.sleep( 1*1000); ns.run("/sleeves/train.js");
     await ns.sleep( 1*1000); ns.run("/gang/buy-augs.js");

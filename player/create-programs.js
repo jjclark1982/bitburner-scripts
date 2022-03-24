@@ -38,5 +38,5 @@ export async function main(ns) {
             //    }
             //}
     }
-    ns.tprint("Acquired all programs.");
+    ns.tprint("Installed all programs.");
 }
