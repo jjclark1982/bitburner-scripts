@@ -47,7 +47,7 @@ function getServerProfit(ns, target) {
 		ns: ns,
 		target: target,
 		cores: 1,
-		moneyPercent: 0.25,
+		moneyPercent: 0.05,
 		tDelta: 100
 	};
     const hJob = planHack({...params, difficulty:0});

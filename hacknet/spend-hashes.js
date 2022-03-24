@@ -44,7 +44,7 @@ export async function main(ns) {
         else if (upgrade == "Bladeburner") {
             buyBladeburnerUpgrades(ns);
         }
-        buyMaxUpgrades(ns, upgrade, target);
+        buyMaxUpgrades(ns, upgrade, flags.target);
     }
     if (upgrades.includes("Sell for Money")) {
         sellHashesForMoney(ns);
@@ -57,7 +57,7 @@ export async function main(ns) {
 export function buyMaxUpgrades(ns, upgrade, target) {
     while (ns.hacknet.numHashes() >= ns.hacknet.hashCost(upgrade)) {
         const cost = ns.hacknet.hashCost(upgrade);
-        const success = ns.hacknet.spendHashes(upgrade, flags.target);
+        const success = ns.hacknet.spendHashes(upgrade, target);
         if (success) {
             ns.print(`Spent ${cost} hashes on ${upgrade}.`)
         }
@@ -70,13 +70,13 @@ export function buyBladeburnerUpgrades(ns) {
     let numHashes = ns.hacknet.numHashes();
     while (numHashes >= spCost) {
         if (rankCost < 3 * spCost && numHashes >= rankCost) {
-            const success = ns.hacknet.spendHashes(upgrade, flags.target);
+            const success = ns.hacknet.spendHashes(upgrade);
             if (success) {
                 ns.print(`Spent ${rankCost} hashes on Bladeburner Rank.`)
             }
         }
         else {
-            const success = ns.hacknet.spendHashes(upgrade, flags.target);
+            const success = ns.hacknet.spendHashes(upgrade);
             if (success) {
                 ns.print(`Spent ${spCost} hashes on Bladeburner SP.`)
             }

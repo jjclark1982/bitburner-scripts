@@ -223,9 +223,11 @@ export function factionsToWork(aug) {
 
 export function getFutureAugs(ns, filters) {
     const allAugs = Object.values(getKnownAugs(ns));
+    const ownedAugs = ns.getOwnedAugmentations(true);
 
     const futureAugs = allAugs.filter(function(aug){
         return (
+            (!ownedAugs.includes(aug.name)) &&
             (aug.neededFactions.length > 0) &&
             (totalValue(aug, filters) > 1.0)
         )

@@ -19,12 +19,12 @@ export async function main(ns) {
 }
 
 export async function upgradeHomeComputer(ns) {
-    while (ns.getPlayer().money > ns.getUpgardeHomeRamCost()) {
+    while (ns.getPlayer().money > ns.getUpgradeHomeRamCost()) {
         ns.upgradeHomeRam();
         ns.tprint("Upgraded home computer RAM.")
         await ns.sleep(100);
     }
-    while (ns.getPlayer().money > ns.getUpgardeHomeCoresCost()) {
+    while (ns.getPlayer().money > ns.getUpgradeHomeCoresCost()) {
         ns.upgradeHomeCores();
         ns.tprint("Upgraded home computer cores.")
         await ns.sleep(100);
