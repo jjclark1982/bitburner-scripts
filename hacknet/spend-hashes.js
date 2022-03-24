@@ -6,8 +6,7 @@ const UPGRADES = [
     "Improve Studying",
     "Improve Gym Training",
     "Exchange for Corporation Research",
-    "Exchange for Bladeburner Rank",
-    "Exchange for Bladeburner SP",
+    "Bladeburner",
     "Generate Coding Contract",
 ];
 
@@ -31,7 +30,9 @@ export async function main(ns) {
     if (flags._.length == 0) {
         flags._.push("Sell for Money");
     }
-    const print = (flags.verbose ? ns.tprint : ns.print)
+    if (flags.verbose) {
+        ns.print = ns.tprint;
+    }
 
     const startingHashes = ns.hacknet.numHashes();
 
@@ -40,26 +41,61 @@ export async function main(ns) {
         if (upgrade == "Sell for Money") {
             continue;
         }
-        while (ns.hacknet.numHashes() >= ns.hacknet.hashCost(upgrade)) {
-            const cost = ns.hacknet.hashCost(upgrade);
-            const success = ns.hacknet.spendHashes(upgrade, flags.target);
-            if (success) {
-                print(`Spent ${cost} hashes on ${upgrade}.`)
-            }
+        else if (upgrade == "Bladeburner") {
+            buyBladeburnerUpgrades(ns);
         }
+        buyMaxUpgrades(ns, upgrade, target);
     }
     if (upgrades.includes("Sell for Money")) {
-        let moneyCost = 0;
-        const cost = ns.hacknet.hashCost("Sell for Money");
-        while (ns.hacknet.numHashes() >= cost) {
-            ns.hacknet.spendHashes("Sell for Money");
-            moneyCost += cost;
-        }
-        if (moneyCost > 0) {
-            print(`Spent ${moneyCost} hashes for money.`)
-        }
+        sellHashesForMoney(ns);
     }
     if (flags._.length > 1) {
-        print(`Spent ${startingHashes - ns.hacknet.numHashes()} hashes on upgrades.`);
+        ns.print(`Spent ${startingHashes - ns.hacknet.numHashes()} hashes on upgrades.`);
     }
+}
+
+export function buyMaxUpgrades(ns, upgrade, target) {
+    while (ns.hacknet.numHashes() >= ns.hacknet.hashCost(upgrade)) {
+        const cost = ns.hacknet.hashCost(upgrade);
+        const success = ns.hacknet.spendHashes(upgrade, flags.target);
+        if (success) {
+            ns.print(`Spent ${cost} hashes on ${upgrade}.`)
+        }
+    }
+}
+
+export function buyBladeburnerUpgrades(ns) {
+    let rankCost = ns.hacknet.hashCost("Exchange for Bladeburner Rank");
+    let spCost = ns.hacknet.hashCost("Exchange for Bladeburner SP");
+    let numHashes = ns.hacknet.numHashes();
+    while (numHashes >= spCost) {
+        if (rankCost < 3 * spCost && numHashes >= rankCost) {
+            const success = ns.hacknet.spendHashes(upgrade, flags.target);
+            if (success) {
+                ns.print(`Spent ${rankCost} hashes on Bladeburner Rank.`)
+            }
+        }
+        else {
+            const success = ns.hacknet.spendHashes(upgrade, flags.target);
+            if (success) {
+                ns.print(`Spent ${spCost} hashes on Bladeburner SP.`)
+            }
+        }
+        rankCost = ns.hacknet.hashCost("Exchange for Bladeburner Rank");
+        spCost = ns.hacknet.hashCost("Exchange for Bladeburner SP");
+        numHashes = ns.hacknet.numHashes();
+    }
+}
+
+export function sellHashesForMoney(ns) {
+    let moneyCost = 0;
+    const cost = ns.hacknet.hashCost("Sell for Money");
+    while (ns.hacknet.numHashes() >= cost) {
+        ns.hacknet.spendHashes("Sell for Money");
+        moneyCost += cost;
+    }
+    if (moneyCost > 0) {
+        ns.print(`Spent ${moneyCost} hashes for money.`)
+    }
+
 }
