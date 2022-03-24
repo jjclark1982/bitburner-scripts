@@ -1,4 +1,4 @@
-import {prepareStats} from "lib.ns";
+import { prepareStats } from "player/train.js";
 
 // init.js
 // main script to run when starting game.
@@ -43,10 +43,10 @@ export async function main(ns) {
         "dexterity": 10,
         "agility": 10
     });
-    await ns.sleep( 0*1000); ns.run("/crime/commit.js");
-    await ns.sleep( 1*1000); ns.run("/progress/programs.ns");
-    await ns.sleep( 1*1000); ns.run("/net/install-backdoors.js");
-    await ns.sleep( 1*1000); ns.run("/progress/factions.ns");
+    await ns.sleep( 0*1000); ns.run("/player/crime.js");
+    await ns.sleep( 1*1000); ns.run("/player/create-programs.js");
+    await ns.sleep( 1*1000); ns.run("/net/backdoor-servers.js");
+    await ns.sleep( 1*1000); ns.run("/player/join-factions.js");
     await ns.sleep( 1*1000); ns.run("/bladeburner/progress.ns");
 
     // await ns.sleep( 5*1000); ns.run("/net/buy-server.js");

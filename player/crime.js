@@ -1,19 +1,22 @@
 /*
 
 Usage:
-/crime/commit.js "deal drugs"
+/player/crime.js "deal drugs"
 
 */
 
-import {prepareStats} from "lib.ns";
+import { prepareStats } from "player/train.ns";
 
+const CRIME_NAMES = ["shoplift", "rob store", "mug", "larceny", "deal drugs", "bond forgery", "traffick arms", "homicide", "grand theft auto", "kidnap", "assassinate", "heist"];
+
+export function autocomplete(data, args) {
+    return CRIME_NAMES;
+}
 
 export async function doCrimes(ns, forcedSelection=null) {
-    const crimeNames = ["shoplift", "rob store", "mug", "larceny", "deal drugs", "bond forgery", "traffick arms", "homicide", "grand theft auto", "kidnap", "assassinate", "heist"];
-    
     while (true) {
         let crimes = {};
-        for (const crimeName of crimeNames) {
+        for (const crimeName of CRIME_NAMES) {
             crimes[crimeName] = {
                 name: crimeName,
                 chance: ns.getCrimeChance(crimeName)
