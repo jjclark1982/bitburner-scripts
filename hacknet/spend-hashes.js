@@ -6,11 +6,14 @@ const UPGRADES = [
     "Improve Studying",
     "Improve Gym Training",
     "Exchange for Corporation Research",
+    "Exchange for Bladeburner Rank",
+    "Exchange for Bladeburner SP",
     "Bladeburner",
     "Generate Coding Contract",
 ];
 
 const FLAGS = [
+    ["help", false],
     ["target"],
     ["verbose", true],
     ["ongoing", false]
@@ -28,7 +31,7 @@ export function autocomplete(data, args) {
 /** @param {NS} ns **/
 export async function main(ns) {
     ns.disableLog("sleep");
-    
+
     let flags = ns.flags(FLAGS);
     if (flags._.length == 0) {
         flags._.push("Sell for Money");
@@ -37,6 +40,21 @@ export async function main(ns) {
         ns.print = ns.tprint;
     }
     const upgrades = flags._;
+
+    if (flags.help) {
+        ns.tprint([
+            "Spend hashes on a named upgrade",
+            "",
+            "Example: Sell all hashes for bladeburner rank and money, then terminate",
+            `run ${ns.getScriptName()} "Bladeburner" "Sell for Money"`,
+            "",
+            "Example: Continually spend all hashes on increasing server money",
+            `run ${ns.getScriptName()} --ongoing --tail --target the-hub "Increase Maximum Money"`,
+            " "
+        ].join("\n"));
+        return;
+    }
+
     buyUpgrades(ns, upgrades, flags.target);
     while (flags.ongoing) {
         await ns.sleep(60*1000);
@@ -76,8 +94,8 @@ export function buyMaxUpgrades(ns, upgrade, target) {
 export function buyBladeburnerUpgrades(ns) {
     const rankUG = "Exchange for Bladeburner Rank";
     const spUG = "Exchange for Bladeburner SP";
-    let rankCost = ns.hacknet.hashCost("Exchange for Bladeburner Rank");
-    let spCost = ns.hacknet.hashCost("Exchange for Bladeburner SP");
+    let rankCost = ns.hacknet.hashCost(rankUG);
+    let spCost = ns.hacknet.hashCost(spUG);
     let numHashes = ns.hacknet.numHashes();
     let upgrade;
     while (numHashes >= spCost) {
@@ -95,8 +113,8 @@ export function buyBladeburnerUpgrades(ns) {
         else {
             break;
         }
-        rankCost = ns.hacknet.hashCost("Exchange for Bladeburner Rank");
-        spCost = ns.hacknet.hashCost("Exchange for Bladeburner SP");
+        rankCost = ns.hacknet.hashCost(rankUG);
+        spCost = ns.hacknet.hashCost(spUG);
         numHashes = ns.hacknet.numHashes();
     }
 }
