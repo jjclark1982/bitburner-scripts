@@ -82,7 +82,7 @@ export function planHack(params) {
     const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player);
     const hackThreads = Math.ceil(moneyPercent / hackPercentPerThread);
     const hackSecurity = ns.hackAnalyzeSecurity(hackThreads);
-	const effectivePct = hackThreads * hackPercentPerThread * 1.1;
+	const effectivePct = hackThreads * hackPercentPerThread;
 
 	return makeJob({
 		...params,
@@ -95,7 +95,7 @@ export function planHack(params) {
 }
 
 export function planWeaken(params) {
-	const {ns, target, cores, moneyPercent, difficulty} = params;
+	const {ns, target, cores, difficulty} = params;
     const player = ns.getPlayer();
     const server = ns.getServer(target);
     if (difficulty !== undefined) {
@@ -125,16 +125,11 @@ export function planGrow(params) {
         server.hackDifficulty = server.minDifficulty + difficulty;
     }
 
-    const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player);
-    const hackThreads = Math.ceil(moneyPercent / hackPercentPerThread);
-	const effectivePct = hackThreads * hackPercentPerThread * 1.1;
-	server.moneyAvailable = server.moneyMax * (1 - effectivePct);
-
     const growTime = ns.formulas.hacking.growTime(server, player);
-    const growPercentPerThread = ns.formulas.hacking.growPercent(server, 1, player, cores);
-    const growPercent = (1 / (1 - effectivePct));
-    const growThreads = Math.ceil((growPercent-1) / (growPercentPerThread-1)) + 1;
-	// growThreads = calculateGrowThreads(ns, target, player, effectivePct);
+    const growPercent = (1 / (1 - moneyPercent));
+    // const growPercentPerThread = ns.formulas.hacking.growPercent(server, 1, player, cores);
+    // const growThreads = Math.ceil((growPercent-1) / (growPercentPerThread-1)) + 1;
+	const growThreads = calculateGrowThreads(ns, target, player, moneyPercent);
     const growSecurity = ns.growthAnalyzeSecurity(growThreads);
 
 	return makeJob({

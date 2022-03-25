@@ -102,10 +102,10 @@ export async function runHWGW(params) {
     }
     const t0 = t0_by_target[params.target];
 
-    const hJob  = planHack({  ...params, difficulty:0,               endTime: t0 + 1 * tDelta});
-    const w1Job = planWeaken({...params, difficulty:hJob.security+1, endTime: t0 + 2 * tDelta});
-    const gJob  = planGrow({  ...params, difficulty:0,               endTime: t0 + 3 * tDelta});
-    const w2Job = planWeaken({...params, difficulty:gJob.security+1, endTime: t0 + 4 * tDelta});
+    const hJob  = planHack({  ...params, endTime: t0 + 1*tDelta, difficulty:0 });
+    const w1Job = planWeaken({...params, endTime: t0 + 2*tDelta, difficulty:hJob.security+1 });
+    const gJob  = planGrow({  ...params, endTime: t0 + 3*tDelta, difficulty:0, moneyPercent: hJob.money*1.1});
+    const w2Job = planWeaken({...params, endTime: t0 + 4*tDelta, difficulty:gJob.security+1 });
 
     const batch = [hJob, w1Job, gJob, w2Job];
 
