@@ -20,7 +20,7 @@ export function getAllServers(ns) {
     return getAllHosts(ns).map(ns.getServer);
 }
 
-export function getBiggestHost(ns) {
+export function getBiggestServers(ns) {
     const biggestHosts = getAllHosts(ns).map(function(host){
         const server = ns.getServer(host);
         server.availableRam = server.maxRam - server.ramUsed;
@@ -30,7 +30,11 @@ export function getBiggestHost(ns) {
     }).sort(function(a,b){
         return (b.availableRam - a.availableRam);
     });
-    return biggestHosts[0].hostname;
+    return biggestHosts;
+}
+
+export function getBiggestHost(ns) {
+    return getBiggestServers(ns)[0].hostname;
 }
 
 export async function runMaxThreadsOnHost({ns, host, script, args, reservedRam}) {
@@ -46,8 +50,10 @@ export async function runMaxThreadsOnHost({ns, host, script, args, reservedRam})
     if (threads > 0) {
         const pid = ns.exec(script, host, threads, ...args);
         ns.tprint(`Running on ${host} with PID ${pid}: ${threads}x ${script} ${args.join(' ')}`);
+        return pid;
     }
     else {
         ns.tprint(`Not enough available RAM on ${host} to run ${script}`);
+        return null;
     }
 }
