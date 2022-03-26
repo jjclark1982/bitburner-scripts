@@ -1,6 +1,6 @@
 const FLAGS = [
     ["port", 1],
-    ["id"]
+    ["id"],
 ];
 
 /** @param {NS} ns **/
@@ -30,6 +30,22 @@ export async function runWorker(ns, functions) {
         nextFreeTime: Date.now(),
         jobQueue: [],
         running: true,
+        scheduleJob: ((job)=>{
+            const now = Date.now();
+            if (job.startTime < Math.max(now, worker.nextFreeTime)) {
+                return false;
+            }
+            jobQueue.push(job);
+            const {func, args, startTime, endTime} = job;
+            worker.nextFreeTime = job.endTime;
+            setTimeout(()=>{
+                // worker.jobQueue.shift();
+                ns.tprint(`Worker ${id} started ${func}. (${job.startTime}, ${Date.now()})`);
+                await worker.functions[func](...args);
+                ns.tprint(`Worker ${id} finished ${func}. (${job.endTime}, ${Date.now()})`);
+            }, job.startTime - now);
+            return true;
+        })
     });
 
     ns.atExit(function(){
