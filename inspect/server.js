@@ -52,7 +52,8 @@ export async function main(ns) {
             server.stockSymbol = StockSymbols[server.organizationName];
         }
         ns.print(` Required Hacking Skill: ${server.requiredHackingSkill} ${ns.getPlayer().hacking >= server.requiredHackingSkill ? '✓' : '✗'}`);
-        ns.print(` Ports Open: ${server.openPortCount} / ${server.numOpenPortsRequired} ${server.hasAdminRights ? '(admin ✓)' : ''} ${server.backdoorInstalled ? '(backdoor ✓)' : ''}\n`);
+        ns.print(` Ports Open: ${server.openPortCount} / ${server.numOpenPortsRequired} ${server.hasAdminRights ? '(admin ✓)' : ''} ${server.backdoorInstalled ? '(backdoor ✓)' : ''}`);
+        ns.print(` RAM: ${ns.nFormat(server.ramUsed * 1e9, "0.[0] b")} / ${ns.nFormat(server.maxRam * 1e9, "0.[0] b")}\n`)
         // ns.print(` Admin Access: ${server.hasAdminRights ? '✓' : '✗'}, Backdoor: ${server.backdoorInstalled ? '✓' : '✗'}`);
         ns.print(` money:    ${ns.nFormat(money, "$0.[000]a")} / ${ns.nFormat(maxMoney, "$0.[000]a")} (${((money / maxMoney * 100) || 0).toFixed(2)}%)`);
         ns.print(` security: ${ns.nFormat(minSec, "0.[00]")} + ${(sec - minSec).toFixed(2)}`);
