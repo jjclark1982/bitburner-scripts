@@ -5,7 +5,9 @@ const FLAGS = [
     ["port", 1]
 ];
 
-const WORKER = "/hive/worker.js";
+const SCRIPT_CAPABILITIES = {
+    "/hive/worker.js": ['hack', 'grow', 'weaken'];
+};
 
 /** @param {NS} ns **/
 export async function main(ns) {
@@ -30,6 +32,7 @@ export async function main(ns) {
     await threadPool.getWorkers(spec);
     await ns.asleep(2000);
     await threadPool.getWorkers(spec);
+
     await threadPool.work();
 }
 
@@ -68,8 +71,8 @@ class ThreadPool {
         // Returns an array of Worker objects if all specs could be satisfied.
         // Returns null if any spec could not be satisfied.
         const workers = {};
-        for (const {threads, freeTime} of specs) {
-            const worker = await this.getWorker(threads, freeTime, workers);
+        for (const {threads, freeTime, capabilities} of specs) {
+            const worker = await this.getWorker(threads, freeTime, capabilities, workers);
             if (!worker) {
                 return null;
             }
@@ -78,14 +81,17 @@ class ThreadPool {
         return workers;
     }
 
-    async getWorker(threads, freeTime, exclude={}) {
-        // Get a new or existing worker with at least `threads` threads,
-        // which is available after `freeTime`.
+    async getWorker(threads, freeTime, capabilities=[], exclude={}) {
+        // Get a new or existing worker with the requested specs:
+        // - has at least `threads` threads
+        // - has every capability listed in `capabilities`,
+        // - is available after `freeTime`
         freeTime ||= Date.now();
         const matchingWorkers = Object.values(this.workers).filter((worker)=>(
             !exclude[worker.id] && 
             worker.process.threads >= threads &&
-            worker.nextFreeTime < freeTime
+            worker.nextFreeTime < freeTime &&
+            capabilities.every((func)=>func in worker.capabilities)
         )).sort((a,b)=>(
             a.threads - b.threads
         ));
@@ -93,20 +99,24 @@ class ThreadPool {
             return matchingWorkers[0];
         }
         else {
-            return await this.spawnWorker(threads);
+            return await this.spawnWorker(threads, capabilities);
         }
     }
     
-    async spawnWorker(threads) {
+    async spawnWorker(threads, capabilities) {
         // Create a new worker with `threads` threads.
         // Ignores number of CPU cores.
         const {ns, portNum} = this;
 
         threads = Math.ceil(threads);
         const workerID = this.nextWorkerID++;
-        const script = WORKER;
+        const script = getScriptWithCapabilities(capabilities);
+        if (!script) {
+            ns.print(`Failed to start worker with ${threads} threads: No script capable of ${JSON.stringify(capabilities)}.`);
+            return null;
+        }
         const args = ["--port", portNum, "--id", workerID];
-        const scriptRam = ns.getScriptRam(WORKER, 'home');
+        const scriptRam = ns.getScriptRam(script, 'home');
         const neededRam = scriptRam * threads;
     
         const server = getSmallestServerWithRam(ns, scriptRam, threads);
@@ -127,6 +137,15 @@ class ThreadPool {
         ns.print(`Created worker ${workerID} with ${threads} threads on ${server.hostname}.`);
         return worker;
     }
+}
+
+function getScriptWithCapabilities(capabilities) {
+    for (const [script, caps] of Object.entries(SCRIPT_CAPABILITIES)) {
+        if (capabilities.every((func)=>caps.includes(func))) {
+            return script;
+        }
+    }
+    return null;
 }
 
 function getSmallestServerWithRam(ns, scriptRam, threads) {
