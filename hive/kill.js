@@ -17,6 +17,8 @@ export async function killWorkers(ns) {
     }
     await ns.sleep(2000);
     for (const script of Object.values(db.scripts)) {
-        ns.kill(script.pid);
+        if (worker?.process) {
+            ns.kill(worker.process.pid);
+        }
     }
 }

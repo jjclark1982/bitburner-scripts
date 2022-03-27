@@ -6,56 +6,66 @@ const FLAGS = [
 /** @param {NS} ns **/
 export async function main(ns) {
     // List the functions this worker is capable of, for RAM calculation.
-    const functions = {
+    const capabilities = {
         "hack": ns.hack,
         "grow": ns.grow,
         "weaken": ns.weaken
     }
-    await runWorker(ns, functions);
+    const worker = new Worker(ns, capabilities);
+    await worker.work();
 }
 
-export async function runWorker(ns, functions) {
-    const flags = ns.flags(FLAGS);
-    const port = ns.getPortHandle(flags.port);
-    const id = flags.id;
+class Worker {
+    constructor(ns, capabilities) {
+        const flags = ns.flags(FLAGS);
+        const id = flags.id;
 
-    const db = port.peek();
-    db.workers[id] ||= {};
-    const worker = db.workers[id];
+        this.id = id;
+        this.capabilities = capabilities;
+        this.pool = ns.getPortHandle(flags.port).peek();
+        this.process = this.pool.workers[id]?.process;
+        this.ns = ns;
+        this.nextFreeTime = Date.now();
+        this.jobQueue = [];
+        this.running = true;
 
-    Object.assign(worker, {
-        id: id,
-        ns: ns,
-        functions: functions,
-        nextFreeTime: Date.now(),
-        jobQueue: [],
-        running: true,
-        scheduleJob: ((job)=>{
-            const now = Date.now();
-            if (job.startTime < Math.max(now, worker.nextFreeTime)) {
-                return false;
-            }
-            jobQueue.push(job);
-            const {func, args, startTime, endTime} = job;
-            worker.nextFreeTime = job.endTime;
-            setTimeout(()=>{
-                // worker.jobQueue.shift();
-                ns.tprint(`Worker ${id} started ${func}. (${job.startTime}, ${Date.now()})`);
-                await worker.functions[func](...args);
-                ns.tprint(`Worker ${id} finished ${func}. (${job.endTime}, ${Date.now()})`);
-            }, job.startTime - now);
-            return true;
-        })
-    });
+        this.pool.workers[id] = this;
 
-    ns.atExit(function(){
-        delete db.workers[id];
-    });
+        ns.atExit(this.stop.bind(this));
 
-    ns.tprint(`Worker ${id} starting.`);
-    while (worker.running) {
-        await ns.asleep(worker.nextFreeTime + 1000 - Date.now());
-        worker.nextFreeTime = Math.max(worker.nextFreeTime, Date.now());
+        this.pool.ns.print(`Worker ${this.id} started.`);
     }
-    ns.tprint(`Worker ${id} exiting.`);
-};
+
+    async work() {
+        while (this.running) {
+            await this.ns.asleep(1000);
+            // await ns.asleep(this.nextFreeTime + 1000 - Date.now());
+            // this.nextFreeTime = Math.max(this.nextFreeTime, Date.now());
+        }
+        this.pool.ns.print(`Worker ${this.id} stopping.`);
+    }
+
+    stop() {
+        delete this.pool.workers[this.id];
+    }
+
+    addJob(job) {
+        const {ns} = this;
+        const now = Date.now();
+        if (job.startTime < Math.max(now, this.nextFreeTime)) {
+            return false;
+        }
+        jobQueue.push(job);
+        this.nextFreeTime = job.endTime;
+        setTimeout(this.runJob.bind(this), job.startTime - now);
+        return true;
+    }
+
+    async runJob() {
+        const job = this.jobQueue.shift(); // are we sure that it is the next one? double check start time
+        const {func, args, startTime, endTime} = job;
+        ns.tprint(`Worker ${this.id} started ${func}. (${job.startTime} - ${Date.now()} = ${job.startTime - Date.now()})`);
+        await this.capabilities[func](...args);
+        ns.tprint(`Worker ${this.id} finished ${func}. (${job.endTime} - ${Date.now()} = ${job.endTime - Date.now()})`);
+    }
+}
