@@ -68,6 +68,10 @@ export function planHWGW(params) {
 
     batch.push(hJob, w1Job, gJob, w2Job);
 
+    for (const job of batch) {
+        job.args.push({threads: job.threads});
+    }
+
     t0_by_target[target] = w2Job.endTime + tDelta;
     next_start_by_target[target] = w1Job.startTime + 5 * tDelta;
     const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;
