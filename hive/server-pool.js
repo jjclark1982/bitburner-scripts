@@ -1,9 +1,9 @@
-const SCRIPT_RAM = 1.75; // Default thread cost for estimating capacity of pool
+const SCRIPT_RAM = 2.0; // Default thread cost for estimating capacity of pool
 
 const FLAGS = [
     ["help", false],
     ["threads", 1],
-    ["verbose", true]
+    ["verbose", 2]
 ];
 
 export function autocomplete(data, args) {
@@ -19,7 +19,7 @@ export async function main(ns) {
     const flags = {
         ns: ns,
         threads: 1,
-        verbose: true
+        verbose: 2
     };
     if (ns.args.includes("--help")) {
         ns.tprint("Run a script on any available server, splitting threads into different processes if needed.");
@@ -66,16 +66,21 @@ export class ServerPool {
     }
 
     logInfo(...args) {
-        if (this.verbose) {
+        if (this.verbose >= 2) {
             this.ns.tprint(...args);
         }
-        else {
+        else if (this.verbose >= 1) {
             this.ns.print(...args);
         }
     }
 
     logWarn(...args) {
-        this.ns.tprint(...args);
+        if (this.verbose >= 1) {
+            this.ns.tprint(...args);
+        }
+        else {
+            this.ns.print(...args);
+        }
     }
 
     totalServers() {
@@ -155,9 +160,8 @@ export class ServerPool {
         // Run the script on the smallest server possible.
         // Optionally increase the number of threads by `roundUpThreads` to fill up available RAM.
         const server = this.smallestServersWithThreads(threads)[0];
-        this.ns.tprint(`server: ${server.hostname}, roundUpThreads ${roundUpThreads}`)
         if (server.availableThreads - threads < roundUpThreads) {
-            this.ns.tprint(`rounding up threads from ${threads} to ${server.availableThreads}`)
+            this.logInfo(`Rounding up threads from ${threads} to ${server.availableThreads}`)
             threads = server.availableThreads;
         }
         return await this.runScript({server, script, threads, args})
@@ -233,7 +237,7 @@ function getServersForScript(ns, scriptRam) {
         else {
             server.availableThreads = 0;
         }
-        server.sortKey = server.availableThreads * (1 + server.cpuCores/16);
+        server.sortKey = server.maxRam; //server.availableThreads * (1 + server.cpuCores/16);
         return server;
     }).filter((server)=>(
         server.hasAdminRights &&
