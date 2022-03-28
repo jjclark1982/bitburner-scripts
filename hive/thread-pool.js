@@ -22,16 +22,16 @@ export async function main(ns) {
     const threadPool = new ThreadPool(ns, flags.port, flags.verbose);
     window.db = threadPool;
     
-    const spec = [
-        {threads: 10},
-        {threads: 20},
-        {threads: 30},
-        {threads: 40},
-        {threads: 50, freeTime: Date.now() + 1000}
-    ];
-    await threadPool.getWorkers(spec);
-    await ns.asleep(2000);
-    await threadPool.getWorkers(spec);
+    // const spec = [
+    //     {threads: 10},
+    //     {threads: 20},
+    //     {threads: 30},
+    //     {threads: 40},
+    //     {threads: 50, startTime: Date.now() + 1000}
+    // ];
+    // await threadPool.getWorkers(spec);
+    // await ns.asleep(2000);
+    // await threadPool.getWorkers(spec);
 
     await threadPool.work();
 }
@@ -64,7 +64,6 @@ export class ThreadPool {
 
     stop() {
         for (const worker of Object.values(this.workers)) {
-            console.log("stopping worker", worker);
             worker.running = false;
         }
         this.ns.getPortHandle(this.portNum).clear();
@@ -140,6 +139,10 @@ export class ThreadPool {
         if (!pid) {
             this.logWarn(`Failed to start worker ${workerID}.`);
             return null;
+        }
+        while (!this.workers[workerID]) {
+            // TODO: handle failure here
+            await ns.asleep(100);
         }
         this.workers[workerID] ||= {id: workerID};
         const worker = this.workers[workerID];

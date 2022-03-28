@@ -20,6 +20,8 @@ export async function main(ns) {
     const targets = flags._;
     const target = targets[0];
 
+    delete t0_by_target[target];
+
     if (flags.help || targets.length == 0) {
         ns.tprint("manage hacking a target");
         return;
@@ -29,31 +31,46 @@ export async function main(ns) {
 
     const batch = planHWGW({ns, target, moneyPercent, tDelta})
 
+    const workers = await threadPool.getWorkers(batch);
+    if (!workers) {
+        ns.tprint(`Failed to allocate workers for batch.`);
+        return;
+    }
+    for (let i = 0; i < batch.length; i++) {
+        const job = batch[i];
+        const worker = Object.values(workers)[i];
+        worker.addJob(job);
+    }
+
     ns.print("batch:", JSON.stringify(batch, null, 2));
     ns.tail();
+
+    threadPool.get
 }
+
 
 export function planHWGW(params) {
     const {ns, target, moneyPercent, tDelta} = params;
 
-    if (t0_by_target[params.target] === undefined) {
+    const batch = [];
+
+    if (t0_by_target[target] === undefined) {
         const w0Job = planWeaken(params);
-        t0_by_target[params.target] = Date.now() + w0Job.time;
+        batch.push(w0Job);
+        t0_by_target[target] = Date.now() + w0Job.duration;
     }
-    const t0 = t0_by_target[params.target];
+    const t0 = t0_by_target[target];
 
     const hJob  = planHack({  ...params, endTime: t0 + 1*tDelta, security:0 });
     const w1Job = planWeaken({...params, endTime: t0 + 2*tDelta, security:hJob.security*1.1 });
     const gJob  = planGrow({  ...params, endTime: t0 + 3*tDelta, security:0, moneyPercent: hJob.moneyMult*0.95});
     const w2Job = planWeaken({...params, endTime: t0 + 4*tDelta, security:gJob.security*1.1 });
 
-    const batch = [hJob, w1Job, gJob, w2Job];
+    batch.push(hJob, w1Job, gJob, w2Job);
+
+    t0_by_target[target] = w2Job.endTime + tDelta;
+    next_start_by_target[target] = w1Job.startTime + 5 * tDelta;
+    const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;
 
     return batch;
-
-    t0_by_target[params.target] = w2Job.endTime + tDelta;
-    next_start_by_target[params.target] = w1Job.startTime + 5 * tDelta;
-
-    const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;
-    return threadsUsed;
 }
