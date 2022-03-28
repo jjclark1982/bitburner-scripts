@@ -93,13 +93,24 @@ class Worker {
     report() {
         const ns = this.pool.ns; // use other process to format text during task
         const now = Date.now();
-        return sprintf(" %6s │ %7s │ %5d │ %6s │ %21s │ %21s",
+        let time = '';
+        if (this.currentJob.startTime) {
+            time += sprintf("%5s sec",
+                ns.nFormat((now - this.currentJob.startTime)/1000, "0,0")
+            );
+        }
+        if (this.currentJob.duration || this.currentJob.endTime) {
+            const duration = this.currentJob.duration || this.currentJob.endTime - this.currentJob.startTime;
+            time += sprintf(" / %5s sec",
+                ns.nFormat(duration/1000, "0,0.[00]")
+            );
+        }
+        return sprintf(" %6s │ %7s │ %5d │ %6s │ %s",
             this.id,
             this.process ? ns.nFormat(this.process.threads || 0, "0,0") : '',
             this.jobQueue.length,
             this.currentJob.func || '',
-            this.currentJob.startTime ? ns.tFormat(now - this.currentJob.startTime) : '',
-            this.currentJob.endTime ? ns.tFormat(this.currentJob.endTime - now) : ''
+            time
         );
     }
 }

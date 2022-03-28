@@ -163,8 +163,8 @@ export class ThreadPool {
 
     report() {
         const lines = [
-            ' Worker │ Threads │ Queue │  Task  │     Elapsed Time      │    Remaining Time',
-            '────────┼─────────┼───────┼────────┼───────────────────────┼───────────────────────'
+            ' Worker │ Threads │ Queue │  Task  │     Time',
+            '────────┼─────────┼───────┼────────┼──────────────────────'
         ];
         for (const [id, worker] of Object.entries(this.workers)) {
             if (worker.report) {
