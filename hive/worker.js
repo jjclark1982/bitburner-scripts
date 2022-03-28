@@ -59,7 +59,10 @@ class Worker {
     addJob(job) {
         const {ns} = this;
         const now = Date.now();
-        if (job.startTime < Math.max(now, this.nextFreeTime)) {
+        if (!job.startTime) {
+            job.startTime = now;
+        }
+        if (job.startTime <= Math.max(now, this.nextFreeTime)) {
             return false;
         }
         this.jobQueue.push(job);
@@ -90,27 +93,61 @@ class Worker {
         }
     }
 
+    elapsedTime(now) {
+        now ||= Date.now();
+        if (this.currentJob.startTime) {
+            return now - this.currentJob.startTime;
+        }
+        else {
+            return null;
+        }
+    }
+
+    remainingTime(now) {
+        now ||= Date.now();
+        let endTime;
+        if (this.currentJob.endTime) {
+            endTime = this.currentJob.endTime;
+        }
+        else if (this.currentJob.startTime && this.currentJob.duration) {
+            endTime = this.currentJob.startTime + this.currentJob.duration;
+        }
+        else if (this.jobQueue.length > 0) {
+            endTime = this.jobQueue[0].startTime;
+        }
+        if (endTime) {
+            return endTime - now;
+        }
+        else {
+            return null;
+        }
+    }
+
     report() {
         const ns = this.pool.ns; // use other process to format text during task
         const now = Date.now();
-        let time = '';
-        if (this.currentJob.startTime) {
-            time += sprintf("%5s sec",
-                ns.nFormat((now - this.currentJob.startTime)/1000, "0,0")
-            );
+        let threads = '';
+        if (this.process) {
+            threads = ns.nFormat(this.process.threads, "0,0");
         }
-        if (this.currentJob.duration || this.currentJob.endTime) {
-            const duration = this.currentJob.duration || this.currentJob.endTime - this.currentJob.startTime;
-            time += sprintf(" / %5s sec",
-                ns.nFormat(duration/1000, "0,0.[00]")
-            );
+        if (this.currentJob?.threads) {
+            threads = ns.nFormat(this.currentJob.threads, "0,0") + ' / ' + threads;
         }
-        return sprintf(" %6s │ %7s │ %5d │ %6s │ %s",
+        let elapsedTime = this.elapsedTime(now);
+        if (elapsedTime) {
+            elapsedTime = ns.nFormat(elapsedTime/1000, "0,0") + ' sec';
+        }
+        let remainingTime = this.remainingTime(now);
+        if (remainingTime) {
+            remainingTime = ns.nFormat(remainingTime/1000, "0,0.00") + ' sec';
+        }
+        return sprintf(" %6s │ %9s │ %5s │ %6s │ %11s │ %10s",
             this.id,
-            this.process ? ns.nFormat(this.process.threads || 0, "0,0") : '',
-            this.jobQueue.length,
+            threads,
+            this.jobQueue.length || '',
             this.currentJob.func || '',
-            time
+            elapsedTime || '',
+            remainingTime || ''
         );
     }
 }
