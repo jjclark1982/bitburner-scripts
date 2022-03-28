@@ -123,9 +123,9 @@ class Worker {
         }
     }
 
-    report() {
+    report(now) {
         const ns = this.pool.ns; // use other process to format text during task
-        const now = Date.now();
+        now ||= Date.now();
         let threads = '';
         if (this.process) {
             threads = ns.nFormat(this.process.threads, "0,0");
@@ -133,15 +133,9 @@ class Worker {
         if (this.currentJob?.threads) {
             threads = ns.nFormat(this.currentJob.threads, "0,0") + ' / ' + threads;
         }
-        let elapsedTime = this.elapsedTime(now);
-        if (elapsedTime) {
-            elapsedTime = ns.nFormat(elapsedTime/1000, "0,0") + ' sec';
-        }
-        let remainingTime = this.remainingTime(now);
-        if (remainingTime) {
-            remainingTime = ns.nFormat(remainingTime/1000, "0,0.00") + ' sec';
-        }
-        return sprintf(" %6s │ %9s │ %5s │ %6s │ %11s │ %10s",
+        let elapsedTime = tFormat(this.elapsedTime(now));
+        let remainingTime = tFormat(this.remainingTime(now), 2);
+        return sprintf(" %6s │ %9s │ %5s │ %6s │ %8s │ %9s",
             this.id,
             threads,
             this.jobQueue.length || '',
@@ -155,4 +149,26 @@ class Worker {
 function timeError(actual, expected) {
     const tErr = actual - expected;
     return `${tErr > 0 ? '+' : ''}${tErr} ms`;
+}
+
+function tFormat(timeMS, precision=0) {
+    if (!timeMS) {
+        return '';
+    }
+    const d = new Date(2000, 1, 1, 0, 0, timeMS/1000)
+    let timeStr = d.toTimeString().slice(0,8);
+    if (timeMS >= 60 * 60 * 1000) {
+        timeStr = timeStr.slice(0,8);
+    }
+    else if (timeMS >= 10 * 60 * 1000) {
+        timeStr = timeStr.slice(3,8);
+    }
+    else {
+        timeStr = timeStr.slice(4,8);
+    }
+    if (precision > 0) {
+        let msStr = (timeMS / 1000 - Math.floor(timeMS/1000)).toFixed(precision);
+        timeStr += msStr.substring(1);
+    }
+    return timeStr;
 }

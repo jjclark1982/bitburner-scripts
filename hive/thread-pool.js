@@ -162,13 +162,14 @@ export class ThreadPool {
     }
 
     report() {
+        const now = Date.now();
         const lines = [
-            ' Worker │  Threads  │ Queue │  Task  │   Elapsed   │ Remaining',
-            '────────┼───────────┼───────┼────────┼─────────────┼───────────'
+            ' Worker │  Threads  │ Queue │  Task  │  Elapsed │ Remaining',
+            '────────┼───────────┼───────┼────────┼──────────┼────────────'
         ];
         for (const [id, worker] of Object.entries(this.workers)) {
             if (worker.report) {
-                lines.push(worker.report());
+                lines.push(worker.report(now));
             }
             else {
                 lines.push(id);
