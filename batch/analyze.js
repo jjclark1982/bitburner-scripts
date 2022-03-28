@@ -50,10 +50,10 @@ function getServerProfit(ns, target) {
 		moneyPercent: 0.05,
 		tDelta: 100
 	};
-    const hJob = planHack({...params, difficulty:0});
-    const w1Job = planWeaken({...params, difficulty:hJob.security+1});
-    const gJob = planGrow({...params, difficulty:0});
-    const w2Job = planWeaken({...params, difficulty:gJob.security+1});
+    const hJob = planHack({...params, security:0});
+    const w1Job = planWeaken({...params, security:hJob.security+1});
+    const gJob = planGrow({...params, security:0});
+    const w2Job = planWeaken({...params, security:gJob.security+1});
 
     const ramNeededPerBatch = (
         SCRIPT_RAM * gJob.threads +
@@ -71,11 +71,11 @@ function getServerProfit(ns, target) {
 }
 
 export function planHack(params) {
-	const {ns, target, moneyPercent, difficulty} = params;
+	const {ns, target, moneyPercent, security} = params;
     const player = ns.getPlayer();
     const server = ns.getServer(target);
-    if (difficulty !== undefined) {
-        server.hackDifficulty = server.minDifficulty + difficulty;
+    if (security !== undefined) {
+        server.hackDifficulty = server.minDifficulty + security;
     }
 
     const hackTime = ns.formulas.hacking.hackTime(server, player);
@@ -87,19 +87,21 @@ export function planHack(params) {
 	return makeJob({
 		...params,
 		script: HACK,
+		func: 'hack',
 		threads: hackThreads,
 		security: hackSecurity,
-		money: effectivePct,
+		moneyMult: 1-effectivePct,
 		time: hackTime
 	});
 }
 
 export function planWeaken(params) {
-	const {ns, target, cores, difficulty} = params;
+	const {ns, target, security} = params;
+	const cores = params.cores || 1;
     const player = ns.getPlayer();
     const server = ns.getServer(target);
-    if (difficulty !== undefined) {
-        server.hackDifficulty = server.minDifficulty + difficulty;
+    if (security !== undefined) {
+        server.hackDifficulty = server.minDifficulty + security;
     }
 
     const weakTime = ns.formulas.hacking.weakenTime(server, player);
@@ -110,74 +112,80 @@ export function planWeaken(params) {
 	return makeJob({
 		...params,
 		script: WEAKEN,
+		func: 'weaken',
 		threads: weakThreads,
 		security: weakSecurity,
-		money: 0,
+		moneyMult: 1,
 		time: weakTime
 	});
 }
 
 export function planGrow(params) {
-	const {ns, target, cores, moneyPercent, difficulty, endTime} = params;
+	const {ns, target, moneyPercent, security} = params;
+	const cores = params.cores || 1;
     const player = ns.getPlayer();
     const server = ns.getServer(target);
-    if (difficulty !== undefined) {
-        server.hackDifficulty = server.minDifficulty + difficulty;
+    if (security !== undefined) {
+        server.hackDifficulty = server.minDifficulty + security;
     }
 
     const growTime = ns.formulas.hacking.growTime(server, player);
-    const growPercent = (1 / (1 - moneyPercent));
-    // const growPercentPerThread = ns.formulas.hacking.growPercent(server, 1, player, cores);
-    // const growThreads = Math.ceil((growPercent-1) / (growPercentPerThread-1)) + 1;
-	const growThreads = calculateGrowThreads(ns, target, player, moneyPercent);
+    const growPercent = (1 / moneyPercent);
+    const growPercentPerThread = ns.formulas.hacking.growPercent(server, 1, player, cores);
+    const growThreads = Math.ceil((growPercent-1) / (growPercentPerThread-1)) + 1;
+	const effectivePercent = ns.formulas.hacking.growPercent(server, growThreads, player, cores);
+	// const [growThreads, effectivePercent] = calculateGrowThreads(ns, target, player, cores, moneyPercent);
     const growSecurity = ns.growthAnalyzeSecurity(growThreads);
 
 	return makeJob({
 		...params,
 		script: GROW,
+		func: 'grow',
 		threads: growThreads,
 		security: growSecurity,
-		money: growPercent,
+		moneyMult: effectivePercent,
 		time: growTime
 	});
 }
 
-export function calculateGrowThreads(ns, server, playerObject, moneyPct) {
+export function calculateGrowThreads(ns, server, playerObject, cores, moneyPct) {
 	// iteratively find the number of grow threads needed.
 	// slower but more accurate than estimation with (moneyPct-1) / (growPercentPerThread-1)
-	let cores = 1;
     let threads = 1;
     let newMoney = 0;
 
     let serverObject = ns.getServer(server);
     serverObject.hackDifficulty = serverObject.minDifficulty;
-    serverObject.moneyAvailable = serverObject.moneyMax * (1 - moneyPct);
+    serverObject.moneyAvailable = serverObject.moneyMax * moneyPct;
+	let serverGrowth;
 
     while (true) {
-        let serverGrowth = ns.formulas.hacking.growPercent(serverObject, threads, playerObject, cores);
+        serverGrowth = ns.formulas.hacking.growPercent(serverObject, threads, playerObject, cores);
         newMoney = (serverObject.moneyAvailable + threads) * serverGrowth;
         if (newMoney >= serverObject.moneyMax)
             break;
         threads++;
     }
 
-    return threads;
+    return [threads, serverGrowth];
 }
 
 export function makeJob(params) {
-	const {script, target, threads, security, money, time, endTime, reserveRam} = params;
+	const {script, func, target, threads, security, moneyMult, time, endTime} = params;
+	const args = [target];
 	const job = {
-		script: script,
-		args: [target],
-		threads: threads,
-		security: security,
-		money: money,
-		time: time
+		script,
+		func,
+		args,
+		threads,
+		security,
+		moneyMult,
+		time,
 	};
 	if (endTime !== undefined) {
 		job.endTime = endTime;
 		job.startTime = endTime - time;
-		if (reserveRam) {
+		if (params.reserveRam) {
 			job.args.push('--startTime');
 			job.args.push(job.startTime);
 		}

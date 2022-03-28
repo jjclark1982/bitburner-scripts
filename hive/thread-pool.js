@@ -27,7 +27,7 @@ export async function main(ns) {
         {threads: 20},
         {threads: 30},
         {threads: 40},
-        {threads: 50, freeTime: Date.now() - 60*1000}
+        {threads: 50, freeTime: Date.now() + 1000}
     ];
     await threadPool.getWorkers(spec);
     await ns.asleep(2000);
@@ -56,9 +56,9 @@ export class ThreadPool {
     async work() {
         const {ns} = this;
         while(true) {
-            await ns.asleep(200);
             ns.clearLog();
             ns.print(this.report());
+            await ns.asleep(200);
         }
     }
 
@@ -113,26 +113,34 @@ export class ThreadPool {
         const {ns, portNum} = this;
 
         threads = Math.ceil(threads);
-        const workerID = this.nextWorkerID++;
+        let workerID = this.nextWorkerID++;
         const script = getScriptWithCapabilities(capabilities);
         if (!script) {
             this.logWarn(`Failed to start worker with ${threads} threads: No script capable of ${JSON.stringify(capabilities)}.`);
             return null;
         }
-        const args = ["--port", portNum, "--id", workerID];
         const scriptRam = ns.getScriptRam(script, 'home');
         const neededRam = scriptRam * threads;
     
         const pool = new ServerPool(ns, scriptRam);
-        const pid = await pool.runOnSmallest({script, threads, args, roundUpThreads: 4});
-
-        if (!pid) {
+        const server = pool.smallestServersWithThreads(threads)[0];
+        if (!server) {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
         }
-        this.workers[workerID] ||= {};
+        // workerID = `${server.hostname}-${workerID}`;
+        if ((server.availableThreads - threads < 4) || (threads > server.availableThreads / 2)) {
+            threads = server.availableThreads;
+        }
+        const args = ["--port", portNum, "--id", workerID];
+        const pid = await pool.runOnSmallest({script, threads, args});
+
+        if (!pid) {
+            this.logWarn(`Failed to start worker ${workerID}.`);
+            return null;
+        }
+        this.workers[workerID] ||= {id: workerID};
         const worker = this.workers[workerID];
-        worker.id = workerID;
         worker.process = ns.getRunningScript(pid);
         this.logInfo(`Running worker ${workerID} with ${worker.process.threads} threads on ${worker.process.server}.`);
         return worker;
@@ -151,10 +159,15 @@ export class ThreadPool {
     report() {
         const lines = [
             ' Worker │ Threads │ Queue │  Task  │     Elapsed Time      │    Remaining Time',
-            '────────┼─────────┼───────┼────────┼───────────────────────┼──────────────────────'
+            '────────┼─────────┼───────┼────────┼───────────────────────┼───────────────────────'
         ];
-        for (const worker of Object.values(this.workers)) {
-            lines.push(worker.report());
+        for (const [id, worker] of Object.entries(this.workers)) {
+            if (worker.report) {
+                lines.push(worker.report());
+            }
+            else {
+                lines.push(id);
+            }
         }
         lines.push(' ');
         return lines.join("\n");

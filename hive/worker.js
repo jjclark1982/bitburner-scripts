@@ -28,42 +28,19 @@ class Worker {
         this.verbose = flags.verbose;
         this.capabilities = capabilities;
         this.pool = ns.getPortHandle(flags.port).peek();
-        this.process = this.pool.workers[id]?.process;
         this.nextFreeTime = Date.now();
         this.jobQueue = [];
         this.currentJob = {
             startTime: Date.now()
         };
         this.running = true;
+        this.process = this.pool.workers[id]?.process;
 
         this.pool.workers[id] = this;
 
         ns.atExit(this.stop.bind(this));
 
         this.logInfo(`Worker ${this.id} started.`);
-    }
-
-    logInfo(...args) {
-        const {ns} = this;
-        if (this.verbose) {
-            ns.tprint(...args);
-        }
-        else {
-            ns.print(...args);
-        }
-    }
-
-    report() {
-        const ns = this.pool.ns; // use other process to format text during task
-        const now = Date.now();
-        return sprintf(" %6d │ %7s │ %5d │ %6s │ %21s │ %21s",
-            this.id,
-            ns.nFormat(this.process.threads, "0,0"),
-            this.jobQueue.length,
-            this.currentJob.func || '',
-            this.currentJob.startTime ? ns.tFormat(now - this.currentJob.startTime) : '',
-            this.currentJob.endTime ? ns.tFormat(this.currentJob.endTime - now) : ''
-        );
     }
 
     async work() {
@@ -95,11 +72,39 @@ class Worker {
         const job = this.jobQueue.shift(); // are we sure that it is the next one? double check start time
         const {func, args, startTime, endTime} = job;
         this.currentJob = job;
-        ns.tprint(`Worker ${this.id} started ${func}. (${job.startTime - Date.now()} ms)`);
+        this.logInfo(`Worker ${this.id} started ${func}. (${timeError(Date.now(), job.startTime)})`);
         await this.capabilities[func](...args);
         this.currentJob = {
             startTime: Date.now()
         };
-        ns.tprint(`Worker ${this.id} finished ${func}. (${job.endTime - Date.now()} ms)`);
+        this.logInfo(`Worker ${this.id} finished ${func}. (${timeError(Date.now(), job.endTime)})`);
     }
+
+    logInfo(...args) {
+        const {ns} = this;
+        if (this.verbose) {
+            ns.tprint(...args);
+        }
+        else {
+            ns.print(...args);
+        }
+    }
+
+    report() {
+        const ns = this.pool.ns; // use other process to format text during task
+        const now = Date.now();
+        return sprintf(" %6s │ %7s │ %5d │ %6s │ %21s │ %21s",
+            this.id,
+            ns.nFormat(this.process.threads, "0,0"),
+            this.jobQueue.length,
+            this.currentJob.func || '',
+            this.currentJob.startTime ? ns.tFormat(now - this.currentJob.startTime) : '',
+            this.currentJob.endTime ? ns.tFormat(this.currentJob.endTime - now) : ''
+        );
+    }
+}
+
+function timeError(actual, expected) {
+    const tErr = actual - expected;
+    return `${tErr > 0 ? '+' : ''}${tErr} ms`;
 }

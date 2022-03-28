@@ -109,7 +109,7 @@ export class ServerPool {
         return this.servers.filter((server)=>(
             server.availableThreads >= threads
         )).sort((a,b)=>(
-            a.availableThreads - b.availableThreads
+            a.maxRam - b.maxRam
         ));
     }
 
