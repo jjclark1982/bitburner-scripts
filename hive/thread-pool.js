@@ -1,7 +1,8 @@
 import { ServerPool } from "hive/server-pool.js";
 
 const FLAGS = [
-    ["port", 1]
+    ["port", 1],
+    ["verbose", false]
 ];
 
 const SCRIPT_CAPABILITIES = {
@@ -18,7 +19,7 @@ export async function main(ns) {
 
     const flags = ns.flags(FLAGS);
 
-    const threadPool = new ThreadPool(ns, flags.port);
+    const threadPool = new ThreadPool(ns, flags.port, flags.verbose);
     window.db = threadPool;
     
     const spec = [
@@ -36,7 +37,7 @@ export async function main(ns) {
 }
 
 export class ThreadPool {
-    constructor(ns, portNum) {    
+    constructor(ns, portNum, verbose) {    
         this.ns = ns;
         this.portNum = portNum;
         this.process = ns.getRunningScript();
@@ -53,8 +54,11 @@ export class ThreadPool {
     }
 
     async work() {
+        const {ns} = this;
         while(true) {
-            await this.ns.asleep(1000);
+            await ns.asleep(200);
+            ns.clearLog();
+            ns.print(this.report());
         }
     }
 
@@ -112,7 +116,7 @@ export class ThreadPool {
         const workerID = this.nextWorkerID++;
         const script = getScriptWithCapabilities(capabilities);
         if (!script) {
-            ns.print(`Failed to start worker with ${threads} threads: No script capable of ${JSON.stringify(capabilities)}.`);
+            this.logWarn(`Failed to start worker with ${threads} threads: No script capable of ${JSON.stringify(capabilities)}.`);
             return null;
         }
         const args = ["--port", portNum, "--id", workerID];
@@ -123,15 +127,37 @@ export class ThreadPool {
         const pid = await pool.runOnSmallest({script, threads, args, roundUpThreads: 4});
 
         if (!pid) {
-            ns.print(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
+            this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
         }
         this.workers[workerID] ||= {};
         const worker = this.workers[workerID];
         worker.id = workerID;
         worker.process = ns.getRunningScript(pid);
-        ns.print(`Running worker ${workerID} with ${worker.process.threads} threads on ${worker.process.server}.`);
+        this.logInfo(`Running worker ${workerID} with ${worker.process.threads} threads on ${worker.process.server}.`);
         return worker;
+    }
+
+    logWarn(...args) {
+        this.ns.tprint(...args);
+    }
+
+    logInfo(...args) {
+        if (this.verbose) {
+            this.ns.tprint(...args);
+        }
+    }
+
+    report() {
+        const lines = [
+            ' Worker │ Threads │ Queue │  Task  │     Elapsed Time      │    Remaining Time',
+            '────────┼─────────┼───────┼────────┼───────────────────────┼──────────────────────'
+        ];
+        for (const worker of Object.values(this.workers)) {
+            lines.push(worker.report());
+        }
+        lines.push(' ');
+        return lines.join("\n");
     }
 }
 
@@ -142,13 +168,4 @@ function getScriptWithCapabilities(capabilities) {
         }
     }
     return null;
-}
-
-function getSmallestServerWithRam(ns, scriptRam, threads) {
-    const servers = getServerPool({ns, scriptRam}).filter((server)=>(
-        server.availableThreads >= threads
-    )).sort((a,b)=>(
-        a.availableThreads - b.availableThreads
-    ));
-    return servers[0];
 }
