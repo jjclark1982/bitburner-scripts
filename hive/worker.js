@@ -5,6 +5,8 @@ const FLAGS = [
 
 /** @param {NS} ns **/
 export async function main(ns) {
+    ns.disableLog("asleep");
+
     // List the functions this worker is capable of, for RAM calculation.
     const capabilities = {
         "hack": ns.hack,
@@ -42,7 +44,7 @@ class Worker {
             // await ns.asleep(this.nextFreeTime + 1000 - Date.now());
             // this.nextFreeTime = Math.max(this.nextFreeTime, Date.now());
         }
-        this.pool.ns.print(`Worker ${this.id} stopping.`);
+        this.ns.print(`Worker ${this.id} stopping.`);
     }
 
     stop() {

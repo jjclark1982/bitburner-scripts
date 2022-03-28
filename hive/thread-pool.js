@@ -1,12 +1,11 @@
-import { runMaxThreadsOnHost, getAllHosts } from "net/lib.js";
-import { getServerPool } from "batch/pool.js";
+import { ServerPool } from "hive/server-pool.js";
 
 const FLAGS = [
     ["port", 1]
 ];
 
 const SCRIPT_CAPABILITIES = {
-    "/hive/worker.js": ['hack', 'grow', 'weaken'];
+    "/hive/worker.js": ['hack', 'grow', 'weaken']
 };
 
 /** @param {NS} ns **/
@@ -36,8 +35,8 @@ export async function main(ns) {
     await threadPool.work();
 }
 
-class ThreadPool {
-    constructor(ns, portNum) {        
+export class ThreadPool {
+    constructor(ns, portNum) {    
         this.ns = ns;
         this.portNum = portNum;
         this.process = ns.getRunningScript();
@@ -61,6 +60,7 @@ class ThreadPool {
 
     stop() {
         for (const worker of Object.values(this.workers)) {
+            console.log("stopping worker", worker);
             worker.running = false;
         }
         this.ns.getPortHandle(this.portNum).clear();
@@ -119,22 +119,18 @@ class ThreadPool {
         const scriptRam = ns.getScriptRam(script, 'home');
         const neededRam = scriptRam * threads;
     
-        const server = getSmallestServerWithRam(ns, scriptRam, threads);
-        if (!server) {
+        const pool = new ServerPool(ns, scriptRam);
+        const pid = await pool.runOnSmallest({script, threads, args, roundUpThreads: 4});
+
+        if (!pid) {
             ns.print(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
         }
-        await ns.scp(script, 'home', server.hostname);
-        if (server.availableThreads - threads < 4) {
-            threads = server.availableThreads;
-        }
-    
-        const pid = ns.exec(script, server.hostname, threads, ...args);
         this.workers[workerID] ||= {};
         const worker = this.workers[workerID];
         worker.id = workerID;
         worker.process = ns.getRunningScript(pid);
-        ns.print(`Created worker ${workerID} with ${threads} threads on ${server.hostname}.`);
+        ns.print(`Running worker ${workerID} with ${worker.process.threads} threads on ${worker.process.server}.`);
         return worker;
     }
 }
