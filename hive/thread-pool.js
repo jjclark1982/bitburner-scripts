@@ -75,8 +75,8 @@ export class ThreadPool {
         // Returns an array of Worker objects if all specs could be satisfied.
         // Returns null if any spec could not be satisfied.
         const workers = {};
-        for (const {threads, freeTime, capabilities} of specs) {
-            const worker = await this.getWorker(threads, freeTime, capabilities, workers);
+        for (const spec of specs) {
+            const worker = await this.getWorker({...spec, exclude:workers});
             if (!worker) {
                 return null;
             }
@@ -85,16 +85,18 @@ export class ThreadPool {
         return workers;
     }
 
-    async getWorker(threads, freeTime, capabilities=[], exclude={}) {
+    async getWorker({threads, startTime, func, exclude}) {
         // Get a new or existing worker with the requested specs:
         // - has at least `threads` threads
-        // - has every capability listed in `capabilities`,
-        // - is available after `freeTime`
-        freeTime ||= Date.now();
+        // - has capability to perform the function `func`,
+        // - is available by `startTime`
+        exclude ||= {};
+        startTime ||= Date.now();
+        const capabilities = func ? [func] : [];
         const matchingWorkers = Object.values(this.workers).filter((worker)=>(
             !exclude[worker.id] && 
             worker.process.threads >= threads &&
-            worker.nextFreeTime < freeTime &&
+            worker.nextFreeTime < startTime &&
             capabilities.every((func)=>func in worker.capabilities)
         )).sort((a,b)=>(
             a.threads - b.threads

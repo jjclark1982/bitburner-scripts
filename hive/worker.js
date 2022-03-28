@@ -95,7 +95,7 @@ class Worker {
         const now = Date.now();
         return sprintf(" %6s │ %7s │ %5d │ %6s │ %21s │ %21s",
             this.id,
-            ns.nFormat(this.process.threads, "0,0"),
+            this.process ? ns.nFormat(this.process.threads || 0, "0,0") : '',
             this.jobQueue.length,
             this.currentJob.func || '',
             this.currentJob.startTime ? ns.tFormat(now - this.currentJob.startTime) : '',

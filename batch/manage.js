@@ -98,7 +98,7 @@ export async function runHWGW(params) {
     if (t0_by_target[params.target] === undefined) {
         const w0Job = planWeaken(params);
         await runBatchOnPool({ns}, [w0Job]);
-        t0_by_target[params.target] = Date.now() + w0Job.time;
+        t0_by_target[params.target] = Date.now() + w0Job.duration;
     }
     const t0 = t0_by_target[params.target];
 
