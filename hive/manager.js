@@ -31,16 +31,7 @@ export async function main(ns) {
 
     const batch = planHWGW({ns, target, moneyPercent, tDelta})
 
-    const workers = await threadPool.getWorkers(batch);
-    if (!workers) {
-        ns.tprint(`Failed to allocate workers for batch.`);
-        return;
-    }
-    for (let i = 0; i < batch.length; i++) {
-        const job = batch[i];
-        const worker = Object.values(workers)[i];
-        worker.addJob(job);
-    }
+    await threadPool.dispatchJobs(batch);
 
     ns.print("batch:", JSON.stringify(batch, null, 2));
     ns.tail();
