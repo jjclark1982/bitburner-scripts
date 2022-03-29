@@ -3,23 +3,28 @@ export async function main(ns) {
     const columns = [
         {header: "Name ", field: "name", align: "center"},
         {header: "Count", field: "count"},
-        {header: "Status     ", field: "status", align: "left"},
-        {header: "Status     ", field: "time", format: drawTable.time}
+        {header: "Status", field: "status", align: "left", truncate: true},
+        {header: "Time       ", field: "time", format: drawTable.time}
     ];
     const rows = [
         {name: "A", count: 2},
         {name: "B", count: 10},
         {name: "C", status: "idle"},
-        {name: "D", time: Date.now()}
+        {name: "D", time: Date.now()},
+        {name: "E", status: "longer_status"}
     ];
     ns.tprint("\n" + drawTable(columns, rows));
 }
 
 /*
-columns: {width, header, field, format}
+columns: {width, header, field, format, align, truncate}
 rows: obj with each [field]
 */
 export function drawTable(columns, rows) {
+    for (const col of columns) {
+        col.width ||= col.header.length;
+    }
+    
     let lines = [];
     lines.push(drawHR(columns, ['┌', '┬', '─', '┐']));
 
@@ -39,7 +44,11 @@ export function drawTable(columns, rows) {
             else if (typeof(col.format) == 'function') {
                 val = col.format(val, ...(col.formatArgs||[]));
             }
-            return pad(`${val || ''}`, col.width, ' ', col.align || 'right')
+            val = pad(`${val || ''}`, col.width, ' ', col.align || 'right');
+            if (col.truncate && val.length > col.width) {
+                val = val.substring(0,col.width-1) + "…";
+            }
+            return val;
         });
         lines.push('│ ' + values.join(' │ ') + ' │');
     }
@@ -53,7 +62,6 @@ function drawHR(columns, glyphs=['└', '┴', '─', '┘']) {
     let line = glyphs[0];
     const segments = [];
     for (const col of columns) {
-        col.width ||= col.header.length;
         const segment = pad('', col.width+2, glyphs[2]);
         segments.push(segment);
     }
