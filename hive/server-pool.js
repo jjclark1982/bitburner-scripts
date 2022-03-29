@@ -186,7 +186,11 @@ export class ServerPool {
         if (this.totalThreads < threadsNeeded && requireAll) {
             this.logWarn(`Not enough RAM in server pool to run entire job: ${threads}x ${script} ${args}`);
         }
-        for (const server of this.largestServers()) {
+        let servers = this.smallestServersWithThreads(threads);
+        if (servers.length == 0) {
+            servers = this.largestServers();
+        }
+        for (const server of servers) {
             const threadsToUse = Math.min(threadsNeeded, server.availableThreads);
             if (threadsToUse > 0) {
                 await this.runOnServer({server, script, threads:threadsToUse, args});
