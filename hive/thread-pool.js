@@ -187,6 +187,7 @@ export class ThreadPool {
             {header: " Task ", field: "task"},
             {header: " Elapsed", field: "elapsedTime", format: "time"},
             {header: "Remaining", field: "remainingTime", format: "time", precision: 2},
+            {header: " Drift ", field: "drift" }
         ];
         const rows = Object.values(this.workers).map((worker)=>worker.report(now));
         return drawTable(columns, rows);

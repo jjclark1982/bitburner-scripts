@@ -75,12 +75,12 @@ class Worker {
         const job = this.jobQueue.shift(); // are we sure that it is the next one? double check start time
         const {func, args, startTime, endTime} = job;
         this.currentJob = job;
-        this.logInfo(`Worker ${this.id} started ${func}. (${timeError(Date.now(), job.startTime)})`);
+        this.drift = Date.now() - job.startTime;
         await this.capabilities[func](...args);
         this.currentJob = {
             startTime: Date.now()
         };
-        this.logInfo(`Worker ${this.id} finished ${func}. (${timeError(Date.now(), job.endTime)})`);
+        this.drift = Date.now() - job.endTime;
     }
 
     logInfo(...args) {
@@ -133,11 +133,7 @@ class Worker {
             task: this.currentJob.func,
             elapsedTime: this.elapsedTime(now),
             remainingTime: this.remainingTime(now),
+            drift: this.drift ? this.drift.toFixed(0) + ' ms' : ''
         };
     }
-}
-
-function timeError(actual, expected) {
-    const tErr = actual - expected;
-    return `${tErr > 0 ? '+' : ''}${tErr} ms`;
 }
