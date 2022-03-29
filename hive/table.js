@@ -1,13 +1,16 @@
-
 export async function main(ns) {
+    // Print an example table to demonstrate functionality.
     const columns = [
-        {header: "Name", field: "name", align: "left"},
-        {header: "Count", field: "count"}
+        {header: "Name ", field: "name", align: "center"},
+        {header: "Count", field: "count"},
+        {header: "Status     ", field: "status", align: "left"},
+        {header: "Status     ", field: "time", format: drawTable.time}
     ];
     const rows = [
         {name: "A", count: 2},
         {name: "B", count: 10},
-        {name: "C"}
+        {name: "C", status: "idle"},
+        {name: "D", time: Date.now()}
     ];
     ns.tprint("\n" + drawTable(columns, rows));
 }
@@ -18,11 +21,11 @@ rows: obj with each [field]
 */
 export function drawTable(columns, rows) {
     let lines = [];
-    lines.push(drawHR(columns, ['┏', '┳', '━', '┓']));
+    lines.push(drawHR(columns, ['┌', '┬', '─', '┐']));
 
-    lines.push('┃ ' + columns.map((c)=>c.header).join(' ┃ ') + ' ┃');
+    lines.push('│ ' + columns.map((c)=>c.header).join(' │ ') + ' │');
 
-    lines.push(drawHR(columns, ['┡', '╇', '━', '┩']));
+    lines.push(drawHR(columns, ['├', '┼', '─', '┤']));
 
     for (const row of rows) {
         const values = columns.map((col)=>{
