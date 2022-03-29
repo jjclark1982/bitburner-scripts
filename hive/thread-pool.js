@@ -182,11 +182,11 @@ export class ThreadPool {
         const now = Date.now();
         const columns = [
             {header: "Worker", field: "id"},
-            {header: "Threads", field: "threads", format: "fraction"},
+            {header: "Threads", field: "threads", format: [this.ns.nFormat], formatArgs: ["0a"]},
             {header: "Queue", field: "queue"},
             {header: " Task ", field: "task"},
-            {header: " Elapsed", field: "elapsedTime", format: "time"},
-            {header: "Remaining", field: "remainingTime", format: "time", precision: 2},
+            {header: " Elapsed", field: "elapsedTime", format: drawTable.time},
+            {header: "Remaining", field: "remainingTime", format: drawTable.time, formatArgs: [2]},
             {header: " Drift ", field: "drift" }
         ];
         const rows = Object.values(this.workers).map((worker)=>worker.report(now));

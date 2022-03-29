@@ -27,11 +27,14 @@ export function drawTable(columns, rows) {
     for (const row of rows) {
         const values = columns.map((col)=>{
             let val = row[col.field];
-            if (col.format == 'time') {
-                val = formatTime(val, col.precision);
+            if (Array.isArray(col.format)) {
+                const vals = (val || []).map((v)=>(
+                    col.format[0](v, ...(col.formatArgs||[]))
+                ));
+                val = formatFraction(vals);
             }
-            else if (col.format == 'fraction') {
-                val = formatFraction(val);
+            else if (typeof(col.format) == 'function') {
+                val = col.format(val, ...(col.formatArgs||[]));
             }
             return pad(`${val || ''}`, col.width, ' ', col.align || 'right')
         });
@@ -77,7 +80,7 @@ function pad(str, length, filler=' ', align='right') {
     return str;
 }
 
-function formatTime(timeMS, precision=0) {
+export function formatTime(timeMS, precision=0) {
     if (!timeMS) {
         return '';
     }
@@ -98,8 +101,10 @@ function formatTime(timeMS, precision=0) {
     }
     return timeStr;
 }
+drawTable.time = formatTime;
 
-function formatFraction(fraction) {
+export function formatFraction(fraction) {
     const values = fraction.filter((val)=>!!val);
     return values.join(" / ");
 }
+drawTable.fraction = formatFraction;
