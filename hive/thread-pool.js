@@ -69,6 +69,21 @@ export class ThreadPool {
         this.ns.getPortHandle(this.portNum).clear();
     }
 
+    async dispatchJobs(batch) {
+        const workers = await this.getWorkers(batch);
+        if (!workers) {
+            ns.tprint(`Failed to allocate workers for batch.`);
+            return;
+        }
+        for (const job of batch) {
+            await this.dispatchJob(job);
+        }
+    }
+
+    async dispatchJob(job) {
+        return await this.getWorker(job)?.addJob(job);
+    }
+
     async getWorkers(specs) {
         // Get a block of workers matching certain specs.
         // Returns an array of Worker objects if all specs could be satisfied.
@@ -100,8 +115,9 @@ export class ThreadPool {
         )).sort((a,b)=>(
             a.threads - b.threads
         ));
-        if (matchingWorkers.length > 0) {
-            return matchingWorkers[0];
+        const worker = matchingWorkers[0];
+        if (worker) {
+            return worker;
         }
         else {
             return await this.spawnWorker(threads, capabilities);
@@ -123,28 +139,28 @@ export class ThreadPool {
         const scriptRam = ns.getScriptRam(script, 'home');
         const neededRam = scriptRam * threads;
     
-        const pool = new ServerPool(ns, scriptRam);
-        const server = pool.smallestServersWithThreads(threads)[0];
+        const serverPool = new ServerPool(ns, scriptRam);
+        const server = serverPool.smallestServersWithThreads(threads)[0];
         if (!server) {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
         }
-        // workerID = `${server.hostname}-${workerID}`;
         if ((server.availableThreads - threads < 4) || (threads > server.availableThreads / 2)) {
+            // workerID = `${server.hostname}-${workerID}`;
             threads = server.availableThreads;
         }
         const args = ["--port", portNum, "--id", workerID];
-        const pid = await pool.runOnSmallest({script, threads, args});
+        const pid = await serverPool.runOnServer({server, script, threads, args});
 
         if (!pid) {
             this.logWarn(`Failed to start worker ${workerID}.`);
             return null;
         }
-        while (!this.workers[workerID]) {
-            // TODO: handle failure here
+        if (!this.workers[workerID]) {
+            // Give the process a moment to launch.
             await ns.asleep(100);
         }
-        this.workers[workerID] ||= {id: workerID};
+        this.workers[workerID] ||= {id: workerID}; // Create a placeholder if necessary.
         const worker = this.workers[workerID];
         worker.process = ns.getRunningScript(pid);
         this.logInfo(`Running worker ${workerID} with ${worker.process.threads} threads on ${worker.process.server}.`);

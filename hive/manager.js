@@ -44,8 +44,6 @@ export async function main(ns) {
 
     ns.print("batch:", JSON.stringify(batch, null, 2));
     ns.tail();
-
-    threadPool.get
 }
 
 
@@ -70,6 +68,8 @@ export function planHWGW(params) {
 
     for (const job of batch) {
         job.args.push({threads: job.threads});
+        // TODO: set {stock: true} for grow jobs if we hold a long position
+        //       set {stock: true} for hack jobs if we hold a short position
     }
 
     t0_by_target[target] = w2Job.endTime + tDelta;

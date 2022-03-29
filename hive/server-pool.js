@@ -138,7 +138,7 @@ export class ServerPool {
         return poolInfo.join('\n');
     }
 
-    async runScript({server, script, threads, args}) {
+    async runOnServer({server, script, threads, args}) {
         const {ns} = this;
         if (!server) {
             this.logWarn(`No suitable server to run ${script}`);
@@ -164,7 +164,7 @@ export class ServerPool {
             this.logInfo(`Rounding up threads from ${threads} to ${server.availableThreads}`)
             threads = server.availableThreads;
         }
-        return await this.runScript({server, script, threads, args})
+        return await this.runOnServer({server, script, threads, args})
     }
 
     async runOnLargest({script, args, reservedRam}) {
@@ -177,7 +177,7 @@ export class ServerPool {
         const scriptRam = ns.getScriptRam(script, 'home');
         let availableRam = server.maxRam - server.ramUsed - reservedRam;
         const threads = Math.floor(availableRam / scriptRam);
-        return await this.runScript({server, script, threads, args});
+        return await this.runOnServer({server, script, threads, args});
     }
 
     async runDistributed({script, threads, args, requireAll}) {
@@ -189,7 +189,7 @@ export class ServerPool {
         for (const server of this.largestServers()) {
             const threadsToUse = Math.min(threadsNeeded, server.availableThreads);
             if (threadsToUse > 0) {
-                await this.runScript({server, script, threads:threadsToUse, args});
+                await this.runOnServer({server, script, threads:threadsToUse, args});
                 threadsNeeded -= threadsToUse;
             }
             if (threadsNeeded <= 0) {
