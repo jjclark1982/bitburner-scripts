@@ -4,7 +4,7 @@ export async function main(ns) {
         for (let i = 0; i < ns.args.length; i += 2) {
             const x = ns.args[i];
             const y = ns.args[i+1];
-            await ns.stanek.charge(x, y);
+            await ns.stanek.chargeFragment(x, y);
         }
     }
 }

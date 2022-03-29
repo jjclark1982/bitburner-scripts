@@ -1,13 +1,15 @@
 /** @param {NS} ns **/
 export async function main(ns) {
-    const fragments = ns.stanek.activeFragments();
+    // const fragments = ns.stanek.activeFragments();
 
-    for (const fragment of fragments) {
-        ns.stanek.remove(fragment.x, fragment.y);
-    }
+    // for (const fragment of fragments) {
+    //     ns.stanek.removeFragment(fragment.x, fragment.y);
+    // }
+
+    ns.stanek.clearGift();
 
     for (const fragment of hackingSpec7) {
-      ns.stanek.place(fragment.x, fragment.y, fragment.rotation, fragment.id);
+      ns.stanek.placeFragment(fragment.x, fragment.y, fragment.rotation, fragment.id);
     }
 }
 
