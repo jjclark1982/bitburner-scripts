@@ -9,8 +9,10 @@ export async function main(ns) {
     const fragments = ns.stanek.activeFragments();
     const xy = [];
     for (const fragment of fragments) {
-        xy.push(fragment.x);
-        xy.push(fragment.y);
+        if (fragment.limit == 1) {
+            xy.push(fragment.x);
+            xy.push(fragment.y);
+        }
     }
 
     const host = ns.args[0] || getBiggestHost(ns);
