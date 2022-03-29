@@ -1,4 +1,5 @@
 import { ServerPool } from "hive/server-pool.js";
+import { drawTable } from "hive/table.js";
 
 const FLAGS = [
     ["port", 1],
@@ -179,20 +180,16 @@ export class ThreadPool {
 
     report() {
         const now = Date.now();
-        const lines = [
-            ' Worker │  Threads  │ Queue │  Task  │  Elapsed │ Remaining',
-            '────────┼───────────┼───────┼────────┼──────────┼────────────'
+        const columns = [
+            {header: "Worker", field: "id"},
+            {header: "Threads", field: "threads", format: "fraction"},
+            {header: "Queue", field: "queue"},
+            {header: " Task ", field: "task"},
+            {header: " Elapsed", field: "elapsedTime", format: "time"},
+            {header: "Remaining", field: "remainingTime", format: "time", precision: 2},
         ];
-        for (const [id, worker] of Object.entries(this.workers)) {
-            if (worker.report) {
-                lines.push(worker.report(now));
-            }
-            else {
-                lines.push(id);
-            }
-        }
-        lines.push(' ');
-        return lines.join("\n");
+        const rows = Object.values(this.workers).map((worker)=>worker.report(now));
+        return drawTable(columns, rows);
     }
 }
 
