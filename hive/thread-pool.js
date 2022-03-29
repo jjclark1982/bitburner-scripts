@@ -82,7 +82,11 @@ export class ThreadPool {
     }
 
     async dispatchJob(job) {
-        return await this.getWorker(job)?.addJob(job);
+        if (job.threads == 0) {
+            return true;
+        }
+        const worker = await this.getWorker(job);
+        return worker?.addJob(job);
     }
 
     async getWorkers(specs) {
@@ -91,6 +95,9 @@ export class ThreadPool {
         // Returns null if any spec could not be satisfied.
         const workers = {};
         for (const spec of specs) {
+            if (spec.threads == 0) {
+                continue;
+            }
             const worker = await this.getWorker({...spec, exclude:workers});
             if (!worker) {
                 return null;
@@ -164,7 +171,7 @@ export class ThreadPool {
         this.workers[workerID] ||= {id: workerID}; // Create a placeholder if necessary.
         const worker = this.workers[workerID];
         worker.process = ns.getRunningScript(pid);
-        this.logInfo(`Running worker ${workerID} with ${worker.process.threads} threads on ${worker.process.server}.`);
+        this.logInfo(`Running worker ${workerID} with ${threads} threads on ${server.hostname}.`);
         return worker;
     }
 

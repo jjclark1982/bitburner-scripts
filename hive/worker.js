@@ -24,23 +24,21 @@ class Worker {
         const id = flags.id;
 
         this.id = id;
-        this.ns = ns;
-        this.verbose = flags.verbose;
-        this.capabilities = capabilities;
-        this.pool = ns.getPortHandle(flags.port).peek();
+        this.ns = ns;        this.capabilities = capabilities;
         this.nextFreeTime = Date.now();
         this.jobQueue = [];
         this.currentJob = {
             startTime: Date.now()
         };
         this.running = true;
+        this.pool = ns.getPortHandle(flags.port).peek();
         this.process = this.pool.workers[id]?.process;
 
         this.pool.workers[id] = this;
 
         ns.atExit(this.stop.bind(this));
 
-        this.logInfo(`Worker ${this.id} started.`);
+        this.ns.print(`Worker ${this.id} started.`);
     }
 
     async work() {
@@ -49,7 +47,7 @@ class Worker {
             // await ns.asleep(this.nextFreeTime + 1000 - Date.now());
             // this.nextFreeTime = Math.max(this.nextFreeTime, Date.now());
         }
-        this.logInfo(`Worker ${this.id} stopping.`);
+        this.ns.print(`Worker ${this.id} stopping.`);
     }
 
     stop() {
@@ -65,32 +63,25 @@ class Worker {
         if (job.startTime <= Math.max(now, this.nextFreeTime)) {
             return false;
         }
+        if (!job.endTime && job.duration) {
+            job.endTime = job.startTime + job.duration
+        }
         this.jobQueue.push(job);
         this.nextFreeTime = job.endTime;
-        setTimeout(this.runJob.bind(this), job.startTime - now);
+        setTimeout(this.startNextJob.bind(this), job.startTime - now);
         return true;
     }
 
-    async runJob() {
-        const job = this.jobQueue.shift(); // are we sure that it is the next one? double check start time
+    async startNextJob() {
+        const job = this.jobQueue.shift();
         const {func, args, startTime, endTime} = job;
         this.currentJob = job;
         this.drift = Date.now() - job.startTime;
         await this.capabilities[func](...args);
+        this.drift = Date.now() - job.endTime;
         this.currentJob = {
             startTime: Date.now()
         };
-        this.drift = Date.now() - job.endTime;
-    }
-
-    logInfo(...args) {
-        const {ns} = this;
-        if (this.verbose) {
-            ns.tprint(...args);
-        }
-        else {
-            ns.print(...args);
-        }
     }
 
     elapsedTime(now) {
@@ -108,9 +99,6 @@ class Worker {
         let endTime;
         if (this.currentJob.endTime) {
             endTime = this.currentJob.endTime;
-        }
-        else if (this.currentJob.startTime && this.currentJob.duration) {
-            endTime = this.currentJob.startTime + this.currentJob.duration;
         }
         else if (this.jobQueue.length > 0) {
             endTime = this.jobQueue[0].startTime;
