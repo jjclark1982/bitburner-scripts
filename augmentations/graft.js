@@ -8,15 +8,16 @@ run /augmentations/graft.js [ hacking | combat | cha | faction | blade | hacknet
 
 */
 
-import { FILTERS, getKnownAugs, totalValue } from "augmentations/plan.js";
+import { DOMAINS, getAllAugmentations, totalValue } from "augmentations/info.js";
 
 const FLAGS = [
-    ['help', false]
+    ['help', false],
+    ['begin', false]
 ];
 
 export function autocomplete(data, args) {
     data.flags(FLAGS);
-    return Object.keys(FILTERS);
+    return Object.keys(DOMAINS);
 }
 
 /** @param {NS} ns **/
@@ -32,7 +33,7 @@ export function main(ns) {
             'List the best augmentations available to graft.',
             '',
             'Usage: ',
-            `${ns.getScriptName()} [ ${Object.keys(FILTERS).join(' | ')} ... ]`,
+            `${ns.getScriptName()} [ ${Object.keys(DOMAINS).join(' | ')} ... ]`,
             ' '
         ].join("\n"));
         return;
@@ -51,7 +52,7 @@ export function main(ns) {
 }
 
 export function getGraftableAugs(ns, domains) {
-    const allAugs = Object.values(getKnownAugs(ns));
+    const allAugs = Object.values(getAllAugmentations(ns));
     const ownedAugs = ns.getOwnedAugmentations(true);
     const exclude = ["The Red Pill", "NeuroFlux Governor"];
 
@@ -63,7 +64,6 @@ export function getGraftableAugs(ns, domains) {
         aug.sortKey = (aug.totalValue-1) / aug.time;
         return aug;
     }).filter(function(aug){
-
         return (
             (!exclude.includes(aug.name)) &&
             (!ownedAugs.includes(aug.name)) //&&
@@ -89,7 +89,7 @@ export function estimateGraftValues(ns, aug) {
         // TODO: check whether 'cost' ones get inverted in future versions
     }
     aug.value = {};
-    for (const [domain, estimate] of Object.entries(FILTERS)) {
+    for (const [domain, estimate] of Object.entries(DOMAINS)) {
         aug.value[domain] = estimate(aug) * estimate(entropy);
     }
 }
@@ -108,12 +108,13 @@ export const entropyStats = {
     agility_mult: EntropyEffect,
     charisma_mult: EntropyEffect,
 
-    hacking_exp_mult: EntropyEffect,
-    strength_exp_mult: EntropyEffect,
-    defense_exp_mult: EntropyEffect,
-    dexterity_exp_mult: EntropyEffect,
-    agility_exp_mult: EntropyEffect,
-    charisma_exp_mult: EntropyEffect,
+    // exp is less important for grafting because it doesn't get reset
+    hacking_exp_mult: Math.sqrt(EntropyEffect),
+    strength_exp_mult: Math.sqrt(EntropyEffect),
+    defense_exp_mult: Math.sqrt(EntropyEffect),
+    dexterity_exp_mult: Math.sqrt(EntropyEffect),
+    agility_exp_mult: Math.sqrt(EntropyEffect),
+    charisma_exp_mult: Math.sqrt(EntropyEffect),
 
     company_rep_mult: EntropyEffect,
     faction_rep_mult: EntropyEffect,

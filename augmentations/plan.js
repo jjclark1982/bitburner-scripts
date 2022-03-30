@@ -9,26 +9,16 @@ run /augmentations/plan.js [ hacking | combat | cha | faction | blade | hacknet 
 
 */
 
+import { DOMAINS, getAllAugmentations, totalValue } from "augmentations/info.js";
+
 const FLAGS = [
     ["help", false],
     ["buy", false]
 ];
 
-export const FILTERS = {
-    "hacking":     estimateHackingValue,
-    "charisma":    estimateCharismaValue,
-    "combat":      estimateCombatValue,
-    "crime":       estimateCrimeValue,
-    "faction":     estimateFactionValue,
-    "hacknet":     estimateHacknetValue,
-    "bladeburner": estimateBladeburnerValue,
-    "neuroflux":   estimateNeurofluxValue,
-    "all":         estimateAllValue            // note that 'all' runs last so that it can refer to others
-};
-
 export function autocomplete(data, args) {
     data.flags(FLAGS);
-    return Object.keys(FILTERS);
+    return Object.keys(DOMAINS);
 }
 
 /** @param {NS} ns **/
@@ -43,7 +33,7 @@ export async function main(ns) {
             `Select augmentations to buy.`,
             '',
             'Usage: ',
-            `${ns.getScriptName()} [ ${Object.keys(FILTERS).join(' | ')} ... ] [ --buy ]`,
+            `${ns.getScriptName()} [ ${Object.keys(DOMAINS).join(' | ')} ... ] [ --buy ]`,
             '',
             `Example: See all augs that increase hacking, including NeuroFlux Governor`,
             `> run ${ns.getScriptName()} hacking neuroflux`,
@@ -55,7 +45,7 @@ export async function main(ns) {
         return;
     }
     for (const filter of filters) {
-        if (!(filter in FILTERS)) {
+        if (!(filter in DOMAINS)) {
             ns.tprint(`Unknown augmentation type: '${filter}'`);
             return;
         }
@@ -144,30 +134,9 @@ export function selectAugs(ns, filters, plannedAugs) {
 }
 
 export function getKnownAugs(ns, plannedAugs) {
-    const augs = {};
-    // Instantiate all aug objects from current factions
-    // const factions = ns.getPlayer().factions;
-    for (const faction of ALL_FACTIONS) {
-        for (const name of ns.getAugmentationsFromFaction(faction)) {
-            augs[name] ||= {};
-            const aug = augs[name]
-            aug.factions ||= {};
-            aug.factions[faction] = [ns.getFactionRep(faction), ns.getAugmentationRepReq(name)];
-        }
-    }
-    // Populate aug objects with details
+    const augs = getAllAugmentations(ns);
     for (const [name, aug] of Object.entries(augs)) {
-        aug.name = name;
-        aug.repReq = ns.getAugmentationRepReq(name);
-        aug.price = ns.getAugmentationPrice(name);  // TODO: estimate future prices with MultipleAugMultiplier = 1.9;
-        aug.stats = ns.getAugmentationStats(name);
-        aug.value = {};
-        for (const [domain, estimate] of Object.entries(FILTERS)) {
-            aug.value[domain] = estimate(aug);
-        }
-        aug.prereqs = ns.getAugmentationPrereq(aug.name);
         aug.canPurchaseFrom = canPurchaseFrom(ns, aug, plannedAugs);
-        aug.neededFactions = factionsToWork(aug);
         aug.sortKey = aug.price;
         if (aug.name == "NeuroFlux Governor") {
             aug.sortKey = 1e3;
@@ -201,168 +170,3 @@ export function canPurchaseFrom(ns, aug, plannedAugs={}) {
     }
     return null;
 }
-
-export function factionsToWork(aug) {
-    if (aug.canPurchaseFrom) {
-        return [];
-    };
-    const neededFactions = Object.entries(aug.factions).map(function([faction, [rep, repReq]]){
-        return {
-            name: faction,
-            rep: rep,
-            repNeeded: aug.repReq - rep
-        }
-    }).filter(function(faction){
-        return (faction.repNeeded > 0)
-    }).sort(function(a,b){
-        return (a.repNeeded - b.repNeeded)
-    });
-
-    return neededFactions;
-}
-
-
-// -------------------- value estimators --------------------
-
-
-export function estimateHackingValue(aug) {
-    const stats = aug.stats;
-    let value = (
-        (stats.hacking_mult || 1) *
-        (stats.hacking_exp_mult || 1) *
-        (stats.hacking_chance_mult || 1) *
-        (stats.hacking_money_mult || 1) *
-        (stats.hacking_speed_mult || 1) *
-        (stats.hacking_grow_mult || 1)
-    );
-    if (aug.name === "BitRunners Neurolink") {
-        value += 0.05;
-    }
-    if (aug.name === "CashRoot Starter Kit") {
-        value += 0.05;
-    }
-    if (aug.name === "PCMatrix") {
-        value += 0.05;
-    }
-    return value;
-}
-
-export function estimateCombatValue(aug) {
-    const stats = aug.stats;
-    return (
-        (stats.agility_exp_mult || 1) * (stats.agility_mult || 1) - 1
-        +
-        (stats.defense_exp_mult || 1) * (stats.defense_mult || 1) - 1
-        +
-        (stats.strength_exp_mult || 1) * (stats.strength_mult || 1) - 1
-        +
-        (stats.dexterity_exp_mult || 1) * (stats.dexterity_mult || 1) - 1
-        +
-        1
-    )
-}
-
-export function estimateCharismaValue(aug) {
-    const stats = aug.stats;
-    return (
-        (stats.charisma_exp_mult || 1) *
-        (stats.charisma_mult || 1)
-    )
-}
-
-export function estimateCrimeValue(aug) {
-    const stats = aug.stats;
-    return (
-        (stats.crime_money_mult || 1) * (stats.crime_success_mult || 1)
-    )
-}
-
-export function estimateFactionValue(aug) {
-    const stats = aug.stats;
-    let value = (
-        (stats.company_rep_mult || 1) - 1
-        +
-        Math.sqrt(stats.work_money_mult || 1) - 1
-        +
-        (stats.faction_rep_mult || 1) - 1
-        +
-        1
-    );
-    if (aug.name === "Neuroreceptor Management Implant") {
-        // Always get "focus" bonus
-        value *= 1 / 0.8;
-    }
-    return value;
-}
-
-export function estimateHacknetValue(aug) {
-    const stats = aug.stats;
-    return (
-        (1 / (stats.hacknet_node_purchase_cost_mult || 1)) - 1
-        +
-        (
-            (stats.hacknet_node_money_mult || 1) *
-            (1 / (stats.hacknet_node_level_cost_mult || 1)) *
-            (1 / (stats.hacknet_node_core_cost_mult || 1)) *
-            (1 / (stats.hacknet_node_ram_cost_mult || 1))
-        ) - 1
-        +
-        1
-    )
-}
-
-export function estimateBladeburnerValue(aug) {
-    const stats = aug.stats;
-    if (aug.name === "The Blade's Simulacrum") {
-        return 2.0;
-    }
-    return (
-        ((stats.bladeburner_success_chance_mult || 1) * (stats.bladeburner_stamina_gain_mult || 1)) - 1
-        +
-        (stats.bladeburner_max_stamina_mult || 1) - 1
-        +
-        (stats.bladeburner_analysis_mult || 1) - 1
-        +
-        1
-    )
-}
-
-export function estimateNeurofluxValue(aug) {
-    if (aug.name === "NeuroFlux Governor") {
-        return totalValue(aug);
-    }
-    else {
-        return 1;
-    }
-}
-
-export function estimateAllValue(aug) {
-    delete aug.value.all;
-    const total = totalValue(aug);
-    // if (total <= 1.0) {
-    //     console.log("some aug had no ALL value: ", aug);
-    // }
-    return total;
-}
-
-export function totalValue(aug, domains) {
-    let total = 1.0;
-    for (const domain of domains || Object.keys(aug.value)) {
-        total += Math.max(-1, aug.value[domain] - 1.0);
-    }
-    return total;
-}
-
-/* -------------------- constants -------------------- */
-
-export const ALL_FACTIONS = [
-    "Illuminati", "Daedalus", "The Covenant",
-    "ECorp", "MegaCorp", "Bachman & Associates", "Blade Industries", "NWO", "Clarke Incorporated", "OmniTek Incorporated", "Four Sigma", "KuaiGong International", "Fulcrum Secret Technologies",
-    "BitRunners", "The Black Hand", "NiteSec", "CyberSec",
-    "Aevum", "Chongqing", "Ishima", "New Tokyo", "Sector-12", "Volhaven",
-    "Speakers for the Dead", "The Dark Army", "The Syndicate", "Silhouette", "Tetrads", "Slum Snakes",
-    "Tian Di Hui",
-    "Netburners",
-    "Bladeburners",
-    "Church of the Machine God",
-];
