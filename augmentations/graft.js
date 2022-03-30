@@ -53,6 +53,7 @@ export function main(ns) {
 export function getGraftableAugs(ns, domains) {
     const allAugs = Object.values(getKnownAugs(ns));
     const ownedAugs = ns.getOwnedAugmentations(true);
+    const exclude = ["The Red Pill", "NeuroFlux Governor"];
 
     const graftableAugs = allAugs.map(function(aug){
         estimateGraftValues(ns, aug);
@@ -62,9 +63,11 @@ export function getGraftableAugs(ns, domains) {
         aug.sortKey = (aug.totalValue-1) / aug.time;
         return aug;
     }).filter(function(aug){
+
         return (
-            (!ownedAugs.includes(aug.name)) &&
-            (aug.totalValue > 1.0)
+            (!exclude.includes(aug.name)) &&
+            (!ownedAugs.includes(aug.name)) //&&
+            // (aug.totalValue > 1.0)
             // TODO: check whether prereqs get enforced in future versions
         )
     }).sort(function(a,b){
@@ -75,7 +78,11 @@ export function getGraftableAugs(ns, domains) {
 }
 
 export function estimateGraftValues(ns, aug) {
-    const EntropyEffect = 0.98;
+    const entropy = {
+        name: "Entropy",
+        stats: entropyStats,
+        value: {}
+    };
     aug.stats = {};
     for (const [key, value] of Object.entries(ns.getAugmentationStats(aug.name))) {
         aug.stats[key] = value * EntropyEffect;
@@ -83,9 +90,47 @@ export function estimateGraftValues(ns, aug) {
     }
     aug.value = {};
     for (const [domain, estimate] of Object.entries(FILTERS)) {
-        aug.value[domain] = estimate(aug);
-        if (aug.name == "CashRoot Starter Kit") {
-            aug.value['hacking'] = 1;
-        }
+        aug.value[domain] = estimate(aug) * estimate(entropy);
     }
 }
+
+export const EntropyEffect = 0.98;
+export const entropyStats = {
+    hacking_chance_mult: EntropyEffect,
+    hacking_speed_mult: EntropyEffect,
+    hacking_money_mult: EntropyEffect,
+    hacking_grow_mult: EntropyEffect,
+
+    hacking_mult: EntropyEffect,
+    strength_mult: EntropyEffect,
+    defense_mult: EntropyEffect,
+    dexterity_mult: EntropyEffect,
+    agility_mult: EntropyEffect,
+    charisma_mult: EntropyEffect,
+
+    hacking_exp_mult: EntropyEffect,
+    strength_exp_mult: EntropyEffect,
+    defense_exp_mult: EntropyEffect,
+    dexterity_exp_mult: EntropyEffect,
+    agility_exp_mult: EntropyEffect,
+    charisma_exp_mult: EntropyEffect,
+
+    company_rep_mult: EntropyEffect,
+    faction_rep_mult: EntropyEffect,
+
+    crime_money_mult: EntropyEffect,
+    crime_success_mult: EntropyEffect,
+
+    hacknet_node_money_mult: EntropyEffect,
+    hacknet_node_purchase_cost_mult: EntropyEffect,
+    hacknet_node_ram_cost_mult: EntropyEffect,
+    hacknet_node_core_cost_mult: EntropyEffect,
+    hacknet_node_level_cost_mult: EntropyEffect,
+
+    work_money_mult: EntropyEffect,
+
+    bladeburner_max_stamina_mult: EntropyEffect,
+    bladeburner_stamina_gain_mult: EntropyEffect,
+    bladeburner_analysis_mult: EntropyEffect,
+    bladeburner_success_chance_mult: EntropyEffect,
+};

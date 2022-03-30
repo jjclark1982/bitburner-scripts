@@ -227,99 +227,109 @@ export function factionsToWork(aug) {
 
 export function estimateHackingValue(aug) {
     const stats = aug.stats;
+    let value = (
+        (stats.hacking_mult || 1) *
+        (stats.hacking_exp_mult || 1) *
+        (stats.hacking_chance_mult || 1) *
+        (stats.hacking_money_mult || 1) *
+        (stats.hacking_speed_mult || 1) *
+        (stats.hacking_grow_mult || 1)
+    );
     if (aug.name === "BitRunners Neurolink") {
-        return 2;
+        value += 0.05;
     }
     if (aug.name === "CashRoot Starter Kit") {
-        return 2;
+        value += 0.05;
     }
     if (aug.name === "PCMatrix") {
-        return 1.5;
+        value += 0.05;
     }
-    return (
-        (stats.hacking_mult || 1.0) *
-        (stats.hacking_exp_mult || 1.0) *
-        (stats.hacking_chance_mult || 1.0) *
-        (stats.hacking_money_mult || 1.0) *
-        (stats.hacking_speed_mult || 1.0) *
-        (stats.hacking_grow_mult || 1.0)
-    )
+    return value;
 }
 
 export function estimateCombatValue(aug) {
     const stats = aug.stats;
     return (
-        (stats.agility_exp_mult || 1.0) * (stats.agility_mult || 1.0) +
-        (stats.defense_exp_mult || 1.0) * (stats.defense_mult || 1.0) +
-        (stats.strength_exp_mult || 1.0) * (stats.strength_mult || 1.0) +
-        (stats.dexterity_exp_mult || 1.0) * (stats.dexterity_mult || 1.0)
-        - 3.0
+        (stats.agility_exp_mult || 1) * (stats.agility_mult || 1) - 1
+        +
+        (stats.defense_exp_mult || 1) * (stats.defense_mult || 1) - 1
+        +
+        (stats.strength_exp_mult || 1) * (stats.strength_mult || 1) - 1
+        +
+        (stats.dexterity_exp_mult || 1) * (stats.dexterity_mult || 1) - 1
+        +
+        1
     )
 }
 
 export function estimateCharismaValue(aug) {
     const stats = aug.stats;
     return (
-        (stats.charisma_exp_mult || 1.0) *
-        (stats.charisma_mult || 1.0)
+        (stats.charisma_exp_mult || 1) *
+        (stats.charisma_mult || 1)
     )
 }
 
 export function estimateCrimeValue(aug) {
     const stats = aug.stats;
     return (
-        (stats.crime_money_mult || 1.0) * (stats.crime_success_mult || 1.0)
+        (stats.crime_money_mult || 1) * (stats.crime_success_mult || 1)
     )
 }
 
 export function estimateFactionValue(aug) {
     const stats = aug.stats;
+    let value = (
+        (stats.company_rep_mult || 1) - 1
+        +
+        Math.sqrt(stats.work_money_mult || 1) - 1
+        +
+        (stats.faction_rep_mult || 1) - 1
+        +
+        1
+    );
     if (aug.name === "Neuroreceptor Management Implant") {
-        return 2;
+        // Always get "focus" bonus
+        value *= 1 / 0.8;
     }
-    return (
-        (stats.company_rep_mult || 1.0)
-        +
-        Math.sqrt(stats.work_money_mult || 1.0)
-        +
-        (stats.faction_rep_mult || 1.0)
-        - 2.0
-    )
+    return value;
 }
 
 export function estimateHacknetValue(aug) {
     const stats = aug.stats;
     return (
-        (
-            (stats.hacknet_node_money_mult || 1.0) *
-            (1 / (stats.hacknet_node_level_cost_mult || 1.0)) *
-            (1 / (stats.hacknet_node_core_cost_mult || 1.0)) *
-            (1 / (stats.hacknet_node_ram_cost_mult || 1.0))
-        ) 
+        (1 / (stats.hacknet_node_purchase_cost_mult || 1)) - 1
         +
-        (1 / (stats.hacknet_node_purchase_cost_mult || 1.0))
-        - 1.0
+        (
+            (stats.hacknet_node_money_mult || 1) *
+            (1 / (stats.hacknet_node_level_cost_mult || 1)) *
+            (1 / (stats.hacknet_node_core_cost_mult || 1)) *
+            (1 / (stats.hacknet_node_ram_cost_mult || 1))
+        ) - 1
+        +
+        1
     )
 }
 
 export function estimateBladeburnerValue(aug) {
     const stats = aug.stats;
     if (aug.name === "The Blade's Simulacrum") {
-        return 2;
+        return 2.0;
     }
     return (
-        ((stats.bladeburner_success_chance_mult || 1.0) * (stats.bladeburner_stamina_gain_mult || 1.0))
+        ((stats.bladeburner_success_chance_mult || 1) * (stats.bladeburner_stamina_gain_mult || 1)) - 1
         +
-        (stats.bladeburner_max_stamina_mult || 1.0)
+        (stats.bladeburner_max_stamina_mult || 1) - 1
         +
-        (stats.bladeburner_analysis_mult || 1.0)
-        - 2.0
+        (stats.bladeburner_analysis_mult || 1) - 1
+        +
+        1
     )
 }
 
 export function estimateNeurofluxValue(aug) {
     if (aug.name === "NeuroFlux Governor") {
-        return 2;
+        return totalValue(aug);
     }
     else {
         return 1;
@@ -338,7 +348,7 @@ export function estimateAllValue(aug) {
 export function totalValue(aug, domains) {
     let total = 1.0;
     for (const domain of domains || Object.keys(aug.value)) {
-        total += Math.max(0, aug.value[domain] - 1.0);
+        total += Math.max(-1, aug.value[domain] - 1.0);
     }
     return total;
 }
