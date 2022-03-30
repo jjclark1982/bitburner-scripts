@@ -8,7 +8,7 @@ run /augmentations/future.js [ hacking | combat | cha | faction | blade | hackne
 
 */
 
-import { getFutureAugs, FILTERS } from "augmentations/plan.js";
+import { FILTERS, getKnownAugs, totalValue } from "augmentations/plan.js";
 
 const FLAGS = [
     ['help', false]
@@ -41,7 +41,6 @@ export function main(ns) {
     ns.clearLog();
     ns.tail();
 
-
     const futureAugs = getFutureAugs(ns, filters);
     const summary = [`Future Augmentation Plan: ${filters.join(', ')}`];
     for (const aug of futureAugs) {
@@ -50,4 +49,24 @@ export function main(ns) {
         summary.push(`${rep} more reputation with ${faction.name} for '${aug.name}'`);
     }
     ns.print(summary.join("\n"), "\n");
+}
+
+export function getFutureAugs(ns, filters) {
+    const allAugs = Object.values(getKnownAugs(ns));
+    const ownedAugs = ns.getOwnedAugmentations(true);
+
+    const futureAugs = allAugs.filter(function(aug){
+        return (
+            (!ownedAugs.includes(aug.name)) &&
+            (aug.neededFactions.length > 0) &&
+            (totalValue(aug, filters) > 1.0)
+        )
+    }).map(function(aug){
+        aug.sortKey = totalValue(aug, filters) / aug.neededFactions[0].repNeeded;
+        return aug;
+    }).sort(function(a,b){
+        return b.sortKey - a.sortKey;
+    });
+
+    return futureAugs;
 }

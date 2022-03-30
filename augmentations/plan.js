@@ -144,10 +144,10 @@ export function selectAugs(ns, filters, plannedAugs) {
 }
 
 export function getKnownAugs(ns, plannedAugs) {
-    const player = ns.getPlayer();
     const augs = {};
     // Instantiate all aug objects from current factions
-    for (const faction of player.factions) {
+    // const factions = ns.getPlayer().factions;
+    for (const faction of ALL_FACTIONS) {
         for (const name of ns.getAugmentationsFromFaction(faction)) {
             augs[name] ||= {};
             const aug = augs[name]
@@ -219,26 +219,6 @@ export function factionsToWork(aug) {
     });
 
     return neededFactions;
-}
-
-export function getFutureAugs(ns, filters) {
-    const allAugs = Object.values(getKnownAugs(ns));
-    const ownedAugs = ns.getOwnedAugmentations(true);
-
-    const futureAugs = allAugs.filter(function(aug){
-        return (
-            (!ownedAugs.includes(aug.name)) &&
-            (aug.neededFactions.length > 0) &&
-            (totalValue(aug, filters) > 1.0)
-        )
-    }).map(function(aug){
-        aug.sortKey = totalValue(aug, filters) / aug.neededFactions[0].repNeeded;
-        return aug;
-    }).sort(function(a,b){
-        return b.sortKey - a.sortKey;
-    });
-
-    return futureAugs;
 }
 
 
@@ -362,3 +342,17 @@ export function totalValue(aug, domains) {
     }
     return total;
 }
+
+/* -------------------- constants -------------------- */
+
+export const ALL_FACTIONS = [
+    "Illuminati", "Daedalus", "The Covenant",
+    "ECorp", "MegaCorp", "Bachman & Associates", "Blade Industries", "NWO", "Clarke Incorporated", "OmniTek Incorporated", "Four Sigma", "KuaiGong International", "Fulcrum Secret Technologies",
+    "BitRunners", "The Black Hand", "NiteSec", "CyberSec",
+    "Aevum", "Chongqing", "Ishima", "New Tokyo", "Sector-12", "Volhaven",
+    "Speakers for the Dead", "The Dark Army", "The Syndicate", "Silhouette", "Tetrads", "Slum Snakes",
+    "Tian Di Hui",
+    "Netburners",
+    "Bladeburners",
+    "Church of the Machine God",
+];
