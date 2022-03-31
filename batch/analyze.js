@@ -151,6 +151,7 @@ export function planGrow(params) {
 export function calculateGrowThreads(ns, server, playerObject, cores, moneyPct) {
 	// iteratively find the number of grow threads needed.
 	// slower but more accurate than estimation with (moneyPct-1) / (growPercentPerThread-1)
+	// TODO: unbounded binary search
     let threads = 1;
     let newMoney = 0;
 

@@ -46,12 +46,12 @@ export async function runPrep(params) {
     const server = ns.getServer(target);
     const money = Math.max(1,server.moneyAvailable);
     const moneyMax = Math.max(1,server.moneyMax);
-    const moneyPercent = 1 - (money / moneyMax);
+    const moneyPercent = money / moneyMax;
 
     const w0Job = planWeaken(params);
-    const t0 = Date.now() + w0Job.time;
-    const gJob  = planGrow({  ...params, endTime: t0 + 1*tDelta, difficulty:0, moneyPercent: moneyPercent });
-    const w2Job = planWeaken({...params, endTime: t0 + 2*tDelta, difficulty:gJob.security+1 });
+    const t0 = Date.now() + w0Job.duration;
+    const gJob  = planGrow({  ...params, endTime: t0 + 1*tDelta, security:0, moneyPercent: moneyPercent });
+    const w2Job = planWeaken({...params, endTime: t0 + 2*tDelta, security:gJob.security+1 });
 
     const batch = [w0Job, gJob, w2Job];
 
