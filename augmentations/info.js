@@ -157,7 +157,6 @@ export const DOMAINS = {
     "faction":     estimateFactionValue,
     "hacknet":     estimateHacknetValue,
     "bladeburner": estimateBladeburnerValue,
-    "neuroflux":   estimateNeurofluxValue,
     "all":         estimateAllValue,
 };
 
@@ -270,23 +269,10 @@ export function estimateBladeburnerValue(aug) {
     return value;
 }
 
-export function estimateNeurofluxValue(aug) {
-    if (aug.name === "NeuroFlux Governor") {
-        return averageValue(aug);
-    }
-    else {
-        return 1;
-    }
-}
-
 export function estimateAllValue(aug) {
+    // assume this runs after other values have been populated.
     delete aug.value.all;
-    if (aug.name === "NeuroFlux Governor") {
-        return aug.value.neuroflux;
-    }
-    else {
-        return averageValue(aug);
-    }
+    return averageValue(aug);
 }
 
 export function averageValue(aug, domains) {
@@ -301,7 +287,6 @@ export function averageValue(aug, domains) {
         total *= aug.value[domain];
     }
     const value = total ** (1/domains.length);
-    console.log("averaging value", aug.name, domains, total, value);
     return value;
 }
 

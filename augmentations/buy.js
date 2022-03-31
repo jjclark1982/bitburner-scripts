@@ -6,7 +6,7 @@ List augmentations that boost a given kind of stats, starting with the most expe
 Optionally buy them.
 
 Usage:
-run /augmentations/buy.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | neuroflux | all ... ] [ --confirm ]
+run /augmentations/buy.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | all ... ] [ --confirm ]
 
 */
 
@@ -40,7 +40,7 @@ export async function main(ns) {
             `> run ${ns.getScriptName()} hacking faction`,
             '',
             `Example: Buy all augs that increase hacking, including NeuroFlux Governor repeatedly`,
-            `> run ${ns.getScriptName()} hacking neuroflux --confirm`,
+            `> run ${ns.getScriptName()} hacking --confirm`,
             ' '
         ].join("\n"));
         return;

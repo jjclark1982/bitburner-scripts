@@ -6,7 +6,7 @@ List augmentations that can be unlocked soon, sorted by least reputation require
 Optionally work to unlock them.
 
 Usage:
-run /augmentations/unlock.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | neuroflux | all ... ] [ --begin ]
+run /augmentations/unlock.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | all ... ] [ --begin ]
 
 */
 

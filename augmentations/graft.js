@@ -5,7 +5,7 @@
 List the best augmentations available to graft.
 Optionally graft them.
 
-run /augmentations/graft.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | neuroflux | all ... ] [ --begin ]
+run /augmentations/graft.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | all ... ] [ --begin ]
 
 */
 

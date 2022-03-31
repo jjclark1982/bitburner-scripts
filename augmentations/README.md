@@ -37,10 +37,10 @@ List the best augmentations available now, most expensive first. Optionally buy 
 
 Usage:
 ```
-/augmentations/buy.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | neuroflux | all ... ] [ --buy ]
+/augmentations/buy.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | all ... ] [ --buy ]
 ```
 
-Example: See all augs that increase hacking or hacknet
+Example: See all augs that increase hacking or hacknet stats
 ```
 > run /augmentations/buy.js hacking hacknet
 
@@ -56,7 +56,7 @@ Augmentation Buying Plan: hacking, hacknet
 
 Example: Buy all augs that increase hacking, including NeuroFlux Governor repeatedly
 ```
-> run /augmentations/buy.js hacking neuroflux --buy
+> run /augmentations/buy.js hacking --buy
 ```
 
 -----
@@ -86,7 +86,7 @@ List the best augmentations available to graft, sorted by (multipliers / time). 
 
 Usage:
 ```
-/augmentations/graft.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | neuroflux | all ... ] [ --begin ]
+/augmentations/graft.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | all ... ] [ --begin ]
 ```
 
 Example: List all augmentations that increase charisma or faction rep gain.
