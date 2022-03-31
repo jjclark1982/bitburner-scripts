@@ -53,22 +53,20 @@ export async function main(ns) {
 
 export function reportOnAugmentation(ns, augName) {
     const aug = getAugmentationInfo(ns, augName);
-    const summary = [
-        aug.name,
-        '',
-        `Status: ${aug.installed ? 'Installed' : aug.purchased ? 'Purchased' : 'Not Owned'}`,
-        '',
-        `Price: ${ns.nFormat(aug.price, "$0.0a")}`,
-        '',
-        `Prereqs: ${JSON.stringify(aug.prereqs, null, 2)} ${aug.prereqs.every((prereq)=>ns.getOwnedAugmentations(true).includes(prereq)) ? '✓' : '✗'}`,
-        '',
-        `Stats: ${JSON.stringify(aug.stats, null, 2)}`,
-    ];
+    const summary = [aug.name];
+    summary.push(' ');
+    summary.push(`Status: ${aug.installed ? 'Installed' : aug.purchased ? 'Purchased' : 'Not Owned'}`);
+    summary.push(' ');
+    summary.push(`Price: ${ns.nFormat(aug.price, "$0.0a")}`);
     summary.push(' ');
     summary.push("Value:");
     for (const [domain, value] of Object.entries(aug.value)) {
         summary.push(`  ${domain}: ${value.toFixed(3)}`);
     }
+    summary.push(' ');
+    summary.push(`Stats: ${JSON.stringify(aug.stats, null, 2)}`);
+    summary.push(' ');
+    summary.push(`Prereqs: ${JSON.stringify(aug.prereqs, null, 2)} ${aug.prereqs.every((prereq)=>ns.getOwnedAugmentations(true).includes(prereq)) ? '✓' : '✗'}`);
     summary.push(' ');
     summary.push("Factions:");
     for (let [faction, [rep, repReq]] of Object.entries(aug.factions)) {
@@ -96,6 +94,7 @@ export function reportOnPlayer(ns) {
         return !installedAugs.includes(aug);
     });
     report.push("Purchased Augmentations: " + JSON.stringify(purchasedAugs, null, 2));
+    report.push(' ');
     return report.join("\n");
 }
 

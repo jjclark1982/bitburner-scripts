@@ -1,10 +1,11 @@
 /*
 
-/augmentations/future.js
+/augmentations/graft.js
 
 List the best augmentations available to graft.
+Optionally graft them.
 
-run /augmentations/graft.js [ hacking | combat | cha | faction | blade | hacknet | neuro ] ... [ --begin ]
+run /augmentations/graft.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | neuroflux | all ... ] [ --begin ]
 
 */
 
@@ -21,19 +22,25 @@ export function autocomplete(data, args) {
 }
 
 /** @param {NS} ns **/
-export function main(ns) {
-    const args = ns.flags(FLAGS);
-    let filters = args._;
-    if (filters.length == 0) {
-        filters = ['all'];
+export async function main(ns) {
+    const flags = ns.flags(FLAGS);
+    let domains = flags._;
+    if (domains.length == 0) {
+        domains = ['all'];
     }
 
-    if (args.help) {
+    if (flags.help) {
         ns.tprint([
-            'List the best augmentations available to graft.',
+            'List the best augmentations available to graft, sorted by (multipliers / time). Optionally graft them.',
             '',
             'Usage: ',
-            `${ns.getScriptName()} [ ${Object.keys(DOMAINS).join(' | ')} ... ]`,
+            `${ns.getScriptName()} [ ${Object.keys(DOMAINS).join(' | ')} ... ] [ --begin ]`,
+            '',
+            'Example: List all augmentations that increase charisma or faction rep gain.',
+            `> run ${ns.getScriptName()} charisma faction`,
+            '',
+            'Example: Graft all augmentations that increase hacking stats.',
+            `> run ${ns.getScriptName()} hacking --begin`,
             ' '
         ].join("\n"));
         return;
@@ -42,16 +49,33 @@ export function main(ns) {
     ns.clearLog();
     ns.tail();
 
-    const graftableAugs = getGraftableAugs(ns, filters);
-    const summary = [`Augmentation Grafting Plan: ${filters.join(', ')}`];
+    const graftableAugs = getGraftableAugs(ns, domains);
+    const summary = [`Augmentation Grafting Plan: ${domains.join(', ')}`];
     for (const aug of graftableAugs) {
         const price = sprintf("%10s", ns.nFormat(aug.price, "$0.0a"));
         summary.push(`${price} (${(aug.time/60/60/1000).toFixed(1)} hr) for (${aug.totalValue.toFixed(2)}x) '${aug.name}'`);
     }
     ns.print(summary.join("\n"), "\n");
+
+    if (flags.begin) {
+        await graftAugs(ns);
+    }
+    else {
+        ns.tail();
+    }
 }
 
-export function getGraftableAugs(ns, domains) {
+export async function graftAugs(ns) {
+    let augs = getGraftableAugs(ns, domains);
+    while (augs.length > 0) {
+        const aug = augs[0];
+        ns.grafting.graftAugmentation(aug.name);
+        augs = getGraftableAugs(ns, domains);
+    }
+    ns.tprint("automatic grafting not yet implemented");
+}
+
+export function getGraftableAugs(ns, domains, canAfford=false) {
     const allAugs = Object.values(getAllAugmentations(ns));
     const ownedAugs = ns.getOwnedAugmentations(true);
     const exclude = ["The Red Pill", "NeuroFlux Governor"];
@@ -65,9 +89,10 @@ export function getGraftableAugs(ns, domains) {
         return aug;
     }).filter(function(aug){
         return (
+            (!canAfford || (aug.price < ns.getPlayer().money)) &&
+            (!canAfford || (aug.totalValue > 1.0)) &&
             (!exclude.includes(aug.name)) &&
-            (!ownedAugs.includes(aug.name)) //&&
-            // (aug.totalValue > 1.0)
+            (!ownedAugs.includes(aug.name))
             // TODO: check whether prereqs get enforced in future versions
         )
     }).sort(function(a,b){
