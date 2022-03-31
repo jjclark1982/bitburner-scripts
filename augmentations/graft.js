@@ -1,6 +1,6 @@
 /*
 
-/augmentations/graft.js
+/augmentations/graft.js (43.1 GB)
 
 List the best augmentations available to graft.
 Optionally graft them.
@@ -23,6 +23,9 @@ export function autocomplete(data, args) {
 
 /** @param {NS} ns **/
 export async function main(ns) {
+    ns.disableLog("sleep");
+    ns.clearLog();
+
     const flags = ns.flags(FLAGS);
     let domains = flags._;
     if (domains.length == 0) {
@@ -45,9 +48,6 @@ export async function main(ns) {
         ].join("\n"));
         return;
     }
-
-    ns.clearLog();
-    ns.tail();
 
     const graftableAugs = getGraftableAugs(ns, domains);
     const summary = [`Augmentation Grafting Plan: ${domains.join(', ')}`];

@@ -1,6 +1,6 @@
 /*
 
-/augmentations/info.js
+/augmentations/info.js (32.6 GB)
 
 List owned augmentations or show stats of a named augmentation.
 

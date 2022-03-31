@@ -1,6 +1,6 @@
 /*
 
-/augmentations/buy.js
+/augmentations/buy.js (35.6 GB)
 
 List augmentations that boost a given kind of stats, starting with the most expensive.
 Optionally buy them.

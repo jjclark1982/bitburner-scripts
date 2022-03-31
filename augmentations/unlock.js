@@ -1,6 +1,6 @@
 /*
 
-/augmentations/unlock.js
+/augmentations/unlock.js (34.1 GB)
 
 List augmentations that can be unlocked soon, sorted by least reputation required.
 Optionally work to unlock them.
@@ -25,6 +25,9 @@ export function autocomplete(data, args) {
 
 /** @param {NS} ns **/
 export async function main(ns) {
+    ns.disableLog("sleep");
+    ns.clearLog();
+
     const flags = ns.flags(FLAGS);
     let domains = flags._;
     if (domains.length == 0) {
@@ -48,8 +51,6 @@ export async function main(ns) {
         return;
     }
 
-    ns.clearLog();
-
     const futureAugs = getFutureAugs(ns, domains);
     const summary = [`Future Augmentation Plan: ${domains.join(', ')}`];
     for (const aug of futureAugs) {
@@ -68,13 +69,13 @@ export async function main(ns) {
 }
 
 export async function unlockAugs(ns, domains) {
-    let futureAugs = getFutureAugs(ns, domains, true);
+    let futureAugs = getFutureAugs(ns, domains, {requireWorkable: true});
     while (futureAugs.length > 0) {
         const aug = futureAugs[0];
         const faction = aug.canWorkNow;
         const player = ns.getPlayer();
         if (player.isWorking && player.workType !== "Working for Faction") {
-            ns.tprint(`Not starting faction work because player is already ${player.workType}.`)
+            ns.tprint(`Not starting faction work because player is already ${player.workType}.`);
             return;
         }
         for (const workType of getWorkTypes(player)) {
@@ -87,11 +88,11 @@ export async function unlockAugs(ns, domains) {
             // Support manually exiting the process.
             return;
         }
-        futureAugs = getFutureAugs(ns, domains, true);
+        futureAugs = getFutureAugs(ns, domains, {requireWorkable: true});
     }
 }
 
-export function getFutureAugs(ns, domains, requireWorkable=false) {
+export function getFutureAugs(ns, domains, {requireWorkable}) {
     const allAugs = Object.values(getAllAugmentations(ns));
     const ownedAugs = ns.getOwnedAugmentations(true);
 
