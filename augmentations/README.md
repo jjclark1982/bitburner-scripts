@@ -105,3 +105,13 @@ Example: Graft all augmentations that increase hacking stats.
 ```
 > run /augmentations/graft.js hacking --begin
 ```
+
+-----
+
+### See Also
+
+- [`/sleeves/buy-augs.js`](../sleeves/buy-augs.js) - Buy augmentations for sleeves.
+
+- [`/gang/buy-augs.js`](../gang/buy-augs.js) - Buy equipment for gang members.
+
+- [`/player/prestige.js`](../player/prestige.js) - Run final activities before installing augmentations.

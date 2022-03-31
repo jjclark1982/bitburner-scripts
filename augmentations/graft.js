@@ -73,7 +73,9 @@ export async function graftAugs(ns, domains) {
         if (player.isWorking) {
             if (player.workType == "Grafting an Augmentation") {
                 ns.print(`Waiting to finish ${player.workType}...`);
-                await ns.sleep(60*1000);
+                while (player.workType == "Grafting an Augmentation") {
+                    await ns.sleep(60*1000);
+                }
                 continue;
             }
             else {
@@ -81,6 +83,7 @@ export async function graftAugs(ns, domains) {
                 return;
             }
         }
+        ns.print(`Starting to graft ${aug.name}.`);
         ns.grafting.graftAugmentation(aug.name);
         await ns.sleep(aug.time);
         augs = getGraftableAugs(ns, {domains, canAfford: true});
