@@ -1,12 +1,12 @@
-### Bitburner Augmentation Scripts
+## Bitburner Augmentation Scripts
 
-#### [`/augmentations/info.js`](info.js)
+### [`info.js`](info.js) (32.6 GB)
 
 List owned augmentations or show stats of a named augmentation.
 
 Example: List installed augmentations
 ```
-> run /augmentations/info.js [ augmentation name ]
+> run /augmentations/info.js
 ```
 
 Example: Show stats of a specific augmentation (supports autocomplete)
@@ -29,9 +29,11 @@ Factions:
   NiteSec: 451k / 50k rep ✓
 ```
 
-#### [`/augmentations/buy.js`](buy.js)
+-----
 
-List the best augmentations available now, most expensive first.
+### [`buy.js`](buy.js) (35.6 GB)
+
+List the best augmentations available now, most expensive first. Optionally buy them.
 
 Usage:
 ```
@@ -54,12 +56,14 @@ Augmentation Plan: hacking, hacknet
 
 Example: Buy all augs that increase hacking, including NeuroFlux Governor repeatedly
 ```
-> run /augmentations/plan.js hacking neuroflux --buy
+> run /augmentations/buy.js hacking neuroflux --buy
 ```
 
-#### [`/augmentations/unlock.js`](unlock.js)
+-----
 
-List the best augmentations available soon, sorted by least reputation required.
+### [`unlock.js`](unlock.js) (34.1 GB)
+
+List the best augmentations available soon, sorted by least reputation required. Optionally work for those factions.
 
 Example: Show all augs that improve combat or crime, and the closest faction to selling them
 ```
@@ -74,7 +78,9 @@ Future Augmentation Plan: combat, crime
   ...
 ```
 
-### [`/augmentations/graft.js`](graft.js)
+-----
+
+### [`graft.js`](graft.js) (43.1 GB)
 
 List the best augmentations available to graft, sorted by (multipliers / time). Optionally graft them.
 

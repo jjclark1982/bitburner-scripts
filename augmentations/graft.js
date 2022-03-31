@@ -58,14 +58,14 @@ export async function main(ns) {
     ns.print(summary.join("\n"), "\n");
 
     if (flags.begin) {
-        await graftAugs(ns);
+        await graftAugs(ns, domains);
     }
     else {
         ns.tail();
     }
 }
 
-export async function graftAugs(ns) {
+export async function graftAugs(ns, domains) {
     let augs = getGraftableAugs(ns, {domains, canAfford: true});
     while (augs.length > 0) {
         const aug = augs[0];
