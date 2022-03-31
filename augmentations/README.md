@@ -44,7 +44,7 @@ Example: See all augs that increase hacking or hacknet
 ```
 > run /augmentations/buy.js hacking hacknet
 
-Augmentation Plan: hacking, hacknet
+Augmentation Buying Plan: hacking, hacknet
   'Neuralstimulator' from Sector-12 for $3.0b
   'Neural-Retention Enhancement' from NiteSec for $250.0m
   'Embedded Netburner Module' from NiteSec for $250.0m
@@ -69,7 +69,7 @@ Example: Show all augs that improve combat or crime, and the closest faction to 
 ```
 > run /augmentations/unlock.js combat crime
 
-Future Augmentation Plan: combat, crime
+Augmentation Unlocking Plan: combat, crime
        1,777 more reputation with Speakers for the Dead for 'The Shadow's Simulacrum'
       37,042 more reputation with Tian Di Hui for 'Neuroreceptor Management Implant'
       62,465 more reputation with NiteSec for 'Graphene BrachiBlades Upgrade'

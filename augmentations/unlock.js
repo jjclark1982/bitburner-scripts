@@ -10,7 +10,7 @@ run /augmentations/unlock.js [ hacking | charisma | combat | crime | faction | h
 
 */
 
-import { DOMAINS, getAllAugmentations, totalValue } from "augmentations/info.js";
+import { DOMAINS, getAllAugmentations, averageValue } from "augmentations/info.js";
 import { canPurchaseFrom } from "augmentations/buy.js";
 
 const FLAGS = [
@@ -51,12 +51,13 @@ export async function main(ns) {
         return;
     }
 
-    const futureAugs = getFutureAugs(ns, domains);
-    const summary = [`Future Augmentation Plan: ${domains.join(', ')}`];
+    const futureAugs = getFutureAugs(ns, {domains});
+    const summary = [`Augmentation Unlocking Plan: ${domains.join(', ')}`];
     for (const aug of futureAugs) {
         const faction = aug.neededFactions[0];
         const rep = sprintf("%+12s", ns.nFormat(faction.repNeeded, '0,0'));
-        summary.push(`${rep} more rep with ${faction.name} for '${aug.name}' (${totalValue(aug, domains).toFixed(2)}x)`);
+        const value = averageValue(aug, domains).toFixed(2);
+        summary.push(`${rep} more rep with ${faction.name} for '${aug.name}' (${value}x)`);
     }
     ns.print(summary.join("\n"), "\n");
 
@@ -106,10 +107,10 @@ export function getFutureAugs(ns, {domains, requireWorkable}) {
             (!requireWorkable || aug.canWorkNow) &&
             (!ownedAugs.includes(aug.name)) &&
             (aug.neededFactions.length > 0) &&
-            (totalValue(aug, domains) > 1.0)
+            (averageValue(aug, domains) > 1.0)
         )
     }).map(function(aug){
-        aug.sortKey = totalValue(aug, domains) / aug.neededFactions[0].repNeeded;
+        aug.sortKey = averageValue(aug, domains) / aug.neededFactions[0].repNeeded;
         return aug;
     }).sort(function(a,b){
         return b.sortKey - a.sortKey;

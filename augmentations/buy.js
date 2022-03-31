@@ -10,7 +10,7 @@ run /augmentations/buy.js [ hacking | charisma | combat | crime | faction | hack
 
 */
 
-import { DOMAINS, getAllAugmentations, totalValue } from "augmentations/info.js";
+import { DOMAINS, getAllAugmentations, averageValue } from "augmentations/info.js";
 
 const FLAGS = [
     ["help", false],
@@ -53,9 +53,10 @@ export async function main(ns) {
     }
 
     const augPlan = planAugs(ns, domains);
-    const summary = [`Augmentation Plan: ${domains.join(', ')}`];
+    const summary = [`Augmentation Buying Plan: ${domains.join(', ')}`];
     for (const aug of augPlan) {
-        summary.push(`  '${aug.name}' from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`)
+        const value = averageValue(aug, domains).toFixed(2);
+        summary.push(`  '${aug.name}' (${value}x) from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`)
     }
     ns.print(summary.join("\n"), "\n");
 
@@ -124,7 +125,7 @@ export function selectAugs(ns, domains, plannedAugs) {
     const buyableAugs = Object.values(knownAugs).filter(function(aug) {
         return (
             aug.canPurchaseFrom != null &&
-            totalValue(aug, domains) > 1.0 &&
+            averageValue(aug, domains) > 1.0 &&
             !exclude[aug.name]
         )
     }).sort(function(a,b){

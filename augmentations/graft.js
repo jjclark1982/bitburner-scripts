@@ -9,7 +9,7 @@ run /augmentations/graft.js [ hacking | charisma | combat | crime | faction | ha
 
 */
 
-import { DOMAINS, getAllAugmentations, totalValue } from "augmentations/info.js";
+import { DOMAINS, getAllAugmentations, averageValue } from "augmentations/info.js";
 
 const FLAGS = [
     ['help', false],
@@ -98,7 +98,7 @@ export function getGraftableAugs(ns, {domains, canAfford}) {
 
     const graftableAugs = allAugs.map(function(aug){
         estimateGraftValues(ns, aug);
-        aug.totalValue = totalValue(aug, domains);
+        aug.totalValue = averageValue(aug, domains);
         aug.price = ns.grafting.getAugmentationGraftPrice(aug.name);
         aug.time = ns.grafting.getAugmentationGraftTime(aug.name);
         aug.sortKey = (aug.totalValue-1) / aug.time;

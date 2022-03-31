@@ -272,7 +272,7 @@ export function estimateBladeburnerValue(aug) {
 
 export function estimateNeurofluxValue(aug) {
     if (aug.name === "NeuroFlux Governor") {
-        return totalValue(aug);
+        return averageValue(aug);
     }
     else {
         return 1;
@@ -285,16 +285,24 @@ export function estimateAllValue(aug) {
         return aug.value.neuroflux;
     }
     else {
-        return totalValue(aug);
+        return averageValue(aug);
     }
 }
 
-export function totalValue(aug, domains) {
-    let total = 1.0;
-    for (const domain of domains || Object.keys(aug.value)) {
-        total += Math.max(-0.5, aug.value[domain] - 1.0);
+export function averageValue(aug, domains) {
+    if (!domains || domains.length == 0) {
+        domains = Object.keys(aug.value);
     }
-    return total;
+    if (domains.length == 0) {
+        return 1.0;
+    }
+    let total = 1.0;
+    for (const domain of domains) {
+        total *= aug.value[domain];
+    }
+    const value = total ** (1/domains.length);
+    console.log("averaging value", aug.name, domains, total, value);
+    return value;
 }
 
 
