@@ -1,13 +1,12 @@
 ### Bitburner Augmentation Scripts
 
 #### [`/augmentations/info.js`](info.js)
-/augmentations/info.js
 
 List owned augmentations or show stats of a named augmentation.
 
 Example: List installed augmentations
 ```
-> run /augmentations/info.js
+> run /augmentations/info.js [ augmentation name ]
 ```
 
 Example: Show stats of a specific augmentation (supports autocomplete)
@@ -31,6 +30,7 @@ Factions:
 ```
 
 #### [`/augmentations/buy.js`](buy.js)
+
 List the best augmentations available now, most expensive first.
 
 Usage:
@@ -58,6 +58,7 @@ Example: Buy all augs that increase hacking, including NeuroFlux Governor repeat
 ```
 
 #### [`/augmentations/unlock.js`](unlock.js)
+
 List the best augmentations available soon, sorted by least reputation required.
 
 Example: Show all augs that improve combat or crime, and the closest faction to selling them
@@ -85,6 +86,13 @@ Usage:
 Example: List all augmentations that increase charisma or faction rep gain.
 ```
 > run /augmentations/graft.js charisma faction
+
+Augmentation Grafting Plan: charisma, faction
+    $15.9b (1.2 hr) for (1.96x) 'Unstable Circadian Modulator'
+     $4.1b (1.1 hr) for (1.86x) 'Enhanced Social Interaction Implant'
+     $8.3b (1.5 hr) for (2.12x) 'SmartJaw'
+    $22.5b (1.3 hr) for (1.84x) 'PC Direct-Neural Interface NeuroNet Injector'
+  ...
 ```
 
 Example: Graft all augmentations that increase hacking stats.
