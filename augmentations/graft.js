@@ -73,7 +73,7 @@ export async function graftAugs(ns, domains) {
         if (player.isWorking) {
             if (player.workType == "Grafting an Augmentation") {
                 ns.print(`Waiting to finish ${player.workType}...`);
-                while (player.workType == "Grafting an Augmentation") {
+                while (ns.getPlayer().workType == "Grafting an Augmentation") {
                     await ns.sleep(60*1000);
                 }
                 continue;
@@ -83,9 +83,18 @@ export async function graftAugs(ns, domains) {
                 return;
             }
         }
-        ns.print(`Starting to graft ${aug.name}.`);
-        ns.grafting.graftAugmentation(aug.name);
-        await ns.sleep(aug.time);
+        if (player.city !== "New Tokyo") {
+            ns.travelToCity("New Tokyo");
+        }
+        const success = ns.grafting.graftAugmentation(aug.name);
+        if (success) {
+            ns.print(`Started to graft '${aug.name}'.`);
+            await ns.sleep(aug.time);
+        }
+        else {
+            ns.print(`Failed to graft '${aug.name}'.`);
+            await ns.sleep(1000);
+        }
         augs = getGraftableAugs(ns, {domains, canAfford: true});
     }
     ns.tprint("Grafted all affordable net-positive augmentations.");
@@ -107,6 +116,7 @@ export function getGraftableAugs(ns, {domains, canAfford}) {
         return (
             (!canAfford || (aug.price < ns.getPlayer().money)) &&
             (!canAfford || (aug.totalValue > 1.0)) &&
+            (!canAfford || (aug.price > 0)) && // TODO: check whether free augs are graftable in future
             (!exclude.includes(aug.name)) &&
             (!ownedAugs.includes(aug.name))
             // TODO: check whether prereqs get enforced in future versions
