@@ -49,7 +49,7 @@ export async function main(ns) {
         return;
     }
 
-    const graftableAugs = getGraftableAugs(ns, domains);
+    const graftableAugs = getGraftableAugs(ns, {domains});
     const summary = [`Augmentation Grafting Plan: ${domains.join(', ')}`];
     for (const aug of graftableAugs) {
         const price = sprintf("%10s", ns.nFormat(aug.price, "$0.0a"));
@@ -66,16 +66,29 @@ export async function main(ns) {
 }
 
 export async function graftAugs(ns) {
-    let augs = getGraftableAugs(ns, domains);
+    let augs = getGraftableAugs(ns, {domains, canAfford: true});
     while (augs.length > 0) {
         const aug = augs[0];
+        const player = ns.getPlayer();
+        if (player.isWorking) {
+            if (player.workType == "Grafting an Augmentation") {
+                ns.print(`Waiting to finish ${player.workType}...`);
+                await ns.sleep(60*1000);
+                continue;
+            }
+            else {
+                ns.tprint(`Not starting grafting because player is already ${player.workType}.`);
+                return;
+            }
+        }
         ns.grafting.graftAugmentation(aug.name);
-        augs = getGraftableAugs(ns, domains);
+        await ns.sleep(aug.time);
+        augs = getGraftableAugs(ns, {domains, canAfford: true});
     }
-    ns.tprint("automatic grafting not yet implemented");
+    ns.tprint("Grafted all affordable net-positive augmentations.");
 }
 
-export function getGraftableAugs(ns, domains, canAfford=false) {
+export function getGraftableAugs(ns, {domains, canAfford}) {
     const allAugs = Object.values(getAllAugmentations(ns));
     const ownedAugs = ns.getOwnedAugmentations(true);
     const exclude = ["The Red Pill", "NeuroFlux Governor"];

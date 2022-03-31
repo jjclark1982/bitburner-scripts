@@ -69,7 +69,7 @@ export async function main(ns) {
 }
 
 export async function unlockAugs(ns, domains) {
-    let futureAugs = getFutureAugs(ns, domains, {requireWorkable: true});
+    let futureAugs = getFutureAugs(ns, {domains, requireWorkable: true});
     while (futureAugs.length > 0) {
         const aug = futureAugs[0];
         const faction = aug.canWorkNow;
@@ -88,11 +88,11 @@ export async function unlockAugs(ns, domains) {
             // Support manually exiting the process.
             return;
         }
-        futureAugs = getFutureAugs(ns, domains, {requireWorkable: true});
+        futureAugs = getFutureAugs(ns, {domains, requireWorkable: true});
     }
 }
 
-export function getFutureAugs(ns, domains, {requireWorkable}) {
+export function getFutureAugs(ns, {domains, requireWorkable}) {
     const allAugs = Object.values(getAllAugmentations(ns));
     const ownedAugs = ns.getOwnedAugmentations(true);
 
