@@ -80,7 +80,7 @@ export async function runMultiHWGW(params) {
 
     if (targets === undefined) {
         // continually recalculate most profitable targets
-        targets = mostProfitableTargets(ns).slice(0,8);
+        targets = mostProfitableTargets(ns).map((s)=>s.hostname).slice(0,8);
     }
 
     serverPool.threadsUsed ||= 0;

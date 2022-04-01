@@ -1,3 +1,4 @@
+import { drawTable } from "lib/box-drawing.js";
 import { getAllHosts } from "batch/pool.js";
 
 export const HACK = "/batch/hack.js";
@@ -8,29 +9,35 @@ export const SCRIPT_RAM = 1.75;
 
 /** @param {NS} ns **/
 export async function main(ns) {
-	const hosts = {};
-	for (const host of mostProfitableTargets(ns)) {
-		hosts[host] = getServerProfit(ns, host);
-	}
+	const columns = [
+		{header: "Hostname", field: "hostname", width: 20, align: "left"},
+        {header: "Prep Time", field: "prepTime", format: drawTable.time},
+		{header: "$ / sec / thread", field: "profit", format: ns.nFormat, formatArgs:["$0,0.00"]},
+	];
+	const servers = mostProfitableTargets(ns);
 
-	ns.tprint(JSON.stringify(hosts, null, 2));
+	ns.clearLog();
+    ns.print("\n             Most Profitable Servers to Hack")
+	ns.print(drawTable(columns, servers));
+	ns.tail();
 }
 
 export function mostProfitableTargets(ns) {
 	const player = ns.getPlayer();
-	const mostProfitableServers = getAllHosts({ns}).filter(function(host){
-		const server = ns.getServer(host);
-		return (
-			server.hasAdminRights &&
-			server.moneyMax > 0 &&
-			server.requiredHackingSkill <= player.hacking &&
-			server.hostname !== "home"
-		)
-    }).sort(function(a,b){
-        return getServerProfit(ns,b) - getServerProfit(ns,a);
-    });
-
-	return mostProfitableServers;
+	const mostProfitableServers = getAllHosts({ns}).map((target)=>{
+		const server = ns.getServer(target);
+		server.profit = getServerProfit(ns, target);
+		server.prepTime = planWeaken({ns, target}).duration;
+		return server;
+	}).filter(server=>(
+		server.requiredHackingSkill <= player.hacking &&
+		server.hasAdminRights &&
+		server.moneyMax > 0
+	)).sort((a,b)=>(
+        b.profit - a.profit
+    ));
+    
+    return mostProfitableServers;
 }
 
 function getServerProfit(ns, target) {
@@ -63,11 +70,12 @@ function getServerProfit(ns, target) {
     );
 	const numBatches = w2Job.duration / params.tDelta;
 	const ramNeeded = ramNeededPerBatch * numBatches;
+    const threadsNeeded = ramNeeded / SCRIPT_RAM;
 
 	const moneyGotten = server.moneyMax * params.moneyPercent;
 	const moneyPerSecond = moneyGotten / (4 * params.tDelta / 1000);
 
-	return moneyPerSecond / ramNeeded;
+	return moneyPerSecond / threadsNeeded;
 }
 
 export function planHack(params) {
