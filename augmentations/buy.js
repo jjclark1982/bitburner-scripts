@@ -6,7 +6,7 @@ List augmentations that boost a given kind of stats, starting with the most expe
 Optionally buy them.
 
 Usage:
-run /augmentations/buy.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | all ... ] [ --confirm ]
+run /augmentations/buy.js [ hacking | charisma | combat | crime | faction | hacknet | bladeburner | all ... ] [ --begin ]
 
 */
 
@@ -14,7 +14,7 @@ import { DOMAINS, getAllAugmentations, averageValue } from "augmentations/info.j
 
 const FLAGS = [
     ["help", false],
-    ["confirm", false]
+    ["begin", false]
 ];
 
 export function autocomplete(data, args) {
@@ -27,20 +27,20 @@ export async function main(ns) {
     ns.disableLog('sleep');
     ns.clearLog();
 
-    const args = ns.flags(FLAGS);
-    const domains = args._;
-    if (args.help || domains.length == 0) {
+    const flags = ns.flags(FLAGS);
+    const domains = flags._;
+    if (flags.help || domains.length == 0) {
         ns.tprint([
             `List augmentations that boost a given kind of stats, starting with the most expensive. Optionally buy them.`,
             '',
             'Usage: ',
-            `${ns.getScriptName()} [ ${Object.keys(DOMAINS).join(' | ')} ... ] [ --confirm ]`,
+            `${ns.getScriptName()} [ ${Object.keys(DOMAINS).join(' | ')} ... ] [ --begin ]`,
             '',
             `Example: List all augs that increase hacking stats or faction rep gain`,
             `> run ${ns.getScriptName()} hacking faction`,
             '',
             `Example: Buy all augs that increase hacking, including NeuroFlux Governor repeatedly`,
-            `> run ${ns.getScriptName()} hacking --confirm`,
+            `> run ${ns.getScriptName()} hacking --begin`,
             ' '
         ].join("\n"));
         return;
@@ -60,7 +60,7 @@ export async function main(ns) {
     }
     ns.print(summary.join("\n"), "\n");
 
-    if (args.buy) {
+    if (flags.begin) {
         await buyAugs(ns, domains);
     }
     else {
