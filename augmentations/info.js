@@ -114,19 +114,30 @@ export function getAllAugmentations(ns) {
 export function getAugmentationInfo(ns, augName) {
     const aug = {};
     aug.name = augName;
-    aug.installed = ns.getOwnedAugmentations().includes(augName);
-    aug.purchased = !aug.installed && ns.getOwnedAugmentations(true).includes(augName);
+    aug.installed = ns.getOwnedAugmentations().includes(aug.name);
+    aug.purchased = !aug.installed && ns.getOwnedAugmentations(true).includes(aug.name);
 
-    aug.repReq = ns.getAugmentationRepReq(augName);
-    aug.price = ns.getAugmentationPrice(augName);  // TODO: estimate future prices with MultipleAugMultiplier = 1.9;
+    aug.repReq = ns.getAugmentationRepReq(aug.name);
+    aug.price = ns.getAugmentationPrice(aug.name);  // TODO: estimate future prices with MultipleAugMultiplier = 1.9;
     aug.prereqs = ns.getAugmentationPrereq(aug.name);
 
-    aug.stats = ns.getAugmentationStats(augName);
+    aug.stats = ns.getAugmentationStats(aug.name);
     aug.value = getAugmentationValue(ns, aug);
 
-    aug.factions = getAugmentationFactions(ns, augName);
+    aug.factions = getAugmentationFactions(ns, aug.name);
+
+    aug.isUnique = (aug.factions.length == 1);
+    aug.isSpecial = isAugmentationSpecial(aug);
 
     return aug;
+}
+
+export function isAugmentationSpecial(aug) {
+    const specialFactions = ["Bladeburners", "Church of the Machine God"];
+    if (Object.keys(aug.factions).some((f)=>specialFactions.includes(f))) {
+        return true;
+    }
+    return false;
 }
 
 export function getAugmentationFactions(ns, augName) {

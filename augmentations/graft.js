@@ -114,10 +114,11 @@ export function getGraftableAugs(ns, {domains, canAfford}) {
         return aug;
     }).filter(function(aug){
         return (
+            (!exclude.includes(aug.name)) &&
+            (!aug.isSpecial) &&
             (!canAfford || (aug.price < ns.getPlayer().money)) &&
             (!canAfford || (aug.totalValue > 1.0)) &&
             (!canAfford || (aug.price > 0)) && // TODO: check whether free augs are graftable in future
-            (!exclude.includes(aug.name)) &&
             (!ownedAugs.includes(aug.name))
             // TODO: check whether prereqs get enforced in future versions
         )
