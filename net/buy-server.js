@@ -1,40 +1,34 @@
-export function buyServer(ns, fundsFraction=0.8, count=1) {
-    const funds = fundsFraction * ns.getServerMoneyAvailable('home') / count;
+import { retireServerIfNeeded } from "net/retire-server.js";
 
-    let costMult = 1;
+export async function main(ns) {
+    const fundsFraction = ns.args[0] || 0.8;
+    buyServer(ns, fundsFraction);
+}
+
+export function buyServer(ns, fundsFraction=0.8) {
+    const funds = fundsFraction * ns.getServerMoneyAvailable('home');
+
+    // let costMult = 1;
     // costMult = ns.getBitNodeMultipliers().PurchasedServerCost;
-
-    const size = largestServerSize(ns, funds);
     // const power = Math.floor(Math.log2(funds/(50000*costMult)));
     // const size = Math.min(ns.getPurchasedServerMaxRam(), Math.pow(2, power));
 
-    ns.tprint(`Purchasing ${count}x servers with ${ns.nFormat(size*1e9, "0.0 b")} RAM`);
+    const size = largestServerSize(ns, funds);
+    const cost = ns.getPurchasedServerCost(size);
 
     let servers = ns.getPurchasedServers();
 
-    let delCount = count + servers.length - 25;
-    for (let i = 0; i < delCount; i++) {
-        ns.killall(servers[i]);
-    }
-    for (let i = 0; i < delCount; i++) {
-        ns.deleteServer(servers[i]);
-    }
+    retireServerIfNeeded(ns);
 
     let hostname = `pserv-${servers.length}`;
     hostname = ns.purchaseServer(hostname, size);
     if (hostname) {
-        ns.tprint(`Purchased server ${hostname}`);
+        ns.tprint(`Purchased server '${hostname}' with ${ns.nFormat(size*1e9, "0.0 b")} RAM for ${ns.nFormat(cost, "$0,0a")}`);
     }
     else {
         ns.tprint("Failed to purchase server");
     }
     return hostname;
-}
-
-export async function main(ns) {
-    const fundsFraction = ns.args[0] || 0.6;
-    const count = 1;
-    buyServer(ns, fundsFraction, count);
 }
 
 export function largestServerSize(ns, funds) {
