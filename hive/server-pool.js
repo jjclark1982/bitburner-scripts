@@ -1,3 +1,5 @@
+import { drawTable } from "lib/box-drawing.js";
+
 const SCRIPT_RAM = 2.0; // Default thread cost for estimating capacity of pool
 
 const FLAGS = [
@@ -123,18 +125,25 @@ export class ServerPool {
 
     report() {
         const {ns} = this;
-        let poolInfo = [`Server Pool for ${ns.nFormat(this.scriptRam*1e9, "0.0[0] b")} script:`];
-        for (const server of this.servers) {
-            poolInfo.push(sprintf("  %-20s %8s RAM (%s threads)",
-                server.hostname + ":",
-                ns.nFormat(server.maxRam*1e9, "0.0 b"),
-                ns.nFormat(server.availableThreads, "0,0")
-            ));
-        }
-        poolInfo.push('');
+        let poolInfo = [
+            '',
+            `              Server Pool`
+        ];
+        
+        const columns = [
+            {header: "Hostname", field: "hostname", width: 20, align: "left"},
+            {header: "Used RAM", field: "ramBytes",  format: [ns.nFormat], formatArgs: ["0 b"], width: 15, itemWidth: 6, align:"center"}
+        ]
+        const rows = this.servers.map((server)=>{
+            return {
+                ...server,
+                ramBytes: [server.ramUsed*1e9, server.maxRam*1e9]
+            }
+        });
+        poolInfo.push(drawTable(columns, rows));
         poolInfo.push(`Total servers in pool: ${this.totalServers()}`);
-        poolInfo.push(`Total threads available: ${ns.nFormat(this.totalThreads(), "0,0")}`);
-        poolInfo.push('');
+        poolInfo.push(`Total RAM available: ${ns.nFormat(this.totalThreads(), "0,0")} threads ⨯ ${ns.nFormat(this.scriptRam*1e9, "0.0[0] b")} script`);
+        poolInfo.push(' ');
         return poolInfo.join('\n');
     }
 
