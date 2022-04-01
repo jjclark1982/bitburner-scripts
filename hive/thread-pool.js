@@ -1,5 +1,5 @@
 import { ServerPool } from "hive/server-pool.js";
-import { drawTable } from "hive/table.js";
+import { drawTable } from "lib/box-drawing.js";
 
 const FLAGS = [
     ["port", 1],
