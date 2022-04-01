@@ -1,5 +1,6 @@
 const FLAGS = [
     ["verbose", false],
+    ["loop", false],
     ["startTime"]
 ];
 
@@ -10,20 +11,23 @@ export function autocomplete(data, args) {
 
 /** @param {NS} ns **/
 export async function main(ns) {
-    const args = ns.flags(FLAGS);
-    const target = args._.shift();
-    if (args.startTime) {
-        const delay = args.startTime - Date.now();
+    const flags = ns.flags(FLAGS);
+    const target = flags._.shift();
+    if (flags.startTime) {
+        const delay = flags.startTime - Date.now();
         if (delay < -10*1000) {
             return;
         }
         await ns.sleep(delay);
     }
-    if (args.verbose) {
-        ns.tprint(`  ${Date.now()}: Starting grow   ${JSON.stringify(ns.args)}`);
-    }
-    await ns.grow(target);
-    if (args.verbose) {
-        ns.tprint(`  ${Date.now()}: Finished grow   ${JSON.stringify(ns.args)}`);
+    let count = 0;
+    while (flags.loop || count++ == 0) {
+        if (flags.verbose) {
+            ns.tprint(`  ${Date.now()}: Starting grow   ${JSON.stringify(ns.args)}`);
+        }
+        await ns.grow(target);
+        if (flags.verbose) {
+            ns.tprint(`  ${Date.now()}: Finished grow   ${JSON.stringify(ns.args)}`);
+        }
     }
 }
