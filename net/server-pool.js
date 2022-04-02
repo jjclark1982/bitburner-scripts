@@ -129,10 +129,14 @@ export class ServerPool {
             '',
             `              Server Pool`
         ];
+
+        function formatRAM(ram) {
+            return ns.nFormat(ram*1e9, "0 b");
+        }
         
         const columns = [
             {header: "Hostname", field: "hostname", width: 20, align: "left"},
-            {header: "Used RAM", field: "ramBytes",  format: [ns.nFormat], formatArgs: ["0 b"], width: 15, itemWidth: 6, align:"center"}
+            {header: "Used RAM", field: ["ramUsed", "maxRam"],  format: [formatRAM], width: 15, itemWidth: 6, align:"center"}
         ]
         const rows = this.servers.map((server)=>{
             return {
@@ -140,9 +144,14 @@ export class ServerPool {
                 ramBytes: [server.ramUsed*1e9, server.maxRam*1e9]
             }
         });
-        poolInfo.push(drawTable(columns, rows));
-        poolInfo.push(`Total servers in pool: ${this.totalServers()}`);
-        poolInfo.push(`Total RAM available: ${ns.nFormat(this.totalThreads(), "0,0")} threads ⨯ ${ns.nFormat(this.scriptRam*1e9, "0.0[0] b")} script`);
+        const summary = [{
+            hostname: `Total servers: ${this.totalServers()}`,
+            ramUsed: this.totalUsedRam(),
+            maxRam: this.totalRam(),
+        }];
+        poolInfo.push(drawTable(columns, rows, summary));
+        poolInfo.push(`Total RAM available: ${ns.nFormat((this.totalRam() - this.totalUsedRam())*1e9, "0 b")}`);
+        poolInfo.push(`Total ${ns.nFormat(this.scriptRam*1e9, "0.0[0] b")} threads available: ${ns.nFormat(this.totalThreads(), "0,0")}`);
         poolInfo.push(' ');
         return poolInfo.join('\n');
     }
@@ -243,9 +252,9 @@ function getServersForScript(ns, scriptRam) {
             // Reserve RAM on home and hacknet servers
             reservedRam = Math.min(1024, server.maxRam * 3 / 4);
         }
-        server.availableRam = Math.max(0, server.maxRam - server.ramUsed - reservedRam);
+        server.freeRam = Math.max(0, server.maxRam - server.ramUsed - reservedRam);
         if (server.hasAdminRights) {
-            server.availableThreads = Math.floor(server.availableRam / scriptRam);
+            server.availableThreads = Math.floor(server.freeRam / scriptRam);
         }
         else {
             server.availableThreads = 0;
@@ -253,8 +262,11 @@ function getServersForScript(ns, scriptRam) {
         server.sortKey = server.maxRam; //server.availableThreads * (1 + server.cpuCores/16);
         return server;
     }).filter((server)=>(
+        // TODO: separate this filtering, and count threads in a second pass
+        // getAllHosts -> getAllServers -> getServerPool
+        // getAllHosts -> getAllServers -> getHackTargets
         server.hasAdminRights &&
-        server.maxRam > 0
+        server.maxRam >= 1.6
     )).sort((a,b)=>(
         b.sortKey - a.sortKey
     ));
