@@ -14,10 +14,10 @@ export async function main(ns) {
         {header: "Prep Time", field: "prepTime", format: drawTable.time},
 		{header: "$ / sec / thread", field: "profit", format: ns.nFormat, formatArgs:["$0,0.00"]},
 	];
+	columns.title = "Most Profitable Servers to Hack";
 	const servers = mostProfitableTargets(ns);
 
 	ns.clearLog();
-    ns.print("\n            Most Profitable Servers to Hack")
 	ns.print(drawTable(columns, servers));
 	ns.tail();
 }

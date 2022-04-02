@@ -125,19 +125,15 @@ export class ServerPool {
 
     report() {
         const {ns} = this;
-        let poolInfo = [
-            '',
-            `              Server Pool`
-        ];
-
+        let poolInfo = [];
         function formatRAM(ram) {
             return ns.nFormat(ram*1e9, "0 b");
         }
-        
         const columns = [
             {header: "Hostname", field: "hostname", width: 20, align: "left"},
             {header: "Used RAM", field: ["ramUsed", "maxRam"],  format: [formatRAM], width: 15, itemWidth: 6, align:"center"}
-        ]
+        ];
+        columns.title = "Servers with Admin Rights";
         const rows = this.servers.map((server)=>{
             return {
                 ...server,
