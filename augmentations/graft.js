@@ -105,26 +105,29 @@ export function getGraftableAugs(ns, {domains, canAfford}) {
     const ownedAugs = ns.getOwnedAugmentations(true);
     const exclude = ["The Red Pill", "NeuroFlux Governor"];
 
-    const graftableAugs = allAugs.map(function(aug){
+    let graftableAugs = allAugs.map(function(aug){
         estimateGraftValues(ns, aug);
         aug.totalValue = averageValue(aug, domains);
         aug.price = ns.grafting.getAugmentationGraftPrice(aug.name);
         aug.time = ns.grafting.getAugmentationGraftTime(aug.name);
-        aug.sortKey = (aug.totalValue-1) / aug.time;
+        aug.sortKey = (aug.totalValue-1) / (aug.time + 15*60*1000);
+        aug.prereqsMet = aug.prereqs.every((a)=>ownedAugs.includes(a));
         return aug;
-    }).filter(function(aug){
-        return (
-            (!exclude.includes(aug.name)) &&
-            (!aug.isSpecial) &&
-            (!canAfford || (aug.price < ns.getPlayer().money)) &&
-            (!canAfford || (aug.totalValue > 1.0)) &&
-            (!canAfford || (aug.price > 0)) && // TODO: check whether free augs are graftable in future
-            (!ownedAugs.includes(aug.name))
-            // TODO: check whether prereqs get enforced in future versions
-        )
-    }).sort(function(a,b){
+    }).filter((aug)=>(
+        (!aug.isSpecial) &&
+        (!exclude.includes(aug.name)) &&
+        (!ownedAugs.includes(aug.name))
+    )).sort(function(a,b){
         return b.sortKey - a.sortKey;
     });
+
+    if (canAfford) {
+        graftableAugs = graftableAugs.filter((aug)=>(
+            aug.prereqsMet &&
+            (aug.price < ns.getPlayer().money) &&
+            (aug.totalValue > 1.0)
+        ));
+    }
 
     return graftableAugs;
 }
