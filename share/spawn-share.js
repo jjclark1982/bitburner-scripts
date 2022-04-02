@@ -17,6 +17,6 @@ export async function main(ns) {
     if (host == 'home') {
         reservedRam = (ns.args[1] || 128.0);
     }
-    const script = "/net/share.js";
+    const script = "/share/share.js";
     await runMaxThreadsOnHost({ns, host, script, reservedRam});
 }
