@@ -34,8 +34,8 @@ Would like to move most of these into `net/` or `hacking/`.
 (Don't want to have a `servers/` folder because autocomplete gets `ServerProfiler.exe`)
 
 - misc net scripts (don't really fit in this section)  
-    - [ ] `/net/backdoor-servers.js` -> move to `/player/`  
-    - [ ] `/net/tunnel.js` -> move to `/player/`  
+    - [x] `/net/backdoor-servers.js` -> move to `/player/`  
+    - [x] `/net/tunnel.js` -> move to `/player/`  
     - [ ] `/net/share.js` -> move to `/share/`  
     - [ ] `/net/spawn-share.js` -> move to `/share/`  
 
