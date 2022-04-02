@@ -1,5 +1,7 @@
+import { sellHashesForMoney } from "hacknet/spend-hashes.js";
+
 export let MAX_BREAKEVEN_TIME = 1 * 60 * 60 * 1.000; // 1 hours in seconds
-export let MAX_CACHE_TIME = 1 * 60 * 60 * 1.000; // 1 hour in seconds
+export let MAX_CACHE_TIME = 15 * 60 * 1.000; // 15 minutes in seconds
 
 export async function main(ns) {
     ns.disableLog("asleep");
@@ -13,17 +15,20 @@ export async function main(ns) {
     else {
         MAX_CACHE_TIME = MAX_BREAKEVEN_TIME / 8;
     }
-    const sellInterval = setInterval(sellOverflowHashes.bind(ns), 1000);
+    const sellInterval = setInterval(function(){
+        sellOverflowHashes(ns);
+    }, MAX_CACHE_TIME * 1000 * 0.09);
     ns.atExit(()=>clearInterval(sellInterval));
+    sellOverflowHashes(ns);
     await buyAllUpgrades(ns, MAX_BREAKEVEN_TIME);
+    while (true) {
+        await ns.asleep(60*60*1000);
+    }
 }
 
 export function sellOverflowHashes(ns, hashFraction=0.9) {
-    //const hashGainRate = totalHashGainRate(ns);
-    while (ns.hacknet.numHashes() > ns.hacknet.hashCapacity() * hashFraction) {
-        //ns.print("Selling hashes for money");
-        ns.hacknet.spendHashes("Sell for Money");
-    }
+    const reservedHashes = ns.hacknet.hashCapacity() * hashFraction;
+    sellHashesForMoney(ns, reservedHashes);
 }
 
 export async function waitForMoney(ns, moneyTarget, moneyFraction=0.9) {

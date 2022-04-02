@@ -119,15 +119,14 @@ export function buyBladeburnerUpgrades(ns) {
     }
 }
 
-export function sellHashesForMoney(ns) {
+export function sellHashesForMoney(ns, reservedHashes=0) {
     let moneyCost = 0;
     const cost = ns.hacknet.hashCost("Sell for Money");
-    while (ns.hacknet.numHashes() >= cost) {
+    while (ns.hacknet.numHashes() >= cost + reservedHashes) {
         ns.hacknet.spendHashes("Sell for Money");
         moneyCost += cost;
     }
     if (moneyCost > 0) {
         ns.print(`Spent ${moneyCost} hashes for money.`)
     }
-
 }
