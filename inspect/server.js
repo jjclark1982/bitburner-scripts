@@ -56,7 +56,8 @@ export async function main(ns) {
         ns.print(` RAM: ${ns.nFormat(server.ramUsed * 1e9, "0.[0] b")} / ${ns.nFormat(server.maxRam * 1e9, "0.[0] b")}\n`)
         // ns.print(` Admin Access: ${server.hasAdminRights ? '✓' : '✗'}, Backdoor: ${server.backdoorInstalled ? '✓' : '✗'}`);
         ns.print(` money:    ${ns.nFormat(money, "$0.[000]a")} / ${ns.nFormat(maxMoney, "$0.[000]a")} (${((money / maxMoney * 100) || 0).toFixed(2)}%)`);
-        ns.print(` security: ${ns.nFormat(minSec, "0.[00]")} + ${(sec - minSec).toFixed(2)}`);
+        const secString = (sec == 0) ? '0' : `${ns.nFormat(minSec, "0.[00]")} + ${(sec - minSec).toFixed(2)}`;
+        ns.print(` security: ${secString}`);
         if (!server.purchasedByPlayer) {
             ns.print(` hack:     ${ns.tFormat(ns.getHackTime(host))} (t=${Math.ceil(ns.hackAnalyzeThreads(host, money))})`);
             ns.print(` grow:     ${ns.tFormat(ns.getGrowTime(host))} (t=${Math.ceil(ns.growthAnalyze(host, Math.max(1, maxMoney) / Math.max(1,money))) || 0})`);
