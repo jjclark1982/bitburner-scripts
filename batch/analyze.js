@@ -12,7 +12,7 @@ export async function main(ns) {
 	const columns = [
 		{header: "Hostname", field: "hostname", width: 18, align: "left"},
         {header: "Prep Time", field: "prepTime", format: drawTable.time},
-		{header: "$ / sec / thread", field: "profit", format: ns.nFormat, formatArgs:["$0,0.00"]},
+		{header: " $/sec/thread", field: "profit", format: ns.nFormat, formatArgs:["$0,0.00"]},
 	];
 	columns.title = "Most Profitable Servers to Hack";
 	const servers = mostProfitableTargets(ns);
