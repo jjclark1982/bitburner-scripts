@@ -43,7 +43,7 @@ Would like to move most of these into `net/` or `hacking/`.
     - [x] `/hive/table.js` -> move to `/lib/box-drawing.js`  
     - [ ] `/inspect/server.js`  
 - memory management -> move most of these to `/net/`  
-    - [ ] `/hive/server-pool.js`  
+    - [x] `/hive/server-pool.js`  
     - [ ] `/net/lib.js` -> merge into `server-pool`  
     - [ ] `/batch/pool.js` -> merge into `server-pool`  
     - [ ] `/net/crack-servers.js`  

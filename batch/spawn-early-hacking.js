@@ -16,6 +16,6 @@ export async function main(ns) {
     const money = ns.getServerMoneyAvailable(target);
     const threads = Math.ceil(ns.growthAnalyze(target, maxMoney / Math.max(1,money)) / 2);
 
-    ns.run("/batch/pool.js", 1, '--threads', threads, "/net/farm.js", target, "--minSecurity", minSecurity, "--maxMoney", maxMoney);
-    // ns.run("/net/farm.js", threads, target, "--minSecurity", minSecurity, "--maxMoney", maxMoney);
+    ns.run("/net/server-pool.js", 1, '--threads', threads, "/batch/early-hacking.js", target, "--minSecurity", minSecurity, "--maxMoney", maxMoney);
+    // ns.run("/batch/early-hacking.js", threads, target, "--minSecurity", minSecurity, "--maxMoney", maxMoney);
 }
