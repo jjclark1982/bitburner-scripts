@@ -294,3 +294,24 @@ function getServersForScript(ns, scriptRam) {
     ));
     return servers;
 }
+
+export async function runOnSmallest(ns, params) {
+    const {script, threads, args, roundUpThreads} = params;
+    const verbose = 2;
+    const serverPool = new ServerPool(ns, script, verbose);
+    return await serverPool.runOnSmallest(params);
+}
+
+export async function runMaxThreads(ns, params) {
+    const {host, script, args, reservedRam} = params;
+    const verbose = 2;
+    const serverPool = new ServerPool(ns, script, verbose);
+    return await serverPool.runMaxThreads(params);
+}
+
+export async function runDistributed(ns, params) {
+    const {script, threads, args, requireAll} = params;
+    const verbose = 2;
+    const serverPool = new ServerPool(ns, script, verbose);
+    return await serverPool.runDistributed(params);
+}

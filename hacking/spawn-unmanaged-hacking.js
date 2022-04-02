@@ -1,4 +1,4 @@
-import { ServerPool } from "net/server-pool.js";
+import { runDistributed } from "net/server-pool.js";
 
 const FLAGS = [];
 
@@ -21,5 +21,5 @@ export async function main(ns) {
     const args = [target, "--minSecurity", minSecurity, "--maxMoney", maxMoney];
 
     // ns.run(script, threads, ...args);
-    await new ServerPool(ns, script, 2).runDistributed({script, threads, args});
+    await runDistributed(ns, {script, threads, args});
 }
