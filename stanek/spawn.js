@@ -7,6 +7,10 @@ export function autocomplete(data) {
 /** @param {NS} ns **/
 export async function main(ns) {
     const fragments = ns.stanek.activeFragments();
+    if (fragments.length == 0) {
+        ns.tprint("No fragments to charge. Exiting.");
+        return;
+    }
     const xy = [];
     for (const fragment of fragments) {
         if (fragment.limit == 1) {
@@ -20,7 +24,5 @@ export async function main(ns) {
     const script = "/stanek/charge-x-y.js";
     const args = xy;
 
-    const verbose = 2;
-    const serverPool = new ServerPool(ns, script, verbose);
-    await serverPool.runMaxThreads({host, script, args, reservedRam});
+    await new ServerPool(ns, script, 2).runMaxThreads({host, script, args, reservedRam});
 }

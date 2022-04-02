@@ -205,6 +205,10 @@ export class ServerPool {
         if (!server) {
             server = this.largestServers()[0];
         }
+        if (!server) {
+            this.logWarn(`Not enough RAM in server pool to run ${script} ${args}`);
+            return;
+        }
         args ||= [];
 
         const scriptRam = ns.getScriptRam(script, 'home');
