@@ -58,6 +58,9 @@ export async function main(ns) {
 export class ServerPool {
     constructor(ns, scriptRam, verbose) {
         this.ns = ns;
+        if (typeof(scriptRam) === "string") {
+            scriptRam = ns.getScriptRam(scriptRam, 'home');
+        }
         this.scriptRam = scriptRam || SCRIPT_RAM;
         this.verbose = verbose;
         this.servers = getServersForScript(ns, scriptRam);
@@ -114,6 +117,18 @@ export class ServerPool {
         }
     }
 
+    getServer(hostname) {
+        if (!hostname) {
+            return null;
+        }
+        for (const server of this.servers) {
+            if (server.hostname == hostname) {
+                return server;
+            }
+        }
+        return null;
+    }
+
     totalServers() {
         return this.servers.length;
     }
@@ -154,6 +169,7 @@ export class ServerPool {
 
     async runOnServer({server, script, threads, args}) {
         const {ns} = this;
+        args ||= [];
         if (!server) {
             this.logWarn(`No suitable server to run ${script}`);
             return null;
@@ -181,16 +197,21 @@ export class ServerPool {
         return await this.runOnServer({server, script, threads, args})
     }
 
-    async runOnLargest({script, args, reservedRam}) {
+    async runMaxThreads({host, script, args, reservedRam}) {
         // Run the maximum threads of the script on a single server.
         // (Useful for charging Stanek's Gift.)
         const {ns} = this;
-        const server = this.largestServers()[0];
+        let server = this.getServer(host);
+        if (!server) {
+            server = this.largestServers()[0];
+        }
         args ||= [];
-        reservedRam ||= 0;
 
         const scriptRam = ns.getScriptRam(script, 'home');
-        let availableRam = server.maxRam - server.ramUsed - reservedRam;
+        let availableRam = server.availableRam;
+        if (reservedRam) {
+            availableRam = server.maxRam - server.ramUsed - reservedRam;
+        }
         const threads = Math.floor(availableRam / scriptRam);
         return await this.runOnServer({server, script, threads, args});
     }
@@ -255,9 +276,9 @@ function getServersForScript(ns, scriptRam) {
         if ((server.hostname === "home") || server.hashCapacity) {
             reservedRam = Math.min(1024, server.maxRam * 3 / 4);
         }
-        const availableRam = Math.max(0, server.maxRam - server.ramUsed - reservedRam);
+        server.availableRam = Math.max(0, server.maxRam - server.ramUsed - reservedRam);
         if (server.hasAdminRights) {
-            server.availableThreads = Math.floor(availableRam / scriptRam);
+            server.availableThreads = Math.floor(server.availableRam / scriptRam);
         }
         else {
             server.availableThreads = 0;

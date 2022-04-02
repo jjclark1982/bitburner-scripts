@@ -36,30 +36,36 @@ Would like to move most of these into `net/` or `hacking/`.
 - misc net scripts (don't really fit in this section)  
     - [x] `/net/backdoor-servers.js` -> move to `/player/`  
     - [x] `/net/tunnel.js` -> move to `/player/`  
-    - [ ] `/net/share.js` -> move to `/share/`  
-    - [ ] `/net/spawn-share.js` -> move to `/share/`  
+    - [x] `/net/share.js` -> move to `/share/`  
+    - [x] `/net/spawn-share.js` -> move to `/share/`  
 
 - libraries / utilities  
     - [x] `/hive/table.js` -> move to `/lib/box-drawing.js`  
-    - [ ] `/inspect/server.js`  
-- memory management -> move most of these to `/net/`  
-    - [x] `/hive/server-pool.js`  
-    - [ ] `/net/lib.js` -> merge into `server-pool`  
+    - [ ] `/inspect/server.js` -> move to `/net/info.js`?  
+
+- server / memory management -> move to `/net/` (maybe rename to `/cloud/`)  
+    - [x] `/hive/server-pool.js` -> move to `/net/server-pool.js`  
+    - [x] `/net/lib.js` -> merge into `server-pool`  
     - [ ] `/batch/pool.js` -> merge into `server-pool`  
-    - [ ] `/net/crack-servers.js`  
-    - [ ] `/net/buy-server.js`  
+    - [x] `/net/crack-servers.js` -> `/net/register-servers.js`  
+    - [x] `/net/buy-server.js` -> split out 'retire' function  
+
 - thread management / function delegation / botnet control -> maybe rename to `/botnet/`  
     - [ ] `/hive/thread-pool.js`  
     - [ ] `/hive/worker.js` (class definition)  
+
 - hack planning  
     - [ ] `/batch/analyze.js`  
+
 - unmanaged hacking  
     - [ ] `/batch/early-hacking.js`  
     - [ ] `/batch/spawn-early-hacking.js`  
+
 - managed hacking (single-run process)  
     - [ ] `/batch/prep.js`  
     - [ ] `/batch/manage.js`  
     - [ ] `/batch/{hack,grow,weaken}.js`  
+
 - managed hacking (persistent process)  
     - [ ] `/hive/manage.js`  
     - [ ] `/hive/worker.js` (main function)  

@@ -32,7 +32,7 @@ export async function main(ns) {
     await ns.sleep( 0*1000); ns.run("/corporation/init.js");
     // await ns.sleep( 0*1000); ns.run("/gang/manage.js");
     await ns.sleep( 1*1000); ns.run("/stanek/spawn.js");
-    await ns.sleep( 1*1000); ns.run("/share/spawn-share.js");
+    await ns.sleep( 1*1000); ns.run("/share/spawn.js");
     await prepareStats(ns, {
         "hacking": 10
     });
