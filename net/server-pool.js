@@ -67,6 +67,35 @@ export class ServerPool {
         return this.servers[Symbol.iterator]();
     }
 
+    report() {
+        const {ns} = this;
+        let poolInfo = [];
+        function formatRAM(ram) {
+            return ns.nFormat(ram*1e9, "0 b");
+        }
+        const columns = [
+            {header: "Hostname", field: "hostname", width: 20, align: "left"},
+            {header: "Used RAM", field: ["ramUsed", "maxRam"],  format: [formatRAM], width: 15, itemWidth: 6, align:"center"}
+        ];
+        columns.title = "Servers with Admin Rights";
+        const rows = this.servers.map((server)=>{
+            return {
+                ...server,
+                ramBytes: [server.ramUsed*1e9, server.maxRam*1e9]
+            }
+        });
+        const summary = [{
+            hostname: `Total servers: ${this.totalServers()}`,
+            ramUsed: this.totalUsedRam(),
+            maxRam: this.totalRam(),
+        }];
+        poolInfo.push(drawTable(columns, rows, summary));
+        poolInfo.push(`Total RAM available: ${ns.nFormat((this.totalRam() - this.totalUsedRam())*1e9, "0 b")}`);
+        poolInfo.push(`Total ${ns.nFormat(this.scriptRam*1e9, "0.0[0] b")} threads available: ${ns.nFormat(this.totalThreadsAvailable(), "0,0")}`);
+        poolInfo.push(' ');
+        return poolInfo.join('\n');
+    }
+
     logInfo(...args) {
         if (this.verbose >= 2) {
             this.ns.tprint(...args);
@@ -101,7 +130,7 @@ export class ServerPool {
         ), 0);
     }
 
-    totalThreads() {
+    totalThreadsAvailable() {
         return this.servers.reduce((total, server)=>(
             total + server.availableThreads
         ), 0);
@@ -121,35 +150,6 @@ export class ServerPool {
         )).sort((a,b)=>(
             b.availableThreads - a.availableThreads
         ));
-    }
-
-    report() {
-        const {ns} = this;
-        let poolInfo = [];
-        function formatRAM(ram) {
-            return ns.nFormat(ram*1e9, "0 b");
-        }
-        const columns = [
-            {header: "Hostname", field: "hostname", width: 20, align: "left"},
-            {header: "Used RAM", field: ["ramUsed", "maxRam"],  format: [formatRAM], width: 15, itemWidth: 6, align:"center"}
-        ];
-        columns.title = "Servers with Admin Rights";
-        const rows = this.servers.map((server)=>{
-            return {
-                ...server,
-                ramBytes: [server.ramUsed*1e9, server.maxRam*1e9]
-            }
-        });
-        const summary = [{
-            hostname: `Total servers: ${this.totalServers()}`,
-            ramUsed: this.totalUsedRam(),
-            maxRam: this.totalRam(),
-        }];
-        poolInfo.push(drawTable(columns, rows, summary));
-        poolInfo.push(`Total RAM available: ${ns.nFormat((this.totalRam() - this.totalUsedRam())*1e9, "0 b")}`);
-        poolInfo.push(`Total ${ns.nFormat(this.scriptRam*1e9, "0.0[0] b")} threads available: ${ns.nFormat(this.totalThreads(), "0,0")}`);
-        poolInfo.push(' ');
-        return poolInfo.join('\n');
     }
 
     async runOnServer({server, script, threads, args}) {
@@ -183,6 +183,7 @@ export class ServerPool {
 
     async runOnLargest({script, args, reservedRam}) {
         // Run the maximum threads of the script on a single server.
+        // (Useful for charging Stanek's Gift.)
         const {ns} = this;
         const server = this.largestServers()[0];
         args ||= [];
@@ -197,7 +198,7 @@ export class ServerPool {
     async runDistributed({script, threads, args, requireAll}) {
         // Run the script on one or more hosts, selected based on current availability.
         let threadsNeeded = threads;
-        if (this.totalThreads < threadsNeeded && requireAll) {
+        if (this.totalThreadsAvailable() < threadsNeeded && requireAll) {
             this.logWarn(`Not enough RAM in server pool to run entire job: ${threads}x ${script} ${args}`);
         }
         let servers = this.smallestServersWithThreads(threads);
@@ -240,31 +241,31 @@ function getAllHosts(ns) {
     return allHosts;
 }
 
+function getAllServers(ns) {
+    const servers = getAllHosts(ns).map(ns.getServer).sort((a,b)=>(
+        b.maxRam - a.maxRam
+    ))
+    return servers;
+}
+
 function getServersForScript(ns, scriptRam) {
-    const servers = getAllHosts(ns).map((hostname)=>{
-        const server = ns.getServer(hostname);
+    const servers = getAllServers(ns).map((server)=>{
+        // Reserve up to 1 TB of RAM on home and hacknet servers
         let reservedRam = 0;
         if ((server.hostname === "home") || server.hashCapacity) {
-            // Reserve RAM on home and hacknet servers
             reservedRam = Math.min(1024, server.maxRam * 3 / 4);
         }
-        server.freeRam = Math.max(0, server.maxRam - server.ramUsed - reservedRam);
+        const availableRam = Math.max(0, server.maxRam - server.ramUsed - reservedRam);
         if (server.hasAdminRights) {
-            server.availableThreads = Math.floor(server.freeRam / scriptRam);
+            server.availableThreads = Math.floor(availableRam / scriptRam);
         }
         else {
             server.availableThreads = 0;
         }
-        server.sortKey = server.maxRam; //server.availableThreads * (1 + server.cpuCores/16);
         return server;
     }).filter((server)=>(
-        // TODO: separate this filtering, and count threads in a second pass
-        // getAllHosts -> getAllServers -> getServerPool
-        // getAllHosts -> getAllServers -> getHackTargets
         server.hasAdminRights &&
-        server.maxRam >= 1.6
-    )).sort((a,b)=>(
-        b.sortKey - a.sortKey
+        server.maxRam > 0
     ));
     return servers;
 }
