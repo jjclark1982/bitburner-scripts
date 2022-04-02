@@ -36,7 +36,7 @@ export async function main(ns) {
     await prepareStats(ns, {
         "hacking": 10
     });
-    await ns.sleep( 0*1000); ns.run("/net/crack-servers.js");
+    await ns.sleep( 0*1000); ns.run("/net/register-servers.js");
     await prepareStats(ns, {
         "strength": 5,
         "defense": 5,

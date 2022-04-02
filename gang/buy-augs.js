@@ -1,6 +1,6 @@
 /** @param {NS} ns **/
 export async function main(ns) {
-    if (!ns.gang.inGang) {
+    if (!ns.gang.inGang()) {
         return;
     }
     buyAugsForAllMembers(ns);

@@ -23,7 +23,7 @@ export async function openAllServers(ns) {
         }
         closedServers = getClosedServers(ns);
     }
-    ns.tprint("Admin rights available on all servers.");
+    ns.tprint("Registered admin accounts on all servers.");
 }
 
 export function openServer(ns, server) {
