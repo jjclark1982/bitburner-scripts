@@ -1,4 +1,4 @@
-import { connectToHost } from "/net/tunnel.js";
+import { connectToHost } from "/player/tunnel.js";
 
 export async function main(ns) {
     await installBackdoors(ns);

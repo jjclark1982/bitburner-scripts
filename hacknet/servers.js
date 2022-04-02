@@ -3,6 +3,7 @@ export let MAX_CACHE_TIME = 1 * 60 * 60 * 1.000; // 1 hour in seconds
 
 export async function main(ns) {
     ns.disableLog("asleep");
+    ns.clearLog();
     if (ns.args.length > 0) {
         MAX_BREAKEVEN_TIME = 60 * 60 * ns.args[0];
     }
@@ -12,14 +13,12 @@ export async function main(ns) {
     else {
         MAX_CACHE_TIME = MAX_BREAKEVEN_TIME / 8;
     }
-    buyAllUpgrades(ns, MAX_BREAKEVEN_TIME);
-    while (true) {
-        sellHashesNow(ns);
-        await ns.asleep(1000);
-    }
+    const sellInterval = setInterval(sellOverflowHashes.bind(ns), 1000);
+    ns.atExit(()=>clearInterval(sellInterval));
+    await buyAllUpgrades(ns, MAX_BREAKEVEN_TIME);
 }
 
-export function sellHashesNow(ns, hashFraction=0.9) {
+export function sellOverflowHashes(ns, hashFraction=0.9) {
     //const hashGainRate = totalHashGainRate(ns);
     while (ns.hacknet.numHashes() > ns.hacknet.hashCapacity() * hashFraction) {
         //ns.print("Selling hashes for money");
@@ -110,33 +109,7 @@ export function totalHashGainRate(ns) {
 }
 
 export function selectUpgrades(ns, maxBreakevenTime) {
-    const player = ns.getPlayer();
-    const upgrades = [];
-    const newServerCost = ns.formulas.hacknetServers.hacknetServerCost(ns.hacknet.numNodes()+1, player.hacknet_node_purchase_cost_mult);
-    if (ns.hacknet.numNodes() === 0) {
-        return [{i: 0, type: "server", diff: 1, cost: newServerCost}];
-    }
-    let worstRate = Infinity;
-    for (let i = 0; i < ns.hacknet.numNodes(); i++) {
-        const server = ns.hacknet.getNodeStats(i);
-        const currentRate = ns.formulas.hacknetServers.hashGainRate(server.level, 0, server.ram, server.cores, player.hacknet_node_money_mult);
-        if (currentRate < worstRate) {
-            worstRate = currentRate;
-        }
-        const levelRate = ns.formulas.hacknetServers.hashGainRate(server.level+1, 0, server.ram, server.cores, player.hacknet_node_money_mult);
-        const levelCost = ns.formulas.hacknetServers.levelUpgradeCost(server.level, 1, player.hacknet_node_level_cost_mult);
-        upgrades.push({i: i, type: "level", diff: levelRate-currentRate, cost: levelCost});
-        const ramRate = ns.formulas.hacknetServers.hashGainRate(server.level, 0, server.ram*2, server.cores, player.hacknet_node_money_mult);
-        const ramCost = ns.formulas.hacknetServers.ramUpgradeCost(server.ram, 1, player.hacknet_node_ram_cost_mult);
-        upgrades.push({i: i, type: "ram", diff: ramRate-currentRate, cost: ramCost});
-        const coresRate = ns.formulas.hacknetServers.hashGainRate(server.level, 0, server.ram, server.cores+1, player.hacknet_node_money_mult);
-        const coresCost = ns.formulas.hacknetServers.coreUpgradeCost(server.cores, 1, player.hacknet_node_core_cost_mult);
-        upgrades.push({i: i, type: "cores", diff: coresRate-currentRate, cost: coresCost});
-    }
-    if (ns.hacknet.numNodes() < ns.hacknet.maxNumNodes()) {
-        upgrades.push({i: ns.hacknet.numNodes(), type: "server", diff: worstRate, cost: newServerCost}); // ignore upgrade costs
-    }
-    
+    const upgrades = getPossibleUpgrades(ns);
     const bestValues = upgrades.map((selection)=>{
         selection.value = selection.diff / selection.cost;
         selection.breakeven = getBreakevenTime(selection);
@@ -148,4 +121,34 @@ export function selectUpgrades(ns, maxBreakevenTime) {
         return a.breakeven - b.breakeven;
     });
     return bestValues;
+}
+
+export function getPossibleUpgrades(ns) {
+    const player = ns.getPlayer();
+    const upgrades = [];
+    const newServerCost = ns.formulas.hacknetServers.hacknetServerCost(ns.hacknet.numNodes()+1, player.hacknet_node_purchase_cost_mult);
+    if (ns.hacknet.numNodes() === 0) {
+        return [{i: 0, type: "server", cost: newServerCost, diff: ns.formulas.hacknetServers.hashGainRate(1, 0, 1, 1, player.hacknet_node_money_mult)}];
+    }
+    let worstRate = Infinity;
+    for (let i = 0; i < ns.hacknet.numNodes(); i++) {
+        const server = ns.hacknet.getNodeStats(i);
+        const currentRate = ns.formulas.hacknetServers.hashGainRate(server.level, 0, server.ram, server.cores, player.hacknet_node_money_mult);
+        if (currentRate < worstRate) {
+            worstRate = currentRate;
+        }
+        const levelRate = ns.formulas.hacknetServers.hashGainRate(server.level+1, 0, server.ram, server.cores, player.hacknet_node_money_mult);
+        const levelCost = ns.formulas.hacknetServers.levelUpgradeCost(server.level, 1, player.hacknet_node_level_cost_mult);
+        upgrades.push({i: i, type: "level", cost: levelCost, diff: levelRate-currentRate});
+        const ramRate = ns.formulas.hacknetServers.hashGainRate(server.level, 0, server.ram*2, server.cores, player.hacknet_node_money_mult);
+        const ramCost = ns.formulas.hacknetServers.ramUpgradeCost(server.ram, 1, player.hacknet_node_ram_cost_mult);
+        upgrades.push({i: i, type: "ram", cost: ramCost, diff: ramRate-currentRate});
+        const coresRate = ns.formulas.hacknetServers.hashGainRate(server.level, 0, server.ram, server.cores+1, player.hacknet_node_money_mult);
+        const coresCost = ns.formulas.hacknetServers.coreUpgradeCost(server.cores, 1, player.hacknet_node_core_cost_mult);
+        upgrades.push({i: i, type: "cores", cost: coresCost, diff: coresRate-currentRate});
+    }
+    if (ns.hacknet.numNodes() < ns.hacknet.maxNumNodes()) {
+        upgrades.push({i: ns.hacknet.numNodes(), type: "server", diff: worstRate, cost: newServerCost}); // ignore upgrade costs
+    }
+    return upgrades;
 }

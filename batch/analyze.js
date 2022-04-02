@@ -10,14 +10,14 @@ export const SCRIPT_RAM = 1.75;
 /** @param {NS} ns **/
 export async function main(ns) {
 	const columns = [
-		{header: "Hostname", field: "hostname", width: 20, align: "left"},
+		{header: "Hostname", field: "hostname", width: 18, align: "left"},
         {header: "Prep Time", field: "prepTime", format: drawTable.time},
 		{header: "$ / sec / thread", field: "profit", format: ns.nFormat, formatArgs:["$0,0.00"]},
 	];
 	const servers = mostProfitableTargets(ns);
 
 	ns.clearLog();
-    ns.print("\n             Most Profitable Servers to Hack")
+    ns.print("\n            Most Profitable Servers to Hack")
 	ns.print(drawTable(columns, servers));
 	ns.tail();
 }
