@@ -10,15 +10,14 @@ export function autocomplete(data, args) {
 
 /** @param {NS} ns **/
 export async function main(ns) {
-	const params = ns.flags(FLAGS);
-	const target = params._.shift();
-    delete params._;
+	const flags = ns.flags(FLAGS);
+	const target = flags._.shift();
 
 	while (true) {
-		if (ns.getServerSecurityLevel(target) > 1 + params.minSecurity) {
+		if (ns.getServerSecurityLevel(target) > 1 + flags.minSecurity) {
 			await ns.weaken(target);
 		}
-		else if (ns.getServerMoneyAvailable(target) < 0.9 * params.maxMoney) {
+		else if (ns.getServerMoneyAvailable(target) < 0.9 * flags.maxMoney) {
 			await ns.grow(target);
 		}
 		else {
