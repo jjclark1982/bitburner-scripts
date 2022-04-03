@@ -1,9 +1,11 @@
 export async function main(ns) {
-    let crimeName = "Mug";
-    if (ns.args.length > 0) {
-        crimeName = ns.args[0];
-    }
+    let crimeName = ns.args[0];
     for (let i = 0; i < ns.sleeve.getNumSleeves(); i++) {
-        ns.sleeve.setToCommitCrime(i, crimeName);   
+        const stats = ns.sleeve.getSleeveStats(i);
+        let defaultCrime = "mug";
+        if (stats.strength > 200) {
+            defaultCrime = "homicide";
+        }
+        ns.sleeve.setToCommitCrime(i, crimeName || defaultCrime);
     }
 }

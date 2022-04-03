@@ -22,8 +22,8 @@ export async function doCrimes(ns, forcedSelection=null) {
                 chance: ns.getCrimeChance(crimeName)
             };
         }
-        //crimes = crimes.sort(function(c1, c2){
-        //    return c1.chance - c2.chance; // ascending
+        //crimes = crimes.sort(function(a, b){
+        //    return a.chance - b.chance; // ascending
         //});
 
         let selectedCrime = crimes[0];
@@ -35,10 +35,10 @@ export async function doCrimes(ns, forcedSelection=null) {
         }
         const player = ns.getPlayer();
         const karma = ns.heart.break();
-        if (player.numPeopleKilled < 100 && crimes.homicide.chance > 0.9) {
+        if (player.numPeopleKilled < 30 && crimes.homicide.chance > 0.9) {
             selectedCrime = crimes.homicide;
         }
-        if (selectedCrime == crimes.homicide && player.numPeopleKilled > 300 && karma < -1e6) {
+        if (selectedCrime == crimes.homicide && player.numPeopleKilled > 100 && karma < -1e6) {
             return;
         }
         
