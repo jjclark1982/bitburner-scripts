@@ -1,4 +1,4 @@
-import { ServerPool } from "hive/server-pool.js";
+import { ServerPool } from "net/server-pool.js";
 import { drawTable } from "lib/box-drawing.js";
 
 const FLAGS = [
@@ -10,6 +10,16 @@ const SCRIPT_CAPABILITIES = {
     "/hive/worker.js": ['hack', 'grow', 'weaken']
 };
 
+/*
+
+Overall process:
+pool, manager, and workers launch in any order.
+pool publishes itself on a port.
+other scripts wait until they see something on that port.
+workers then call pool.registerWorker(this)
+
+*/
+
 /** @param {NS} ns **/
 export async function main(ns) {
     ns.disableLog("asleep");
@@ -20,8 +30,8 @@ export async function main(ns) {
 
     const flags = ns.flags(FLAGS);
 
-    const threadPool = new ThreadPool(ns, flags.port, flags.verbose);
-    window.db = threadPool;
+    const threadPool = new ThreadPool({ns, ...flags});
+    eval("window").db = threadPool;
     
     // const spec = [
     //     {threads: 10},
@@ -38,17 +48,17 @@ export async function main(ns) {
 }
 
 export class ThreadPool {
-    constructor(ns, portNum, verbose) {    
+    constructor({ns, port, verbose}) {    
         this.ns = ns;
-        this.portNum = portNum;
+        this.portNum = port;
+        this.port = ns.getPortHandle(this.portNum);
         this.process = ns.getRunningScript();
         this.workers = {};
         this.nextWorkerID = 1;
 
-        const portHandle = ns.getPortHandle(this.portNum);
-        portHandle.clear();
-        portHandle.write(this);
-    
+        this.port.clear();
+        this.port.write(this);
+
         ns.atExit(this.stop.bind(this));
 
         ns.print(`Started ThreadPool on port ${this.portNum}.`);
@@ -103,6 +113,8 @@ export class ThreadPool {
                 return null;
             }
             workers[worker.id] = worker;
+            // TODO: Lock this worker for this job (if the whole batch can be met)
+            //     worker.nextFreeTime = startTime-1;
         }
         return workers;
     }
@@ -117,8 +129,9 @@ export class ThreadPool {
         const capabilities = func ? [func] : [];
         const matchingWorkers = Object.values(this.workers).filter((worker)=>(
             !exclude[worker.id] && 
-            worker.process.threads >= threads &&
+            worker.running &&
             worker.nextFreeTime < startTime &&
+            worker.process?.threads >= threads &&
             capabilities.every((func)=>func in worker.capabilities)
         )).sort((a,b)=>(
             a.threads - b.threads
@@ -134,45 +147,74 @@ export class ThreadPool {
     
     async spawnWorker(threads, capabilities) {
         // Create a new worker with `threads` threads.
-        // Ignores number of CPU cores.
+        // (Ignores number of CPU cores.)
         const {ns, portNum} = this;
-
         threads = Math.ceil(threads);
-        let workerID = this.nextWorkerID++;
+
+        // Assign unique workerID.
+        while (this.nextWorkerID in this.workers) {
+            this.nextWorkerID++;
+        }
+        const worker = {
+            id: this.nextWorkerID++,
+            running: false
+        };
+        this.workers[worker.id] = worker;
+
+        // Find a suitable server.
         const script = getScriptWithCapabilities(capabilities);
         if (!script) {
             this.logWarn(`Failed to start worker with ${threads} threads: No script capable of ${JSON.stringify(capabilities)}.`);
             return null;
         }
-        const scriptRam = ns.getScriptRam(script, 'home');
-        const neededRam = scriptRam * threads;
-    
-        const serverPool = new ServerPool(ns, scriptRam);
+        const serverPool = new ServerPool(ns, ns.getScriptRam(script, 'home'));
         const server = serverPool.smallestServersWithThreads(threads)[0];
         if (!server) {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
         }
-        if ((server.availableThreads - threads < 4) || (threads > server.availableThreads / 2)) {
-            // workerID = `${server.hostname}-${workerID}`;
+        if ((server.availableThreads - threads < 4) || (threads > server.availableThreads * 3 / 4)) {
+            // Round up a process size to fill an entire server.
+            // worker.id = `${server.hostname}-${worker.id}`;
             threads = server.availableThreads;
         }
-        const args = ["--port", portNum, "--id", workerID];
-        const pid = await serverPool.runOnServer({server, script, threads, args});
 
+        // Spawn the worker process.
+        const args = ["--port", portNum, "--id", worker.id];
+        const pid = await serverPool.runOnServer({server, script, threads, args});
+        worker.process = {pid, threads};
         if (!pid) {
-            this.logWarn(`Failed to start worker ${workerID}.`);
+            this.logWarn(`Failed to start worker ${worker.id}.`);
             return null;
         }
-        if (!this.workers[workerID]) {
-            // Give the process a moment to launch.
-            await ns.asleep(100);
-        }
-        this.workers[workerID] ||= {id: workerID}; // Create a placeholder if necessary.
-        const worker = this.workers[workerID];
-        worker.process = ns.getRunningScript(pid);
-        this.logInfo(`Running worker ${workerID} with ${threads} threads on ${server.hostname}.`);
+        this.logInfo(`Running worker ${worker.id} (PID ${pid}) with ${threads} threads on ${server.hostname}.`);
         return worker;
+    }
+
+    registerWorker(worker) {
+        // Link this worker and pool to each other
+        const launchedWorker = this.workers[worker.id];
+        if (launchedWorker?.pid) {
+            // Fill in process information if we already know the PID
+            worker.process = ns.getRunningScript(launchedWorker.pid);
+        }
+        else {
+            // Otherwise search for the process (it may have launched on page load)
+            worker.process = this.findWorkerProcess(worker);
+        }
+        this.workers[worker.id] = worker;
+    }
+
+    findWorkerProcess(worker) {
+        const scriptName = worker.ns.getScriptName();
+        const args = worker.ns.args;
+        for (const server of new ServerPool(ns)) {
+            const process = this.ns.getRunningScript(scriptName, server.hostname, args);
+            if (process) {
+                return process;
+            }
+        }
+        return null;
     }
 
     logWarn(...args) {
@@ -186,17 +228,25 @@ export class ThreadPool {
     }
 
     report() {
+        const {ns} = this;
+        const formatThreads = function(t){
+            if (!t) {
+                return '';
+            }
+            return ns.nFormat(t, "0a");
+        }
         const now = Date.now();
         const columns = [
             {header: "Worker", field: "id"},
-            {header: "Threads", field: "threads", format: [this.ns.nFormat], formatArgs: ["0a"]},
+            {header: "Threads", field: "threads", format: [formatThreads]},
             {header: "Queue", field: "queue"},
-            {header: " Task ", field: "task"},
-            {header: " Elapsed", field: "elapsedTime", format: drawTable.time},
+            {header: "Task  ", field: "task"},
+            {header: "Elapsed ", field: "elapsedTime", format: drawTable.time},
             {header: "Remaining", field: "remainingTime", format: drawTable.time, formatArgs: [2]},
-            {header: " Drift ", field: "drift" }
+            {header: "Drift  ", field: "drift" }
         ];
-        const rows = Object.values(this.workers).map((worker)=>worker.report(now));
+        columns.title = `Thread Pool (Port ${this.portNum})`;
+        const rows = Object.values(this.workers).map((worker)=>workerReport(worker, now));
         return drawTable(columns, rows);
     }
 }
@@ -208,4 +258,17 @@ function getScriptWithCapabilities(capabilities) {
         }
     }
     return null;
+}
+
+function workerReport(worker, now) {
+    now ||= Date.now();
+    return {
+        id: worker.id,
+        threads: [worker.currentJob?.threads, worker.process?.threads],
+        queue: worker.jobQueue?.length,
+        task: worker.currentJob?.func,
+        elapsedTime: worker.elapsedTime? worker.elapsedTime(now) : null,
+        remainingTime: worker.remainingTime? worker.remainingTime(now) : null,
+        drift: worker.drift ? worker.drift.toFixed(0) + ' ms' : ''
+    };
 }

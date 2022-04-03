@@ -24,34 +24,41 @@ class Worker {
         const id = flags.id;
 
         this.id = id;
-        this.ns = ns;        this.capabilities = capabilities;
+        this.portNum = flags.port;
+        this.ns = ns;
+        this.scriptName = ns.getScriptName();
+        this.capabilities = capabilities;
         this.nextFreeTime = Date.now();
         this.jobQueue = [];
         this.currentJob = {
             startTime: Date.now()
         };
-        this.running = true;
-        this.pool = ns.getPortHandle(flags.port).peek();
-        this.process = this.pool.workers[id]?.process;
-
-        this.pool.workers[id] = this;
+        this.running = false;
 
         ns.atExit(this.stop.bind(this));
-
-        this.ns.print(`Worker ${this.id} started.`);
     }
 
     async work() {
+        // Register with the thread pool.
+        const port = ns.getPortHandle(this.portNum);
+        while (port.empty()) {
+            await this.ns.asleep(50);
+        }
+        this.pool = port.peek();
+        this.pool.registerWorker(this);
+        this.ns.print(`Worker ${this.id} registered with thread pool. Starting work.`);
+        // Block until something sets running to false
+        this.running = true;
         while (this.running) {
             await this.ns.asleep(1000);
-            // await ns.asleep(this.nextFreeTime + 1000 - Date.now());
-            // this.nextFreeTime = Math.max(this.nextFreeTime, Date.now());
         }
         this.ns.print(`Worker ${this.id} stopping.`);
     }
 
     stop() {
-        delete this.pool.workers[this.id];
+        if (this.pool) {
+            delete this.pool.workers[this.id];
+        }
     }
 
     addJob(job) {
@@ -82,6 +89,7 @@ class Worker {
         this.currentJob = {
             startTime: Date.now()
         };
+        // TODO: if the queue is empty and the average workload is less than half of the max workload, stop running
     }
 
     elapsedTime(now) {
