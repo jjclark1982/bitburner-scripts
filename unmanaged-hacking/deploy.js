@@ -17,7 +17,7 @@ export async function main(ns) {
     const money = ns.getServerMoneyAvailable(target);
     const threads = Math.ceil(ns.growthAnalyze(target, maxMoney / Math.max(1,money)) / 2);
 
-    const script = "/hacking/unmanaged-hacking.js";
+    const script = "/unmanaged-hacking/hack-grow-weaken.js";
     const args = [target, "--minSecurity", minSecurity, "--maxMoney", maxMoney];
 
     // ns.run(script, threads, ...args);
