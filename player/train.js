@@ -14,14 +14,14 @@ export function autocomplete(data, args) {
 
 /** @param {NS} ns **/
 export async function main(ns) {
+    ns.disableLog("sleep");
     const flags = ns.flags(FLAGS);
     delete flags._;
-    await prepareStats(flags);
+    await prepareStats(ns, flags);
 }
 
 export async function prepareStats(ns, targetStats) {
-    for (const stat in targetStats) {
-        const statTarget = targetStats[stat];
+    for (const [stat, statTarget] of Object.entries(targetStats)) {
         while (ns.getPlayer()[stat] < statTarget) {
             if (!ns.isBusy()) {
                 trainStat(ns, stat);
