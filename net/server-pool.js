@@ -99,7 +99,7 @@ export class ServerPool {
         this.maxThreadsAvailable = this.largestServer?.availableThreads || 0;
         this.servers = servers;
         this.smallestServers = Object.values(servers).sort((a,b)=>(
-            a.availableThreads - b.availableThreads
+            a.maxRam - b.maxRam
         ));
     }
 
@@ -111,9 +111,12 @@ export class ServerPool {
         return this.servers[hostname];
     }
 
-    smallestServersWithThreads(threads=1) {
+    smallestServersWithThreads(threads=1, exclude={}) {
         return this.smallestServers.filter((server)=>(
+            !(server.hostname in exclude) &&
             server.availableThreads >= threads
+        )).sort((a,b)=>(
+            a.availableThreads - b.availableThreads
         ));
     }
 
@@ -121,8 +124,9 @@ export class ServerPool {
         return this.smallestServersWithThreads(threads)[0];
     }
 
-    largestServers() {
+    largestServers(exclude={}) {
         return this.smallestServers.filter((server)=>(
+            !(server.hostname in exclude) &&
             server.availableThreads > 0
         )).reverse();
     }
@@ -171,14 +175,9 @@ export class ServerPool {
         const usedServers = {};
         let threadsNeeded = Math.min(threads, this.totalThreadsAvailable);
         while (threadsNeeded > 0) {
-            let server = this.smallestServers.filter((s)=>(
-                !(s.hostname in usedServers) &&
-                s.availableThreads >= threadsNeeded
-            ))[0];
+            let server = this.smallestServersWithThreads(threadsNeeded, usedServers)[0];
             if (!server) {
-                server = this.smallestServers.filter((s)=>(
-                    !(s.hostname in usedServers)
-                )).reverse()[0];
+                server = this.largestServers(usedServers)[0];
             }
             if (!server) {
                 break;
@@ -246,7 +245,9 @@ export class ServerPool {
                 ...server,
                 ramBytes: [server.ramUsed*1e9, server.maxRam*1e9]
             }
-        }).reverse();
+        }).sort((a,b)=>(
+            b.maxRam - a.maxRam
+        ));
         const summary = [{
             hostname: `Total servers: ${this.totalServers}`,
             ramUsed: this.totalUsedRam,
