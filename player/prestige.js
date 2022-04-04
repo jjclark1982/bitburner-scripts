@@ -14,20 +14,7 @@ export async function main(ns) {
     await ns.sleep( 1*1000); ns.run("/sleeves/buy-augs.js");
     await ns.sleep( 1*1000); ns.run("/sleeves/train.js");
     await ns.sleep( 1*1000); ns.run("/gang/buy-augs.js");
-    await upgradeHomeComputer(ns);
-    await ns.sleep( 1*1000); ns.run("/corporation/buyback-shares.js");
+    await ns.sleep( 1*1000); ns.run("/net/upgrade-home-server.js");
+    await ns.sleep( 3*1000); ns.run("/corporation/buyback-shares.js");
     await ns.sleep( 3*1000); ns.installAugmentations(ns.args[0] || "init.js");
-}
-
-export async function upgradeHomeComputer(ns) {
-    while (ns.getPlayer().money > ns.getUpgradeHomeRamCost()) {
-        ns.upgradeHomeRam();
-        ns.tprint("Upgraded home computer RAM.")
-        await ns.sleep(100);
-    }
-    while (ns.getPlayer().money > ns.getUpgradeHomeCoresCost()) {
-        ns.upgradeHomeCores();
-        ns.tprint("Upgraded home computer cores.")
-        await ns.sleep(100);
-    }
 }
