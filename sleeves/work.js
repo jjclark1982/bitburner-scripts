@@ -18,7 +18,7 @@ export function workSleeve(ns, i) {
     if (ns.gang.inGang()) {
         specialFactions.push(ns.gang.getGangInformation().faction);
     }
-    const factions = player.factions.reverse().filter(function(faction){
+    const factions = player.factions.filter(function(faction){
         return !specialFactions.includes(faction);
     });
 

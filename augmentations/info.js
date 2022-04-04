@@ -190,6 +190,9 @@ export function estimateHackingValue(aug) {
     if (aug.name === "PCMatrix") {
         value += 0.05;
     }
+    if (aug.name === "The Red Pill") {
+        value += 9;
+    }
     return value;
 }
 
