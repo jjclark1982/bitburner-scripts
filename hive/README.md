@@ -5,20 +5,20 @@ that dispatches tasks to long-lived worker processes running in the cloud.
 
 The system is controlled through a `ThreadPool` process which launches `Worker` processes on-demand and communicates with them through a [Netscript Port](https://bitburner.readthedocs.io/en/latest/netscript/netscriptmisc.html#netscript-ports). The processes should be able to connect to each other after being launched in any order, including reloading from save.
 
-Users can run tasks by calling `threadPool.dispatchJob(job)`,
+Users can run jobs by calling `threadPool.dispatchJob(job)`,
 where a job is an object with fields: `{ task, args, threads, duration, startTime, endTime }`. For example:
 
 ```JavaScript
 {
-    task: 'hack',
-    args: ['foodnstuff']
-    threads: 100,
+    task: 'hack',             // a key in worker.capabilities
+    args: ['foodnstuff'],
+    threads: 5,
     duration: 1000,
     startTime: 1649093514728, // starts immediately if omitted
     endTime:   1649093515728
 }
 ```
-When the task runs, this object will be updated with `actualStartTime` and `actualEndTime`. Other fields (such as expected results) will be preserved, so a user can measure 
+When the job runs, this object will be updated with `startTimeActual` and `endTimeActual`. Other fields will be preserved, so a user can record expectations here and compare them against results.
 
 ---
 
@@ -49,7 +49,7 @@ Run an application on the pool:
 
 ---
 
-### Design notes
+#### Design notes
 
 Is it possible to spawn a large number of persistent workers, then control them from a central manager?
 
@@ -87,7 +87,6 @@ for each job in the batch:
     - or cancel the batch
 
 ----
-
 
 Class structure:
 
