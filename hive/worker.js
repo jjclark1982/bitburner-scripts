@@ -8,7 +8,7 @@ const FLAGS = [
 export async function main(ns) {
     ns.disableLog("asleep");
 
-    // List the functions this worker is capable of, for RAM calculation.
+    // List the functions this worker is capable of, for static RAM calculation.
     const capabilities = {
         "hack": ns.hack,
         "grow": ns.grow,
@@ -19,11 +19,10 @@ export async function main(ns) {
 }
 
 class Worker {
-    constructor(ns, capabilities) {
+    constructor(ns, capabilities={}) {
         const flags = ns.flags(FLAGS);
-        const id = flags.id;
 
-        this.id = id;
+        this.id = flags.id;
         this.portNum = flags.port;
         this.ns = ns;
         this.scriptName = ns.getScriptName();
@@ -35,17 +34,17 @@ class Worker {
         };
         this.running = false;
 
-        ns.atExit(this.stop.bind(this));
+        ns.atExit(this.tearDown.bind(this));
     }
 
     async work() {
         let {ns} = this;
         // Register with the thread pool.
-        const port = ns.getPortHandle(this.portNum);
-        while (port.empty()) {
-            await ns.asleep(50);
+        this.pool = await getThreadPool(ns, this.portNum);
+        if (!this.pool) {
+            ns.tprint(`Worker unable to find ThreadPool on port ${this.portNum}. Exiting.`);
+            return;
         }
-        this.pool = port.peek();
         this.pool.registerWorker(this);
         ns.print(`Worker ${this.id} registered with thread pool. Starting work.`);
         // Block until something sets running to false
@@ -56,7 +55,8 @@ class Worker {
         ns.print(`Worker ${this.id} stopping.`);
     }
 
-    stop() {
+    tearDown() {
+        // When this worker exits for any reason, remove it from the pool database.
         if (this.pool) {
             delete this.pool.workers[this.id];
         }
@@ -68,7 +68,9 @@ class Worker {
         if (!job.startTime) {
             job.startTime = now;
         }
-        if (job.startTime <= Math.max(now, this.nextFreeTime)) {
+        if (job.startTime < Math.max(now, this.nextFreeTime)) {
+            const drift = job.startTime - Math.max(now, this.nextFreeTime);
+            ns.print(`Declined job: ${job.task} ${(job.args||[]).join(' ')} (${drift.toFixed(0)} ms)`);
             return false;
         }
         if (!job.endTime && job.duration) {
@@ -84,11 +86,15 @@ class Worker {
 
     async runNextJob() {
         const job = this.jobQueue.shift();
-        const {func, args, startTime, endTime} = job;
+        const {task, args, startTime, endTime} = job;
         this.currentJob = job;
-        this.drift = Date.now() - job.startTime;
-        await this.capabilities[func](...args);
-        this.drift = Date.now() - job.endTime;
+        job.actualStartTime = Date.now();
+        this.drift = job.actualStartTime - job.startTime;
+        this.ns.print(`Starting job: ${task} ${args.join(' ')} (${this.drift.toFixed(0)} ms)`);
+        await this.capabilities[task](...args);
+        job.actualEndTime = Date.now();
+        this.drift = job.actualEndTime - job.EndTime;
+        this.ns.print(`Completed job: ${task} ${args.join(' ')} (${this.drift.toFixed(0)} ms)`);
         this.currentJob = {
             startTime: Date.now()
         };
@@ -121,4 +127,16 @@ class Worker {
             return null;
         }
     }
+}
+
+export async function getThreadPool(ns, portNum) {
+    const port = ns.getPortHandle(portNum);
+    let tries = 50;
+    while (port.empty() && tries-- > 0) {
+        await ns.asleep(50);
+    }
+    if (port.empty()) {
+        return null;
+    }
+    return port.peek();
 }

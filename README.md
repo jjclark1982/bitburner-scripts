@@ -46,9 +46,10 @@ Would like to move most of these into `net/` or `hacking/`.
 - server / memory management -> move to `/net/` (maybe rename to `/cloud/`)  
     - [x] `/hive/server-pool.js` -> move to `/net/server-pool.js`  
     - [x] `/net/lib.js` -> merge into `server-pool`  
-    - [ ] `/batch/pool.js` -> merge into `server-pool`  
+    - [ ] `/batch/pool.js` -> merge into `server-pool`, rename the rest to `scheduler`  
     - [x] `/net/crack-servers.js` -> `/net/register-servers.js`  
     - [x] `/net/buy-server.js` -> split out 'retire' function  
+    - [x] `/net/retire-server.js` -> rename to `delete-server`
 
 - thread management / function delegation / botnet control -> maybe rename to `/botnet/`  
     - [ ] `/hive/thread-pool.js`  
@@ -57,9 +58,9 @@ Would like to move most of these into `net/` or `hacking/`.
 - hack planning  
     - [ ] `/batch/analyze.js`  
 
-- unmanaged hacking  
-    - [ ] `/batch/early-hacking.js`  
-    - [ ] `/batch/spawn-early-hacking.js`  
+- unmanaged hacking -> move to `/unmanaged-hacking/`
+    - [x] `/batch/early-hacking.js`  
+    - [x] `/batch/spawn-early-hacking.js`  
 
 - managed hacking (single-run process)  
     - [ ] `/batch/prep.js`  
@@ -69,3 +70,11 @@ Would like to move most of these into `net/` or `hacking/`.
 - managed hacking (persistent process)  
     - [ ] `/hive/manage.js`  
     - [ ] `/hive/worker.js` (main function)  
+
+
+- [x] rename all `spawn` scripts to `deploy`
+
+- [ ] remove `.js` from import statements
+
+- [x] refactor `server-pool` to have a unified interface for different deployment types
+

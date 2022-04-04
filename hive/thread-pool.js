@@ -1,5 +1,5 @@
-import { ServerPool } from "net/server-pool.js";
-import { drawTable } from "lib/box-drawing.js";
+import { ServerPool } from "/net/server-pool";
+import { drawTable } from "/lib/box-drawing";
 
 const FLAGS = [
     ["port", 1],
@@ -50,34 +50,36 @@ export async function main(ns) {
 export class ThreadPool {
     constructor({ns, port, verbose}) {    
         this.ns = ns;
-        this.portNum = port;
-        this.port = ns.getPortHandle(this.portNum);
         this.process = ns.getRunningScript();
         this.workers = {};
         this.nextWorkerID = 1;
 
+        this.portNum = port;
+        this.port = ns.getPortHandle(this.portNum);
         this.port.clear();
         this.port.write(this);
 
-        ns.atExit(this.stop.bind(this));
+        ns.atExit(this.tearDown.bind(this));
 
         ns.print(`Started ThreadPool on port ${this.portNum}.`);
     }
 
     async work() {
         const {ns} = this;
-        while(true) {
+        this.running = true;
+        while(this.running) {
             ns.clearLog();
             ns.print(this.report());
             await ns.asleep(200);
         }
     }
 
-    stop() {
+    tearDown() {
+        // When the pool process exits, signal all the workers to stop.
         for (const worker of Object.values(this.workers)) {
             worker.running = false;
         }
-        this.ns.getPortHandle(this.portNum).clear();
+        this.port.clear();
     }
 
     async dispatchJobs(batch) {
@@ -92,9 +94,10 @@ export class ThreadPool {
     }
 
     async dispatchJob(job) {
-        if (job.threads == 0) {
+        if (job.threads <= 0) {
             return true;
         }
+        job.threads ||= 1;
         const worker = await this.getWorker(job);
         return worker?.addJob(job);
     }
@@ -119,20 +122,20 @@ export class ThreadPool {
         return workers;
     }
 
-    async getWorker({threads, startTime, func, exclude}) {
+    async getWorker({threads, startTime, task, exclude}) {
         // Get a new or existing worker with the requested specs:
         // - has at least `threads` threads
-        // - has capability to perform the function `func`,
+        // - has capability to perform the function `task`,
         // - is available by `startTime`
         exclude ||= {};
         startTime ||= Date.now();
-        const capabilities = func ? [func] : [];
+        const capabilities = task ? [task] : [];
         const matchingWorkers = Object.values(this.workers).filter((worker)=>(
             !exclude[worker.id] && 
             worker.running &&
             worker.nextFreeTime < startTime &&
             worker.process?.threads >= threads &&
-            capabilities.every((func)=>func in worker.capabilities)
+            capabilities.every((task)=>task in worker.capabilities)
         )).sort((a,b)=>(
             a.threads - b.threads
         ));
@@ -244,7 +247,7 @@ export class ThreadPool {
         const now = Date.now();
         const columns = [
             {header: "Worker", field: "id"},
-            {header: "Threads", field: "threads", format: [formatThreads]},
+            {header: " Threads ", field: "threads", format: [formatThreads]},
             {header: "Queue", field: "queue"},
             {header: "Task  ", field: "task"},
             {header: "Elapsed ", field: "elapsedTime", format: drawTable.time},
@@ -259,7 +262,7 @@ export class ThreadPool {
 
 function getScriptWithCapabilities(capabilities) {
     for (const [script, caps] of Object.entries(SCRIPT_CAPABILITIES)) {
-        if (capabilities.every((func)=>caps.includes(func))) {
+        if (capabilities.every((task)=>caps.includes(task))) {
             return script;
         }
     }
@@ -275,6 +278,6 @@ function workerReport(worker, now) {
         task: worker.currentJob?.func,
         elapsedTime: worker.elapsedTime? worker.elapsedTime(now) : null,
         remainingTime: worker.remainingTime? worker.remainingTime(now) : null,
-        drift: worker.drift ? worker.drift.toFixed(0) + ' ms' : ''
+        drift: typeof(worker.drift) === 'undefined' ? '' : worker.drift.toFixed(0) + ' ms'
     };
 }

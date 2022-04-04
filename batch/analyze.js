@@ -95,7 +95,7 @@ export function planHack(params) {
 	return makeJob({
 		...params,
 		script: HACK,
-		func: 'hack',
+		task: 'hack',
 		threads: hackThreads,
 		security: hackSecurity,
 		moneyMult: 1-effectivePct,
@@ -120,7 +120,7 @@ export function planWeaken(params) {
 	return makeJob({
 		...params,
 		script: WEAKEN,
-		func: 'weaken',
+		task: 'weaken',
 		threads: weakThreads,
 		security: weakSecurity,
 		moneyMult: 1,
@@ -148,7 +148,7 @@ export function planGrow(params) {
 	return makeJob({
 		...params,
 		script: GROW,
-		func: 'grow',
+		task: 'grow',
 		threads: growThreads,
 		security: growSecurity,
 		moneyMult: effectivePercent,
