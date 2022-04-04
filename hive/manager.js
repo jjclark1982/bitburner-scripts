@@ -1,3 +1,4 @@
+import { getThreadPool } from "/hive/worker";
 import { planHack, planWeaken, planGrow } from "batch/analyze.js";
 
 /*
@@ -138,11 +139,7 @@ export async function main(ns) {
         return;
     }
 
-    const port = ns.getPortHandle(flags.port);
-    while (port.empty()) {
-        await ns.asleep(50);
-    }
-    const threadPool = port.peek();
+    const threadPool = await getThreadPool(ns, flags.port);
 
     const batch = planHWGW({ns, target, moneyPercent, tDelta})
 
