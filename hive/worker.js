@@ -76,11 +76,13 @@ class Worker {
         }
         this.jobQueue.push(job);
         this.nextFreeTime = job.endTime;
-        setTimeout(this.startNextJob.bind(this), job.startTime - now);
+        setTimeout(()=>{
+            this.runNextJob()
+        }, job.startTime - now);
         return true;
     }
 
-    async startNextJob() {
+    async runNextJob() {
         const job = this.jobQueue.shift();
         const {func, args, startTime, endTime} = job;
         this.currentJob = job;
@@ -118,19 +120,5 @@ class Worker {
         else {
             return null;
         }
-    }
-
-    report(now) {
-        const ns = this.pool.ns; // use other process to format text during task
-        now ||= Date.now();
-        return {
-            id: this.id,
-            threads: [this.currentJob?.threads, this.process?.threads],
-            queue: this.jobQueue.length,
-            task: this.currentJob.func,
-            elapsedTime: this.elapsedTime(now),
-            remainingTime: this.remainingTime(now),
-            drift: this.drift ? this.drift.toFixed(0) + ' ms' : ''
-        };
     }
 }

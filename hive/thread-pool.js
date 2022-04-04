@@ -188,7 +188,10 @@ export class ThreadPool {
             return null;
         }
         this.logInfo(`Running worker ${worker.id} (PID ${pid}) with ${threads} threads on ${server.hostname}.`);
-        return worker;
+        while (!this.workers[worker.id].running) {
+            await ns.asleep(20);
+        }
+        return this.workers[worker.id];
     }
 
     registerWorker(worker) {

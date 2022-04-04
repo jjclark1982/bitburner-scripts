@@ -16,7 +16,7 @@ export async function main(ns) {
     ns.clearLog();
 
     const flags = ns.flags(FLAGS);
-    const {port, moneyPercent, tDelta} = flags;
+    const {moneyPercent, tDelta} = flags;
     const targets = flags._;
     const target = targets[0];
 
@@ -27,7 +27,11 @@ export async function main(ns) {
         return;
     }
 
-    const threadPool = ns.getPortHandle(port).peek();
+    const port = ns.getPortHandle(flags.port);
+    while (port.empty()) {
+        await ns.asleep(50);
+    }
+    const threadPool = port.peek();
 
     const batch = planHWGW({ns, target, moneyPercent, tDelta})
 
