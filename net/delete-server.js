@@ -1,24 +1,24 @@
 export async function main(ns) {
-    await retireSmallestServer(ns);
+    await deleteSmallestServer(ns);
 }
 
-export function retireServerIfNeeded(ns) {
+export function deleteServerIfNeeded(ns) {
     const servers = ns.getPurchasedServers().map((hostname)=>ns.getServer(hostname));
     if (servers.length >= ns.getPurchasedServerLimit()) {
-        retireSmallestServer(ns);
+        deleteSmallestServer(ns);
     }    
 }
 
-export function retireSmallestServer(ns, servers) {
+export function deleteSmallestServer(ns, servers) {
     servers ||= ns.getPurchasedServers().map((hostname)=>ns.getServer(hostname));
     const smallestServer = servers.sort((a,b)=>a.maxRam-b.maxRam)[0];
     ns.killall(smallestServer.hostname);
     // await ns.sleep(100);
     const success = ns.deleteServer(smallestServer.hostname);
     if (success) {
-        ns.tprint(`Retired server ${smallestServer.hostname}`);
+        ns.tprint(`Decomissioned server ${smallestServer.hostname}`);
     }
     else {
-        ns.tprint(`Failed to retire server ${smallestServer.hostname}`);
+        ns.tprint(`Failed to delete server ${smallestServer.hostname}`);
     }
 }

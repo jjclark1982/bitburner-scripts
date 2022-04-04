@@ -1,4 +1,4 @@
-import { retireServerIfNeeded } from "net/retire-server.js";
+import { deleteServerIfNeeded } from "net/delete-server.js";
 
 export async function main(ns) {
     const fundsFraction = ns.args[0] || 0.8;
@@ -18,7 +18,7 @@ export function buyServer(ns, fundsFraction=0.8) {
 
     let servers = ns.getPurchasedServers();
 
-    retireServerIfNeeded(ns);
+    deleteServerIfNeeded(ns);
 
     let hostname = `pserv-${servers.length}`;
     hostname = ns.purchaseServer(hostname, size);
