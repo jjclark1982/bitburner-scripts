@@ -65,12 +65,14 @@ class Worker {
     addJob(job) {
         const {ns} = this;
         const now = Date.now();
+        // Validate job parameters.
+        job.args ||= [];
         if (!job.startTime) {
             job.startTime = now;
         }
         if (job.startTime < Math.max(now, this.nextFreeTime)) {
             const drift = job.startTime - Math.max(now, this.nextFreeTime);
-            ns.print(`Declined job: ${job.task} ${(job.args||[]).join(' ')} (${drift.toFixed(0)} ms)`);
+            ns.print(`Declined job: ${job.task} ${JSON.stringify(job.args)} (${drift.toFixed(0)} ms)`);
             return false;
         }
         if (!job.endTime && job.duration) {
@@ -78,23 +80,24 @@ class Worker {
         }
         this.jobQueue.push(job);
         this.nextFreeTime = job.endTime;
+        // Schedule the job to run.
         setTimeout(()=>{
             this.runNextJob()
         }, job.startTime - now);
+        ns.print(`Accepted job: ${job.task} ${JSON.stringify(job.args)} (${(job.startTime - now).toFixed(0)} ms)`);
         return true;
     }
 
     async runNextJob() {
         const job = this.jobQueue.shift();
-        const {task, args, startTime, endTime} = job;
         this.currentJob = job;
-        job.actualStartTime = Date.now();
-        this.drift = job.actualStartTime - job.startTime;
-        this.ns.print(`Starting job: ${task} ${args.join(' ')} (${this.drift.toFixed(0)} ms)`);
-        await this.capabilities[task](...args);
-        job.actualEndTime = Date.now();
-        this.drift = job.actualEndTime - job.EndTime;
-        this.ns.print(`Completed job: ${task} ${args.join(' ')} (${this.drift.toFixed(0)} ms)`);
+        job.startTimeActual = Date.now();
+        this.drift = job.startTimeActual - job.startTime;
+        this.ns.print(`Starting job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
+        await this.capabilities[job.task](...job.args);
+        job.endTimeActual = Date.now();
+        this.drift = job.endTimeActual - job.endTime;
+        this.ns.print(`Completed job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
         this.currentJob = {
             startTime: Date.now()
         };

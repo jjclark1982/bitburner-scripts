@@ -179,11 +179,11 @@ export function calculateGrowThreads(ns, server, playerObject, cores, moneyPct) 
 }
 
 export function makeJob(params) {
-	const {script, func, target, threads, security, moneyMult, duration, endTime} = params;
+	const {script, task, target, threads, security, moneyMult, duration, endTime} = params;
 	const args = [target];
 	const job = {
 		script,
-		func,
+		task,
 		args,
 		threads,
 		security,

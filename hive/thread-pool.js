@@ -201,6 +201,10 @@ export class ThreadPool {
         const {ns} = this;
         // Link this worker and pool to each other
         const launchedWorker = this.workers[worker.id];
+        if (launchedWorker.running) {
+            // If multiple workers claim the same ID, stop the older one.
+            launchedWorker.running = false;
+        }
         if (launchedWorker?.process) {
             // Fill in process information if we already know the PID
             worker.process = ns.getRunningScript(launchedWorker.process.pid);
@@ -275,9 +279,9 @@ function workerReport(worker, now) {
         id: worker.id,
         threads: [worker.currentJob?.threads, worker.process?.threads],
         queue: worker.jobQueue?.length,
-        task: worker.currentJob?.func,
+        task: worker.currentJob?.task,
         elapsedTime: worker.elapsedTime? worker.elapsedTime(now) : null,
         remainingTime: worker.remainingTime? worker.remainingTime(now) : null,
-        drift: typeof(worker.drift) === 'undefined' ? '' : worker.drift.toFixed(0) + ' ms'
+        drift: worker.drift ? worker.drift.toFixed(0) + ' ms' : ''
     };
 }

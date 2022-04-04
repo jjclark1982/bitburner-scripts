@@ -20,8 +20,6 @@ where a job is an object with fields: `{ task, args, threads, duration, startTim
 ```
 When the task runs, this object will be updated with `actualStartTime` and `actualEndTime`. Other fields (such as expected results) will be preserved, so a user can measure 
 
-> TODO: use consistent terminology for "job" vs "task": a job is an object consisting of the task name plus any metadata.
-
 ---
 
 ### Installation
