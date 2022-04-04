@@ -176,10 +176,12 @@ export class ThreadPool {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
         }
-        if ((server.availableThreads - threads < 4) || (threads > server.availableThreads * 3 / 4)) {
+        if (false) {
             // Round up a process size to fill an entire server.
             // worker.id = `${server.hostname}-${worker.id}`;
-            threads = server.availableThreads;
+            if ((server.availableThreads - threads < 4) || (threads > server.availableThreads * 3 / 4)) {
+                threads = server.availableThreads;
+            }
         }
 
         // Spawn the worker process.
