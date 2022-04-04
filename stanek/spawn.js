@@ -1,4 +1,4 @@
-import { runMaxThreads } from "net/server-pool.js";
+import { deploy } from "net/server-pool.js";
 
 export function autocomplete(data) {
     return data.servers;
@@ -24,5 +24,5 @@ export async function main(ns) {
     const script = "/stanek/charge-x-y.js";
     const args = xy;
 
-    await runMaxThreads(ns, {host, script, args, reservedRam});
+    await deploy({ns, host, script, args, reservedRam, threads:'max'});
 }
