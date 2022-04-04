@@ -98,9 +98,10 @@ class HackManager {
         };
         const job = {
             task: 'weaken',
-            args: [server.hostname],
+            args: [server.hostname, {threads: weakThreads}],
             threads: weakThreads,
-            duration: weakTime
+            duration: weakTime,
+            result: nextServer
         };
 
         return {
@@ -110,6 +111,7 @@ class HackManager {
         }
     }
 }
+
 
 
 const t0_by_target = {};

@@ -13,12 +13,14 @@ where a job is an object with fields: `{ task, args, threads, duration, startTim
     task: 'hack',             // a key in worker.capabilities
     args: ['foodnstuff'],
     threads: 5,
-    duration: 1000,
-    startTime: 1649093514728, // starts immediately if omitted
-    endTime:   1649093515728
+    duration:  1000,          // optional
+    startTime: 1649093514728, // optional (will start immediately if omitted)
+    endTime:   1649093515728  // optional
 }
 ```
 When the job runs, this object will be updated with `startTimeActual` and `endTimeActual`. Other fields will be preserved, so a user can record expectations here and compare them against results.
+
+> TODO: support running a callback as soon as the task finishes
 
 ---
 
