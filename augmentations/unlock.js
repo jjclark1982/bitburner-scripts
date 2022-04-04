@@ -80,12 +80,12 @@ export async function unlockAugs(ns, domains) {
             return;
         }
         for (const workType of getWorkTypes(player)) {
-            if (ns.workForFaction(faction.name, workType)) {
+            if (ns.workForFaction(faction.name, workType, false)) {
                 break;
             }
         }
         await ns.sleep(60*1000);
-        if (!player.isWorking) {
+        if (!ns.getPlayer().isWorking) {
             // Support manually exiting the process.
             return;
         }
