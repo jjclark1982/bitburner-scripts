@@ -167,8 +167,8 @@ export class ThreadPool {
             this.logWarn(`Failed to start worker with ${threads} threads: No script capable of ${JSON.stringify(capabilities)}.`);
             return null;
         }
-        const serverPool = new ServerPool(ns, ns.getScriptRam(script, 'home'));
-        const server = serverPool.smallestServersWithThreads(threads)[0];
+        const serverPool = new ServerPool({ns, scriptRam: script});
+        const server = serverPool.smallestServerWithThreads(threads);
         if (!server) {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
@@ -181,8 +181,8 @@ export class ThreadPool {
 
         // Spawn the worker process.
         const args = ["--port", portNum, "--id", worker.id];
-        const pid = await serverPool.runOnServer({server, script, threads, args});
-        worker.process = {pid, threads};
+        const pid = await serverPool.deploy({server, script, threads, args});
+        this.workers[worker.id].process = {pid, threads};
         if (!pid) {
             this.logWarn(`Failed to start worker ${worker.id}.`);
             return null;
@@ -192,11 +192,12 @@ export class ThreadPool {
     }
 
     registerWorker(worker) {
+        const {ns} = this;
         // Link this worker and pool to each other
         const launchedWorker = this.workers[worker.id];
-        if (launchedWorker?.pid) {
+        if (launchedWorker?.process) {
             // Fill in process information if we already know the PID
-            worker.process = ns.getRunningScript(launchedWorker.pid);
+            worker.process = ns.getRunningScript(launchedWorker.process.pid);
         }
         else {
             // Otherwise search for the process (it may have launched on page load)
@@ -206,10 +207,12 @@ export class ThreadPool {
     }
 
     findWorkerProcess(worker) {
+        const {ns} = this;
         const scriptName = worker.ns.getScriptName();
         const args = worker.ns.args;
-        for (const server of new ServerPool(ns)) {
-            const process = this.ns.getRunningScript(scriptName, server.hostname, args);
+        const serverPool = new ServerPool({ns});
+        for (const server of serverPool) {
+            const process = this.ns.getRunningScript(scriptName, server.hostname, ...args);
             if (process) {
                 return process;
             }

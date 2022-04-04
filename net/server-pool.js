@@ -2,11 +2,11 @@ import { drawTable } from "lib/box-drawing";
 
 export async function deploy(params={}) {
     const {ns, script, threads, args, allowSplit, requireAll} = params;
-    const cloud = new ServerPool({ns, scriptRam: script, logLevel:2});
-    return await cloud.deploy(params);
+    const serverPool = new ServerPool({ns, scriptRam: script, logLevel:2});
+    return await serverPool.deploy(params);
 }
 
-export function cloud(ns, scriptRam) {
+export function serverPool(ns, scriptRam) {
     return new ServerPool({ns, scriptRam});
 }
 
@@ -62,7 +62,7 @@ export async function main(ns) {
 }
 
 
-class ServerPool {
+export class ServerPool {
     constructor({ns, scriptRam, reservedRam, logLevel}) {
         this.ns = ns;
         if (typeof(scriptRam) === "string") {
@@ -131,8 +131,10 @@ class ServerPool {
         return this.largestServer?.availableThreads || 0;
     }
 
-    async deploy({host, script, threads, args, allowSplit, requireAll}) {
-        let server = this.getServer(host);
+    async deploy({server, host, script, threads, args, allowSplit, requireAll}) {
+        if (!server && host) {
+            server = this.getServer(host);
+        }
         if (!server) {
             if (threads == 'max') {
                 server = this.largestServer;
@@ -258,7 +260,7 @@ class ServerPool {
     }
 }
 
-class CloudServer {
+export class CloudServer {
     constructor({ns, hostname, scriptRam, reservedRam}) {
         this.ns = ns;
         if (typeof(scriptRam) === "string") {
@@ -303,7 +305,7 @@ class CloudServer {
     }
 }
 
-function getAllHosts(ns) {
+export function getAllHosts(ns) {
     getAllHosts.cache ||= {};
     const scanned = getAllHosts.cache;
     const toScan = ['home'];

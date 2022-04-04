@@ -39,20 +39,21 @@ class Worker {
     }
 
     async work() {
+        let {ns} = this;
         // Register with the thread pool.
         const port = ns.getPortHandle(this.portNum);
         while (port.empty()) {
-            await this.ns.asleep(50);
+            await ns.asleep(50);
         }
         this.pool = port.peek();
         this.pool.registerWorker(this);
-        this.ns.print(`Worker ${this.id} registered with thread pool. Starting work.`);
+        ns.print(`Worker ${this.id} registered with thread pool. Starting work.`);
         // Block until something sets running to false
         this.running = true;
         while (this.running) {
-            await this.ns.asleep(1000);
+            await ns.asleep(1000);
         }
-        this.ns.print(`Worker ${this.id} stopping.`);
+        ns.print(`Worker ${this.id} stopping.`);
     }
 
     stop() {
