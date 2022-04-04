@@ -1,4 +1,4 @@
-import { deploy } from "net/server-pool.js";
+import { deploy } from "/net/server-pool";
 
 export function autocomplete(data) {
     return data.servers;
@@ -8,7 +8,7 @@ export function autocomplete(data) {
 export async function main(ns) {
     const fragments = ns.stanek.activeFragments();
     if (fragments.length == 0) {
-        ns.tprint("No fragments to charge. Exiting.");
+        ns.tprint("No fragments to charge.");
         return;
     }
     const xy = [];
