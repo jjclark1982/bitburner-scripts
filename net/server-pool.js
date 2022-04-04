@@ -154,7 +154,6 @@ class ServerPool {
         else if (allowSplit) {
             const batch = this.splitJob({script, threads, args, requireAll});
             return await this.deployBatch(batch);
-            // return await this.distribute({script, threads, args, requireAll});
         }
         else {
             this.logWarn(`No suitable server to run ${threads}x ${script} ${args.join(' ')}`);
@@ -210,31 +209,6 @@ class ServerPool {
         }
         return pids;
     }
-
-    // async distribute({script, threads, args, requireAll}) {
-    //     const {ns} = this;
-    //     const pids = [];
-    //     // Run the script on one or more hosts, selected based on current availability.
-    //     let threadsNeeded = threads;
-    //     if (this.totalThreadsAvailable < threadsNeeded && requireAll) {
-    //         ns.tprint(`Not enough RAM in server pool to run entire job: ${threads}x ${script} ${args}`);
-    //         return pids;
-    //     }
-    //     while (threadsNeeded > 0 && this.totalThreadsAvailable() >= threadsNeeded) {
-    //         let server = this.smallestServerWithThreads(threadsNeeded);
-    //         if (!server) {
-    //             server = this.largestServer();
-    //         }
-    //         const threadsToUse = Math.min(threadsNeeded, server.availableThreads);
-    //         const pid = await server.deploy({script, args, threads:threadsToUse});
-    //         pids.push(pid);
-    //         threadsNeeded -= threadsToUse;
-    //     }
-    //     if (threadsNeeded > 0) {
-    //         ns.tprint(`Failed to run entire job on pool: ${threads}x ${script} ${args}`);
-    //     }
-    //     return pids;
-    // }
 
     logInfo(...args) {
         if (this.logLevel >= 2) {
