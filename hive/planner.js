@@ -32,20 +32,21 @@ export function reportBatchLengthComparison(ns) {
         {header: "Batches", field: "numBatchesAtOnce"},
         {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
-        {header: "$/sec/thread", field: "moneyPerSecPerThread", format: ns.nFormat, formatArgs: ["$0.0a"]},
+        {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
-    columns.title = "Comparison of batches with at most 32 threads per job";
-    const conditions = [];
+    columns.title = "Comparison of batches with at most 64 threads per job";
+    const conditions = {};
     for (const moneyPercent of [0.05, 0.10, 0.20, 0.40, 0.80]) {
         for (const [hackMargin, prepMargin] of [[0,0], [0,0.5], [0.25, 0.5]]) {
             for (const naiveSplit of [true, false]) {
-                server.estimateProfit(moneyPercent, 32, 100, hackMargin, prepMargin, naiveSplit);
+                server.estimateProfit(moneyPercent, 64, 100, hackMargin, prepMargin, naiveSplit);
                 server.condition = `${moneyPercent*100}% money, ${server.batchSummary}`;
-                conditions.push(server.copy());
+                if (moneyPercent < 0.1) server.condition = ' ' + server.condition;
+                conditions[server.condition] = server.copy();
             }
         }
     }
-    return drawTable(columns, conditions);
+    return drawTable(columns, Object.values(conditions));
 }
 
 export function mostProfitableServers(ns) {
@@ -263,15 +264,14 @@ export class ServerModel {
 
         const numBatchesAtOnce = Math.floor(batch.totalDuration(tDelta) / activeDuration);
 
-        const totalThreads = numBatchesAtOnce * batch.avgThreads();
-        const ramNeeded = totalThreads * 2e9;
+        const totalRam = numBatchesAtOnce * batch.avgRam();
 
         this.batchSummary = batch.summary();
         this.numBatchesAtOnce = numBatchesAtOnce;
-        this.ramNeeded = ramNeeded;
+        this.ramNeeded = totalRam * 1e9;
         this.moneyPerSec = moneyPerSec;
-        this.moneyPerSecPerThread = moneyPerSec / totalThreads;
-        return this.moneyPerSecPerThread;
+        this.moneyPerSecPerGB = moneyPerSec / totalRam;
+        return this.moneyPerSecPerGB;
     }
 }
 
@@ -282,14 +282,30 @@ class Batch extends Array {
     }
 
     peakThreads() {
-        return this.reduce((total, job)=>(total+job.threads), 0);
+        return this.reduce((total, job)=>(
+            total + job.threads
+        ), 0);
     }
 
     avgThreads() {
-        const threadSeconds = this.reduce((total,job)=>(
-            total + job.threads * job.duration
+        const threadMSeconds = this.reduce((total,job)=>{
+            return total + job.threads * job.duration
+        }, 0);
+        return threadMSeconds / this.totalDuration();
+    }
+
+    peakRam() {
+        return this.reduce((total, job)=>(
+            total + job.threads * (TASK_RAM[job.task] || 2.0)
         ), 0);
-        return threadSeconds / this.totalDuration();
+    }
+
+    avgRam() {
+        const gbMSeconds = this.reduce((total,job)=>{
+            const gb = TASK_RAM[job.task] || 2.0;
+            return total + job.threads * gb * job.duration
+        }, 0);
+        return gbMSeconds / this.totalDuration();
     }
 
     activeDuration(tDelta=200) {
@@ -314,6 +330,16 @@ class Batch extends Array {
         return this[this.length-1]?.endTime;
     }
 
+    earliestStartTime() {
+        if (this.length == 0) {
+            return null;
+        }
+        const earliest = this.reduce((e, job)=>(
+            Math.min(e, job.startTime)
+        ), Infinity);
+        return earliest;
+    }
+
     setFirstEndTime(firstEndTime, tDelta=200) {
         let endTime = firstEndTime;
         for (const job of this) {
@@ -333,16 +359,6 @@ class Batch extends Array {
                 this.adjustSchedule(startTime - earliestStart);
             }
         }
-    }
-
-    earliestStartTime() {
-        if (this.length == 0) {
-            return null;
-        }
-        const earliest = this.reduce((e, job)=>(
-            Math.min(e, job.startTime)
-        ), Infinity);
-        return earliest;
     }
 
     adjustSchedule(offset) {
@@ -372,3 +388,9 @@ export function getAllHosts(ns) {
     const allHosts = Object.keys(scanned);
     return allHosts;
 }
+
+const TASK_RAM = {
+    'hack': 1.7,
+    'grow': 1.75,
+    'weaken': 1.75
+};
