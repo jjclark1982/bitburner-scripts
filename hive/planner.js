@@ -47,11 +47,12 @@ export function reportBatchLengthComparison(ns) {
 }
 
 export function mostProfitableServers(ns) {
+    const player = ns.getPlayer();
     const servers = getAllHosts(ns).map((host)=>{
         const server = new ServerModel(ns, host);
         return server;
     }).filter((server)=>(
-        server.isHackable()
+        server.isHackable(player)
     ));
     for (const server of servers) {
         server.prepTime = server.estimatePrepTime();
@@ -76,11 +77,12 @@ export class ServerModel {
         Object.assign(this, server);
     }
 
-    isHackable() {
+    isHackable(player) {
+        player ||= this.ns.getPlayer()
         return (
             this.hasAdminRights &&
             this.moneyMax > 0 &&
-            this.requiredHackingSkill <= this.ns.getPlayer().hacking
+            this.requiredHackingSkill <= player.hacking
         )
     }
 
@@ -238,8 +240,13 @@ export class ServerModel {
         return batch.totalDuration(tDelta);
     }
 
+    assumePrepped() {
+        this.moneyAvailable = this.moneyMax;
+        this.hackDifficulty = this.minDifficulty;
+    }
+
     estimateProfit(moneyPercent=0.05, maxThreadsPerJob=128, tDelta=200, margin=0.5, prepMargin) {
-        this.planPrepBatch(maxThreadsPerJob);
+        this.assumePrepped();
         const batch = this.planHackingBatch(moneyPercent, maxThreadsPerJob, margin, prepMargin);
         const hackJob = batch[0];
 
@@ -294,7 +301,7 @@ class Batch extends Array {
         if (!this.earliestStartTime()) {
             this.setStartTime(1, tDelta);
         }
-        return this.latestEndTime() - this.earliestStartTime();
+        return this.latestEndTime() + tDelta - this.earliestStartTime();
         // return this.maxDuration() + this.activeDuration(tDelta);
     }
 
