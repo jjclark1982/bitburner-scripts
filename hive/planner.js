@@ -14,7 +14,7 @@ export async function main(ns) {
         {header: "Hostname", field: "hostname", width: 18, align: "left"},
         {header: "Prep Time", field: "prepTime", format: drawTable.time},
         {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0 b"]},
-        {header: "$ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0a"]},
+        {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
     ];
     columns.title = "Most Profitable Servers to Hack";
     const rows = mostProfitableServers(ns);
@@ -214,7 +214,7 @@ export class ServerModel {
     
         const money = this.moneyMax * (1-hackJob.change.moneyMult);
         const activeDuration = batch.activeDuration(tDelta);
-        const moneyPerSec = money / activeDuration;
+        const moneyPerSec = money / (activeDuration/1000);
 
         const numBatchesAtOnce = Math.floor(batch.totalDuration(tDelta) / activeDuration);
 
@@ -223,7 +223,7 @@ export class ServerModel {
 
         this.ramNeeded = ramNeeded;
         this.moneyPerSec = moneyPerSec;
-        return moneyPerSec / this.ramNeeded;
+        return moneyPerSec / totalThreads;
     }
 }
 
