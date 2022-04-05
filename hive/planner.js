@@ -9,53 +9,41 @@ export async function main(ns) {
     ns.clearLog();
     ns.tail();
 
-    // const columns = [
-    //     {header: "Hostname", field: "hostname", width: 18, align: "left"},
-    //     {header: "Prep Time", field: "prepTime", format: drawTable.time},
-    //     {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
-    //     {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
-    // ];
-    // columns.title = "Most Profitable Servers to Hack";
-    // const rows = mostProfitableServers(ns);
-    // ns.print(drawTable(columns, rows));
+    ns.print(reportMostProfitableServers(ns));
 
+    ns.print(reportBatchLengthComparison(ns));
+}
+
+export function reportMostProfitableServers(ns) {
     const columns = [
-        {header: "Condition", field: "condition", width: 18, align: "left"},
+        {header: "Hostname", field: "hostname", width: 18, align: "left"},
+        {header: "Prep Time", field: "prepTime", format: drawTable.time},
+        {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
+        {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
+    ];
+    columns.title = "Most Profitable Servers to Hack";
+    const rows = mostProfitableServers(ns);
+    return drawTable(columns, rows);
+}
+
+export function reportBatchLengthComparison(ns) {
+    const columns = [
+        {header: "Condition", field: "condition", width: 28, align: "left"},
+        {header: "Batches", field: "numBatchesAtOnce"},
         {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
         {header: "$/sec/thread", field: "moneyPerSecPerThread", format: ns.nFormat, formatArgs: ["$0.0a"]},
     ];
-    columns.title = "Most Profitable Servers to Hack";
+    columns.title = "Comparison of batches with at most 512 threads per job";
     const conditions = [];
-    server.condition = "5% money, HWGW"
-    server.estimateProfit(0.05, 128, 200, 0, 0);
-    conditions.push(server.copy());
-    server.condition = "5% money, HGW"
-    server.estimateProfit(0.05, 128, 200, 0, 1);
-    conditions.push(server.copy());
-    server.condition = "5% money, HGHGHGW"
-    server.estimateProfit(0.05, 128, 200, 1.0, 1.5);
-    conditions.push(server.copy());
-    server.condition = "10% money, HWGW"
-    server.estimateProfit(0.10, 128, 200, 0, 0);
-    conditions.push(server.copy());
-    server.condition = "10% money, HGW"
-    server.estimateProfit(0.10, 128, 200, 0, 1);
-    conditions.push(server.copy());
-    server.condition = "10% money, HGHGHGW"
-    server.estimateProfit(0.10, 128, 200, 1.0, 1.5);
-    conditions.push(server.copy());
-    server.condition = "20% money, HWGW"
-    server.estimateProfit(0.20, 128, 200, 0, 0);
-    conditions.push(server.copy());
-    server.condition = "20% money, HGW"
-    server.estimateProfit(0.20, 128, 200, 0, 1);
-    conditions.push(server.copy());
-    server.condition = "20% money, HGHGHGW"
-    server.estimateProfit(0.20, 128, 200, 1.0, 1.5);
-    conditions.push(server.copy());
-
-    ns.print(drawTable(columns, conditions));
+    for (const moneyPercent of [0.05, 0.10, 0.20, 0.40, 0.80]) {
+        for (const [hackMargin, prepMargin] of [[0,0], [0,0.5], [0.25, 0.5]]) {
+            server.estimateProfit(moneyPercent, 512, 100, hackMargin, prepMargin);
+            server.condition = `${moneyPercent*100}% money, ${server.batchSummary}`;
+            conditions.push(server.copy());
+        }
+    }
+    return drawTable(columns, conditions);
 }
 
 export function mostProfitableServers(ns) {
@@ -266,24 +254,19 @@ export class ServerModel {
         const totalThreads = numBatchesAtOnce * batch.avgThreads();
         const ramNeeded = totalThreads * 2e9;
 
+        this.batchSummary = batch.summary();
+        this.numBatchesAtOnce = numBatchesAtOnce;
         this.ramNeeded = ramNeeded;
         this.moneyPerSec = moneyPerSec;
         this.moneyPerSecPerThread = moneyPerSec / totalThreads;
-        return moneyPerSec / totalThreads;
+        return this.moneyPerSecPerThread;
     }
 }
 
 class Batch extends Array {
-    activeDuration(tDelta=200) {
-        return this.length * tDelta;
-    }
-
-    maxDuration() {
-        return this.sort((a,b)=>b.duration-a.duration)[0]?.duration || 0;
-    }
-
-    totalDuration(tDelta) {
-        return this.maxDuration() + this.activeDuration(tDelta);
+    summary() {
+        const tasks = this.map((job)=>(job.task || '-').substr(0,1).toUpperCase());
+        return tasks.join("");
     }
 
     peakThreads() {
@@ -295,6 +278,28 @@ class Batch extends Array {
             total + job.threads * job.duration
         ), 0);
         return threadSeconds / this.totalDuration();
+    }
+
+    activeDuration(tDelta=200) {
+        return this.length * tDelta;
+    }
+
+    maxDuration() {
+        return this.reduce((longest, job)=>(
+            Math.max(longest, job.duration)
+        ), 0);
+    }
+
+    totalDuration(tDelta=200) {
+        if (!this.earliestStartTime()) {
+            this.setStartTime(1, tDelta);
+        }
+        return this.latestEndTime() - this.earliestStartTime();
+        // return this.maxDuration() + this.activeDuration(tDelta);
+    }
+
+    latestEndTime() {
+        return this[this.length-1]?.endTime;
     }
 
     setFirstEndTime(firstEndTime, tDelta=200) {
@@ -322,10 +327,9 @@ class Batch extends Array {
         if (this.length == 0) {
             return null;
         }
-        earliest = Infinity;
-        for (const job of this) {
-            earliest = Math.min(earliest, job.startTime);
-        }
+        const earliest = this.reduce((e, job)=>(
+            Math.min(e, job.startTime)
+        ), Infinity);
         return earliest;
     }
 
