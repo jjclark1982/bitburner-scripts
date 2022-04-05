@@ -1,10 +1,15 @@
 import { drawTable } from "/lib/box-drawing";
 
-export async function main(ns) {
-    const hostname = ns.args[0] || 'phantasy';
-    let server = new ServerModel(ns, hostname);
-    eval("window").server = server;
+const FLAGS = [
+    ["console", false]
+];
 
+export function autocomplete(data, args) {
+    data.flags(FLAGS);
+    return data.servers;
+}
+
+export async function main(ns) {
     ns.disableLog("scan");
     ns.clearLog();
     ns.tail();
@@ -12,6 +17,14 @@ export async function main(ns) {
     ns.print(reportMostProfitableServers(ns));
 
     ns.print(reportBatchLengthComparison(ns));
+
+    const flags = ns.flags(FLAGS);
+    if (flags.console) {
+        const hostname = flags._[0] || 'phantasy';
+        const server = new ServerModel(ns, hostname);
+        eval("window").server = server;
+        await ns.sleep(60*60*1000);
+    }
 }
 
 export function reportMostProfitableServers(ns) {
