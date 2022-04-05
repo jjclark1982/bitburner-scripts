@@ -34,13 +34,15 @@ export function reportBatchLengthComparison(ns) {
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
         {header: "$/sec/thread", field: "moneyPerSecPerThread", format: ns.nFormat, formatArgs: ["$0.0a"]},
     ];
-    columns.title = "Comparison of batches with at most 512 threads per job";
+    columns.title = "Comparison of batches with at most 32 threads per job";
     const conditions = [];
     for (const moneyPercent of [0.05, 0.10, 0.20, 0.40, 0.80]) {
         for (const [hackMargin, prepMargin] of [[0,0], [0,0.5], [0.25, 0.5]]) {
-            server.estimateProfit(moneyPercent, 512, 100, hackMargin, prepMargin);
-            server.condition = `${moneyPercent*100}% money, ${server.batchSummary}`;
-            conditions.push(server.copy());
+            for (const naiveSplit of [true, false]) {
+                server.estimateProfit(moneyPercent, 32, 100, hackMargin, prepMargin, naiveSplit);
+                server.condition = `${moneyPercent*100}% money, ${server.batchSummary}`;
+                conditions.push(server.copy());
+            }
         }
     }
     return drawTable(columns, conditions);
@@ -56,7 +58,7 @@ export function mostProfitableServers(ns) {
     ));
     for (const server of servers) {
         server.prepTime = server.estimatePrepTime();
-        server.profit = server.estimateProfit();
+        server.profit = server.estimateProfit(0.05, 128, 20, 0, 0.5);
         server.reload();
     }
     return servers.sort((a,b)=>(
@@ -206,12 +208,15 @@ export class ServerModel {
         return job;
     }
 
-    planPrepBatch(maxThreadsPerJob=512, secMargin=1) {
+    planPrepBatch(maxThreadsPerJob=512, secMargin=1, naiveSplit=false) {
         // Make a list of 'grow' and 'weaken' jobs that will bring the server
         // to a ready state (maximum money and minimum security).
         const batch = new Batch();
+        while (naiveSplit && this.hackDifficulty > this.minDifficulty + secMargin) {
+            batch.push(this.planWeaken(maxThreadsPerJob));
+        }
         while (this.moneyAvailable < this.moneyMax) {
-            while (this.hackDifficulty > this.minDifficulty + secMargin) {
+            while (!naiveSplit && this.hackDifficulty > this.minDifficulty + secMargin) {
                 batch.push(this.planWeaken(maxThreadsPerJob));
             }
             batch.push(this.planGrow(maxThreadsPerJob));
@@ -222,7 +227,7 @@ export class ServerModel {
         return batch;
     }
 
-    planHackingBatch(moneyPercent=0.05, maxThreadsPerJob=512, secMargin=0.5, prepMargin=1.5) {
+    planHackingBatch(moneyPercent=0.05, maxThreadsPerJob=512, secMargin=0.5, prepMargin=1.5, naiveSplit=false) {
         // Make a list of jobs that will hack a server and then return it to a ready state.
         // Higher moneyPercent or secMargin will result in more threads per job.
         const batch = new Batch();
@@ -231,7 +236,7 @@ export class ServerModel {
             batch.push(this.planGrow(maxThreadsPerJob));
             batch.push(this.planHack(moneyPercent, maxThreadsPerJob));
         }
-        batch.push(...this.planPrepBatch(maxThreadsPerJob, prepMargin));
+        batch.push(...this.planPrepBatch(maxThreadsPerJob, prepMargin, naiveSplit));
         return batch;
     }
 
@@ -245,9 +250,9 @@ export class ServerModel {
         this.hackDifficulty = this.minDifficulty;
     }
 
-    estimateProfit(moneyPercent=0.05, maxThreadsPerJob=128, tDelta=200, margin=0.5, prepMargin) {
+    estimateProfit(moneyPercent=0.05, maxThreadsPerJob=128, tDelta=200, margin=0.0, prepMargin=0.5, naiveSplit=false) {
         this.assumePrepped();
-        const batch = this.planHackingBatch(moneyPercent, maxThreadsPerJob, margin, prepMargin);
+        const batch = this.planHackingBatch(moneyPercent, maxThreadsPerJob, margin, prepMargin, naiveSplit);
         const hackJob = batch[0];
 
         const money = batch.reduce((total, job)=>(
