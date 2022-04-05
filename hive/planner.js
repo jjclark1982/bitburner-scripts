@@ -1,24 +1,61 @@
 import { drawTable } from "/lib/box-drawing";
-import { getAllHosts } from "/net/server-pool";
 
 export async function main(ns) {
     const hostname = ns.args[0] || 'phantasy';
-    const server = new ServerModel(ns, hostname);
+    let server = new ServerModel(ns, hostname);
     eval("window").server = server;
 
     ns.disableLog("scan");
     ns.clearLog();
     ns.tail();
 
+    // const columns = [
+    //     {header: "Hostname", field: "hostname", width: 18, align: "left"},
+    //     {header: "Prep Time", field: "prepTime", format: drawTable.time},
+    //     {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
+    //     {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
+    // ];
+    // columns.title = "Most Profitable Servers to Hack";
+    // const rows = mostProfitableServers(ns);
+    // ns.print(drawTable(columns, rows));
+
     const columns = [
-        {header: "Hostname", field: "hostname", width: 18, align: "left"},
-        {header: "Prep Time", field: "prepTime", format: drawTable.time},
+        {header: "Condition", field: "condition", width: 18, align: "left"},
         {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
+        {header: "$/sec/thread", field: "moneyPerSecPerThread", format: ns.nFormat, formatArgs: ["$0.0a"]},
     ];
     columns.title = "Most Profitable Servers to Hack";
-    const rows = mostProfitableServers(ns);
-    ns.print(drawTable(columns, rows));
+    const conditions = [];
+    server.condition = "5% money, HWGW"
+    server.estimateProfit(0.05, 128, 200, 0, 0);
+    conditions.push(server.copy());
+    server.condition = "5% money, HGW"
+    server.estimateProfit(0.05, 128, 200, 0, 1);
+    conditions.push(server.copy());
+    server.condition = "5% money, HGHGHGW"
+    server.estimateProfit(0.05, 128, 200, 1.0, 1.5);
+    conditions.push(server.copy());
+    server.condition = "10% money, HWGW"
+    server.estimateProfit(0.10, 128, 200, 0, 0);
+    conditions.push(server.copy());
+    server.condition = "10% money, HGW"
+    server.estimateProfit(0.10, 128, 200, 0, 1);
+    conditions.push(server.copy());
+    server.condition = "10% money, HGHGHGW"
+    server.estimateProfit(0.10, 128, 200, 1.0, 1.5);
+    conditions.push(server.copy());
+    server.condition = "20% money, HWGW"
+    server.estimateProfit(0.20, 128, 200, 0, 0);
+    conditions.push(server.copy());
+    server.condition = "20% money, HGW"
+    server.estimateProfit(0.20, 128, 200, 0, 1);
+    conditions.push(server.copy());
+    server.condition = "20% money, HGHGHGW"
+    server.estimateProfit(0.20, 128, 200, 1.0, 1.5);
+    conditions.push(server.copy());
+
+    ns.print(drawTable(columns, conditions));
 }
 
 export function mostProfitableServers(ns) {
@@ -195,7 +232,7 @@ export class ServerModel {
         return batch;
     }
 
-    planHackingBatch(moneyPercent=0.05, maxThreadsPerJob=512, secMargin=0.5) {
+    planHackingBatch(moneyPercent=0.05, maxThreadsPerJob=512, secMargin=0.5, prepMargin=1.5) {
         // Make a list of jobs that will hack a server and then return it to a ready state.
         // Higher moneyPercent or secMargin will result in more threads per job.
         const batch = new Batch();
@@ -204,18 +241,18 @@ export class ServerModel {
             batch.push(this.planGrow(maxThreadsPerJob));
             batch.push(this.planHack(moneyPercent, maxThreadsPerJob));
         }
-        batch.push(...this.planPrepBatch(maxThreadsPerJob, secMargin+1));
+        batch.push(...this.planPrepBatch(maxThreadsPerJob, prepMargin));
         return batch;
     }
 
     estimatePrepTime(maxThreadsPerJob=128, tDelta=200) {
         const batch = this.planPrepBatch(maxThreadsPerJob);
-        return batch.totalDuration();
+        return batch.totalDuration(tDelta);
     }
 
-    estimateProfit(moneyPercent=0.05, maxThreadsPerJob=128, tDelta=200) {
+    estimateProfit(moneyPercent=0.05, maxThreadsPerJob=128, tDelta=200, margin=0.5, prepMargin) {
         this.planPrepBatch(maxThreadsPerJob);
-        const batch = this.planHackingBatch(moneyPercent, maxThreadsPerJob);
+        const batch = this.planHackingBatch(moneyPercent, maxThreadsPerJob, margin, prepMargin);
         const hackJob = batch[0];
 
         const money = batch.reduce((total, job)=>(
@@ -231,6 +268,7 @@ export class ServerModel {
 
         this.ramNeeded = ramNeeded;
         this.moneyPerSec = moneyPerSec;
+        this.moneyPerSecPerThread = moneyPerSec / totalThreads;
         return moneyPerSec / totalThreads;
     }
 }
@@ -300,4 +338,21 @@ class Batch extends Array {
             job.endTime += offset;
         }
     }
+}
+
+export function getAllHosts(ns) {
+    getAllHosts.cache ||= {};
+    const scanned = getAllHosts.cache;
+    const toScan = ['home'];
+    while (toScan.length > 0) {
+        const host = toScan.shift();
+        scanned[host] = true;
+        for (const nextHost of ns.scan(host)) {
+            if (!(nextHost in scanned)) {
+                toScan.push(nextHost);
+            }
+        }
+    }
+    const allHosts = Object.keys(scanned);
+    return allHosts;
 }
