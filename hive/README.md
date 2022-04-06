@@ -4,7 +4,7 @@ This is a [grid computing](https://en.wikipedia.org/wiki/Grid_computing) system 
 
 The system is controlled through a `ThreadPool` which communicates with `Worker` processes through a [Netscript Port](https://bitburner.readthedocs.io/en/latest/netscript/netscriptmisc.html#netscript-ports). The processes can connect to each other after being launched in any order, including reloading from save.
 
-An application can dispatch tasks to the `ThreadPool` and it will launch an appropriate size `Worker` on any available Server, or assign the task to an already running `Worker`.
+An application can dispatch tasks to the `ThreadPool` and it will launch an appropriate size `Worker` on any available server, or assign the task to an already running `Worker`.
 
 ![hvmind](system-diagram.svg)
 

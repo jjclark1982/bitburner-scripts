@@ -1,3 +1,7 @@
 /.vscode
 global.d.ts
 NetscriptDefinitions.d.ts
+
+*.graffle
+
+/xsinx/*
