@@ -10,29 +10,31 @@ export function autocomplete(data, args) {
 }
 
 export async function main(ns) {
+    const flags = ns.flags(FLAGS);
+    const hostname = flags._[0] || 'phantasy';
+    const server = new ServerModel(ns, hostname);
+    
     ns.disableLog("scan");
     ns.clearLog();
     ns.tail();
 
     ns.print(reportMostProfitableServers(ns));
 
-    ns.print(reportBatchLengthComparison(ns));
+    ns.print(reportBatchLengthComparison(ns, server));
 
-    const flags = ns.flags(FLAGS);
     if (flags.console) {
-        const hostname = flags._[0] || 'phantasy';
-        const server = new ServerModel(ns, hostname);
         eval("window").server = server;
         await ns.sleep(60*60*1000);
     }
 }
 
-export function reportMostProfitableServers(ns) {
+export function reportMostProfitableServers(ns, server) {
     const columns = [
         {header: "Hostname", field: "hostname", width: 18, align: "left"},
         {header: "Prep Time", field: "prepTime", format: drawTable.time},
         {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
+        {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
     columns.title = "Most Profitable Servers to Hack";
     const rows = mostProfitableServers(ns);
@@ -40,6 +42,7 @@ export function reportMostProfitableServers(ns) {
 }
 
 export function reportBatchLengthComparison(ns) {
+    const server = new ServerModel(ns, ns.args[0] || "phantasy");
     const columns = [
         {header: "Condition", field: "condition", width: 28, align: "left"},
         {header: "Batches", field: "numBatchesAtOnce"},
@@ -47,12 +50,12 @@ export function reportBatchLengthComparison(ns) {
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
         {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
-    columns.title = "Comparison of batches with at most 64 threads per job";
+    columns.title = "Comparison of batches with at most 1024 threads per job";
     const conditions = {};
     for (const moneyPercent of [0.05, 0.10, 0.20, 0.40, 0.80]) {
-        for (const [hackMargin, prepMargin] of [[0,0], [0,0.5], [0.25, 0.5]]) {
+        for (const [hackMargin, prepMargin] of [[0,0], [0,0.25], [0.25, 0.5]]) {
             for (const naiveSplit of [true, false]) {
-                server.estimateProfit(moneyPercent, 64, 100, hackMargin, prepMargin, naiveSplit);
+                server.estimateProfit(moneyPercent, 1024, 100, hackMargin, prepMargin, naiveSplit);
                 server.condition = `${moneyPercent*100}% money, ${server.batchSummary}`;
                 if (moneyPercent < 0.1) server.condition = ' ' + server.condition;
                 conditions[server.condition] = server.copy();
@@ -68,11 +71,11 @@ export function mostProfitableServers(ns) {
         const server = new ServerModel(ns, host);
         return server;
     }).filter((server)=>(
-        server.isHackable(player)
+        server.canBeHacked(player)
     ));
     for (const server of servers) {
         server.prepTime = server.estimatePrepTime();
-        server.profit = server.estimateProfit(0.05, 128, 20, 0, 0.5);
+        server.profit = server.estimateProfit(0.05, 128, 100, 0, 0.25);
         server.reload();
     }
     return servers.sort((a,b)=>(
@@ -93,7 +96,7 @@ export class ServerModel {
         Object.assign(this, server);
     }
 
-    isHackable(player) {
+    canBeHacked(player) {
         player ||= this.ns.getPlayer()
         return (
             this.hasAdminRights &&
@@ -127,13 +130,13 @@ export class ServerModel {
         const effectivePct = threads * hackPercentPerThread;
 
         // Calculate result
-        const playerMoney = this.moneyAvailable * effectivePct;
+        const prevMoney = this.moneyAvailable;
         const moneyMult = 1 - effectivePct;
         this.moneyAvailable = Math.max(0, this.moneyAvailable * moneyMult);
+        const moneyChange = this.moneyAvailable - prevMoney;
 
         const securityChange = ns.hackAnalyzeSecurity(threads);
         this.hackDifficulty += securityChange;
-
 
         // Construct job
         const job = {
@@ -141,7 +144,7 @@ export class ServerModel {
             threads: threads,
             args: [server.hostname, {threads: threads}],
             duration: duration,
-            change: {moneyMult, securityChange, playerMoney},
+            change: {moneyMult, moneyChange, securityChange},
             result: this.copy(),
         };
         return job;
@@ -176,8 +179,10 @@ export class ServerModel {
         const threads = maxThreads;
 
         // Calculate result
+        const prevMoney = this.moneyAvailable;
         const moneyMult = ns.formulas.hacking.growPercent(server, threads, player, cores);
         this.moneyAvailable = Math.min(this.moneyMax, (this.moneyAvailable + threads) * moneyMult);
+        const moneyChange = this.moneyAvailable - prevMoney;
 
         const securityChange = ns.growthAnalyzeSecurity(threads);
         this.hackDifficulty += securityChange;
@@ -188,7 +193,7 @@ export class ServerModel {
             threads: threads,
             args: [server.hostname, {threads: threads}],
             duration: duration,
-            change: {moneyMult, securityChange, playerMoney:0},
+            change: {moneyMult, moneyChange, securityChange},
             result: this.copy(),
         };
         return job;
@@ -216,7 +221,7 @@ export class ServerModel {
             threads: threads,
             args: [server.hostname, {threads: threads}],
             duration: duration,
-            change: {moneyMult:1, securityChange, playerMoney:0},
+            change: {moneyMult:1, moneyChange:0, securityChange},
             result: this.copy(),
         };
         return job;
@@ -269,13 +274,13 @@ export class ServerModel {
         const batch = this.planHackingBatch(moneyPercent, maxThreadsPerJob, margin, prepMargin, naiveSplit);
         const hackJob = batch[0];
 
-        const money = batch.reduce((total, job)=>(
-            total + job.change.playerMoney
-        ), 0);
+        const money = batch.moneyTaken();
+        const totalDuration = batch.totalDuration(tDelta);
         const activeDuration = batch.activeDuration(tDelta);
-        const moneyPerSec = money / (activeDuration/1000);
 
-        const numBatchesAtOnce = Math.floor(batch.totalDuration(tDelta) / activeDuration);
+        const numBatchesAtOnce = Math.floor(totalDuration / activeDuration);
+        const totalMoney = money * numBatchesAtOnce;
+        const moneyPerSec = totalMoney / (totalDuration / 1000);
 
         const totalRam = numBatchesAtOnce * batch.avgRam();
 
@@ -301,9 +306,9 @@ class Batch extends Array {
     }
 
     avgThreads() {
-        const threadMSeconds = this.reduce((total,job)=>{
-            return total + job.threads * job.duration
-        }, 0);
+        const threadMSeconds = this.reduce((total,job)=>(
+            total + job.threads * job.duration
+        ), 0);
         return threadMSeconds / this.totalDuration();
     }
 
@@ -319,6 +324,15 @@ class Batch extends Array {
             return total + job.threads * gb * job.duration
         }, 0);
         return gbMSeconds / this.totalDuration();
+    }
+
+    moneyTaken() {
+        return this.reduce((total, job)=>{
+            if (job.change?.moneyChange < 0) {
+                return total - job.change.moneyChange;
+            }
+            return total;
+        }, 0);
     }
 
     activeDuration(tDelta=200) {

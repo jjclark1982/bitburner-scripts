@@ -1,5 +1,5 @@
 import { getThreadPool } from "/hive/worker";
-import { planHack, planWeaken, planGrow } from "batch/analyze.js";
+import { ServerModel } from "/hive/planner";
 
 /*
 
@@ -20,98 +20,6 @@ Then the general process for a target is:
     (This can result in the typical prep WGW and typical batch HWGW, but also HGHGHGW)
 */
 
-class MultiHackManager {
-    constructor(ns, targets) {
-        const now = Date.now();
-        this.targets = Object.fromEntries(targets.map((target)=>(
-            [target, new HackManager(ns, target)]
-        )))
-    }
-}
-
-class HackManager {
-    constructor(ns, target, threadPool) {
-        this.ns = ns;
-        this.target = target;
-        this.latestStartTime = Date.now();
-        this.latestEndTime = null;
-        this.threadPool = threadPool;
-    }
-
-    estimateProfit() {}
-
-    planBatch() {}
-
-    runBatch(batch) {}
-
-    planPrep(server, t0) {
-        const {ns} = this;
-        server ||= ns.getServer(this.hostname);
-        const batch = [];
-        const workers = {};
-        while (server.hackDifficulty > server.minDifficulty) {
-            const {nextServer, change, job} = this.planWeaken(server, maxThreads);
-            batch.push(job);
-            // need to know endTime to set startTime (doable)
-            // need to know startTime to select host.
-            // need to know host to set maxThreads.
-            // TODO: write threadPool.maxThreadsAtTime(startTime)
-
-            // select a worker after defining job, and exclude it from the rest of this batch
-            worker = self.threadPool.getWorker({...job, exclude:workers});
-            if (worker) {
-                workers[worker.id] = worker;
-                server = nextServer;
-            }
-            else {
-                // this step failed, maybe try a smaller maxThreads?
-                return null
-            }
-        }
-        while (server.moneyAvailable < server.moneyMax) {
-            const {nextServer, change, job} = this.planWeaken(server);
-            batch.push(job);
-            server = nextServer;
-        }
-        server.moneyAvailable = server.moneyMax;
-
-    }
-
-    planWeaken(server, maxThreads, cores=1) {
-        const {ns} = this;
-        server ||= ns.getServer(this.target);
-        const player = ns.getPlayer();
-    
-        const weakTime = ns.formulas.hacking.weakenTime(server, player);
-        const weakSecPerThread = -ns.weakenAnalyze(1, cores);
-        const weakSecurity = server.minDifficulty - server.hackDifficulty;
-        const weakThreads = Math.min(maxThreads, Math.ceil(weakSecurity / weakSecPerThread));
-        const effectiveSecurity = ns.weakenAnalyze(weakThreads, cores);
-
-        const nextServer = {
-            ...server,
-            hackDifficulty: Math.max(server.minDifficulty, server.hackDifficulty - effectiveSecurity)
-        };
-        const change = {
-            security: nextServer.hackDifficulty - server.hackDifficulty,
-            moneyMult: nextServer.money / server.money
-        };
-        const job = {
-            task: 'weaken',
-            args: [server.hostname, {threads: weakThreads}],
-            threads: weakThreads,
-            duration: weakTime,
-            result: nextServer
-        };
-
-        return {
-            nextServer,
-            change,
-            job
-        }
-    }
-}
-
 
 
 const t0_by_target = {};
@@ -121,7 +29,7 @@ const FLAGS = [
     ["help", false],
     ["port", 1],
     ["moneyPercent", 0.05],
-    ["tDelta", 100]
+    ["tDelta", 200]
 ];
 
 /** @param {NS} ns **/

@@ -61,7 +61,6 @@ export async function main(ns) {
     }
 }
 
-
 export class ServerPool {
     constructor({ns, scriptRam, reservedRam, logLevel}) {
         this.ns = ns;
@@ -84,7 +83,7 @@ export class ServerPool {
         this.largestServer = null;
         for (const hostname of getAllHosts(ns)) {
             const server = new CloudServer({...this, hostname});
-            if (!server.hasAdminRights || server.maxRam == 0) {
+            if (!server.canRunScripts()) {
                 continue;
             }
             this.totalServers += 1;
@@ -285,6 +284,10 @@ export class CloudServer {
         else {
             this.availableThreads = 0;
         }
+    }
+
+    canRunScripts() {
+        return (this.hasAdminRights && this.maxRam > 0)
     }
 
     async deploy({script, threads, args}) {
