@@ -6,12 +6,12 @@ const FLAGS = [
     ["help", false],
     ["port", 1],
     ["moneyPercent", 0.05],
-    ["maxThreadsPerJob", 512],
     ["hackMargin", 0.25],
     ["prepMargin", 0.5],
     ["naiveSplit", false],
     ["cores", 1],
     ["maxTotalRam"],
+    ["maxThreadsPerJob", 64],
     ["tDelta", 100]
 ]
 
@@ -73,8 +73,8 @@ export async function main(ns) {
     const targets = flags._;
     delete flags._;
     if (!flags.maxTotalRam) {
-        const serverPool = serverPool(ns);
-        const availableRam = serverPool.totalRam - serverPool.totalUsedRam;
+        const pool = serverPool(ns);
+        const availableRam = pool.totalRam - pool.totalUsedRam;
         // reserve at most 1 TB of ram for other purposes
         flags.maxTotalRam = Math.max(availableRam*0.85, availableRam-1024);
     }
@@ -108,7 +108,7 @@ export class HackingManager {
         const now = Date.now();
 
         // plan a batch based on target state
-        const batch = server.planHackingBatch(params);
+        const batch = server.planHackingBatch(server.batchParams);
 
         // schedule the batch
         if (!server.nextFreeTime) {
@@ -116,7 +116,7 @@ export class HackingManager {
             server.nextFreeTime = batch.lastEndTime();
         }
         batch.setFirstEndTime(server.nextFreeTime + params.tDelta);
-        server.nextFreeTime = batch.lastEndTime();
+        server.nextFreeTime = batch.lastEndTime() + params.tDelta + server.timeBetweenBatches;
         server.nextStartTime = batch.earliestStartTime();
 
         // dispatch the batch

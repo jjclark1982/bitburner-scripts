@@ -82,6 +82,7 @@ export function mostProfitableServers(ns, hostnames, params) {
         const bestParams = server.mostProfitableParameters(params);
         server.profit = server.estimateProfit(bestParams);
         server.condition = bestParams.info.condition;
+        server.batchParams = bestParams;
         server.reload();
     }
     return servers.sort((a,b)=>(
@@ -376,6 +377,7 @@ export class ServerModel {
         const maxBatchesPerCycle = Math.floor(totalDuration / activeDuration);
         const maxBatchesInRam = Math.floor(maxTotalRam / batch.avgRam());
         const numBatchesAtOnce = Math.min(maxBatchesPerCycle, maxBatchesInRam);
+        const timeBetweenBatches = totalDuration / numBatchesAtOnce;
 
         const totalMoney = money * numBatchesAtOnce;
         const moneyPerSec = totalMoney / (totalDuration / 1000);
@@ -387,6 +389,7 @@ export class ServerModel {
         this.ramNeeded = totalRam * 1e9;
         this.moneyPerSec = moneyPerSec;
         this.moneyPerSecPerGB = moneyPerSec / totalRam;
+        this.timeBetweenBatches = timeBetweenBatches;
         return this.moneyPerSecPerGB;
     }
 
@@ -402,11 +405,11 @@ export class ServerModel {
             for (const hackMargin of [0, 0.25]) {
                 for (const prepMargin of [0, 0.5]) {
                     for (const naiveSplit of [false, true]) {
-                        const jobParams = {...params, moneyPercent, hackMargin, prepMargin, naiveSplit};
-                        this.estimateProfit(jobParams);
+                        const batchParams = {...params, moneyPercent, hackMargin, prepMargin, naiveSplit};
+                        this.estimateProfit(batchParams);
                         this.condition = `${moneyPercent<0.1 ? ' ' : ''}${(moneyPercent*100).toFixed(1)}% $, ${this.batchSummary}`;
-                        this.jobParams = jobParams;
-                        this.jobParams.info = {
+                        this.batchParams = batchParams;
+                        this.batchParams.info = {
                             condition: this.condition,
                             moneyPerSec: this.moneyPerSec
                         }
@@ -423,7 +426,7 @@ export class ServerModel {
         const bestEstimate = estimates.sort((a,b)=>(
             b.moneyPerSec - a.moneyPerSec
         ))[0];
-        return bestEstimate.jobParams;
+        return bestEstimate.batchParams;
     }
 }
 
