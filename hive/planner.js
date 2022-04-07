@@ -29,6 +29,8 @@ export async function main(ns) {
 }
 
 export function reportMostProfitableServers(ns, server) {
+    const maxTotalRam = 11000;
+    const params = {maxTotalRam};
     const columns = [
         {header: "Hostname", field: "hostname", width: 18, align: "left"},
         {header: "Prep Time", field: "prepTime", format: drawTable.time},
@@ -36,8 +38,8 @@ export function reportMostProfitableServers(ns, server) {
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
         {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
-    columns.title = "Most Profitable Servers to Hack";
-    const rows = mostProfitableServers(ns);
+    columns.title = `Most Profitable Servers to Hack (${ns.nFormat(maxTotalRam*1e9, "0.0 b")} total RAM)`;
+    const rows = mostProfitableServers(ns, [], params).sort((a,b)=>b.moneyPerSec-a.moneyPerSec);
     return drawTable(columns, rows);
 }
 
@@ -52,13 +54,14 @@ export function reportBatchLengthComparison(ns) {
     ];
     const maxThreadsPerJob = 512;
     const tDelta = 100;
-    columns.title = `Comparison of batches with at most ${maxThreadsPerJob} threads per job`;
+    const maxTotalRam = 16384;
+    columns.title = `Comparison of batches with at most ${maxThreadsPerJob} threads per job, at most ${ns.nFormat(maxTotalRam*1e9, "0.0 b")} RAM`;
     const conditions = {};
-    for (const moneyPercent of [0.05, 0.10, 0.20, 0.40, 0.80]) {
-        for (const hackMargin of [0, 0.125, 0.25, 0.5]) {
-            for (const prepMargin of [0, 0.125, 0.25, 0.5, 1.0]) {
+    for (const moneyPercent of [0.05, 0.10, 0.20, 0.30, 0.40, 0.80]) {
+        for (const hackMargin of [0, 0.1, 0.5]) {
+            for (const prepMargin of [hackMargin+0, hackMargin+0.5]) {
                 for (const naiveSplit of [true, false]) {
-                    server.estimateProfit({moneyPercent, maxThreadsPerJob, tDelta, hackMargin, prepMargin, naiveSplit});
+                    server.estimateProfit({moneyPercent, maxThreadsPerJob, tDelta, hackMargin, prepMargin, naiveSplit, maxTotalRam});
                     server.condition = `${moneyPercent*100}% money, ${server.batchSummary}`;
                     if (moneyPercent < 0.1) {server.condition = ' ' + server.condition};
                     conditions[server.condition] = server.copy();
@@ -361,10 +364,10 @@ export class ServerModel {
             naiveSplit: false,
             cores: 1,
             tDelta: 100,
-            maxTotalRam: 4096 // TODO
+            maxTotalRam: 16384
         };
         params = Object.assign({}, defaults, params);
-        const {tDelta} = params;
+        const {tDelta, maxTotalRam} = params;
 
         this.assumePrepped();
         const batch = this.planHackingBatch(params);
@@ -374,7 +377,10 @@ export class ServerModel {
         const totalDuration = batch.totalDuration(tDelta);
         const activeDuration = batch.activeDuration(tDelta);
 
-        const numBatchesAtOnce = Math.floor(totalDuration / activeDuration);
+        const maxBatchesPerCycle = Math.floor(totalDuration / activeDuration);
+        const maxBatchesInRam = Math.floor(maxTotalRam / batch.avgRam());
+        const numBatchesAtOnce = Math.min(maxBatchesPerCycle, maxBatchesInRam);
+
         const totalMoney = money * numBatchesAtOnce;
         const moneyPerSec = totalMoney / (totalDuration / 1000);
 
@@ -511,6 +517,16 @@ class Batch extends Array {
             job.endTime += offset;
         }
     }
+}
+
+function range(min, max, step) {
+    const result = [];
+    let i = min;
+    while (i < max) {
+        result.push(i);
+        i += step;
+    }
+    return result;
 }
 
 export function getAllHosts(ns) {

@@ -1,5 +1,6 @@
 import { getThreadPool } from "/hive/worker";
 import { ServerModel, mostProfitableServers } from "/hive/planner";
+import { serverPool } from "/net/server-pool";
 
 const FLAGS = [
     ["help", false],
@@ -10,6 +11,7 @@ const FLAGS = [
     ["prepMargin", 0.5],
     ["naiveSplit", false],
     ["cores", 1],
+    ["maxTotalRam"],
     ["tDelta", 100]
 ]
 
@@ -70,6 +72,12 @@ export async function main(ns) {
     delete flags.port;
     const targets = flags._;
     delete flags._;
+    if (!flags.maxTotalRam) {
+        const serverPool = serverPool(ns);
+        const availableRam = serverPool.totalRam - serverPool.totalUsedRam;
+        // reserve at most 1 TB of ram for other purposes
+        flags.maxTotalRam = Math.max(availableRam*0.85, availableRam-1024);
+    }
 
     const manager = new HackingManager(ns, portNum, targets, flags)
     await manager.work();
@@ -110,8 +118,6 @@ export class HackingManager {
         batch.setFirstEndTime(server.nextFreeTime + params.tDelta);
         server.nextFreeTime = batch.lastEndTime();
         server.nextStartTime = batch.earliestStartTime();
-
-        console.log(`nextFreeTime: ${server.nextFreeTime}, nextStartTime: ${server.nextStartTime}`);
 
         // dispatch the batch
         // TODO: check memory availability before dispatching. use total ram to calculate time between batches.

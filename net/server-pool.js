@@ -239,12 +239,7 @@ export class ServerPool {
             {header: "Used RAM", field: ["ramUsed", "maxRam"],  format: [formatRAM], width: 15, itemWidth: 6, align:"center"}
         ];
         columns.title = "Servers with Admin Rights";
-        const rows = this.smallestServers.map((server)=>{
-            return {
-                ...server,
-                ramBytes: [server.ramUsed*1e9, server.maxRam*1e9]
-            }
-        }).sort((a,b)=>(
+        const rows = this.smallestServers.slice().sort((a,b)=>(
             b.maxRam - a.maxRam
         ));
         const summary = [{
