@@ -52,7 +52,7 @@ class Worker {
         while (this.running) {
             await ns.asleep(1000);
         }
-        ns.print(`Worker ${this.id} stopping.`);
+        console.log(`Worker ${this.id} stopping.`);
     }
 
     tearDown() {
@@ -72,7 +72,7 @@ class Worker {
         }
         if (job.startTime < Math.max(now, this.nextFreeTime)) {
             const drift = job.startTime - Math.max(now, this.nextFreeTime);
-            ns.print(`Declined job: ${job.task} ${JSON.stringify(job.args)} (${drift.toFixed(0)} ms)`);
+            console.log(`Worker ${this.id} declined job: ${job.task} ${JSON.stringify(job.args)} (${drift.toFixed(0)} ms)`);
             return false;
         }
         if (!job.endTime && job.duration) {
@@ -84,11 +84,12 @@ class Worker {
         setTimeout(()=>{
             this.runNextJob()
         }, job.startTime - now);
-        ns.print(`Accepted job: ${job.task} ${JSON.stringify(job.args)} (${(job.startTime - now).toFixed(0)} ms)`);
+        console.log(`Worker ${this.id} accepted job: ${job.task} ${JSON.stringify(job.args)} (${(job.startTime - now).toFixed(0)} ms)`);
         return true;
     }
 
     async runNextJob() {
+        // TODO: move this to the foreground thread to avoid "forgot to await a promise" errors
         const job = this.jobQueue.shift();
         this.currentJob = job;
         job.startTimeActual = Date.now();
