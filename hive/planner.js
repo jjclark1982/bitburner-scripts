@@ -29,10 +29,11 @@ export async function main(ns) {
 }
 
 export function reportMostProfitableServers(ns, server) {
-    const maxTotalRam = 11000;
+    const maxTotalRam = 16384;
     const params = {maxTotalRam};
     const columns = [
         {header: "Hostname", field: "hostname", width: 18, align: "left"},
+        {header: "Parameters", field: "condition", width: 20, align: "left", truncate: true},
         {header: "Prep Time", field: "prepTime", format: drawTable.time},
         {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
@@ -46,7 +47,7 @@ export function reportMostProfitableServers(ns, server) {
 export function reportBatchLengthComparison(ns) {
     const server = new ServerModel(ns, ns.args[0] || "phantasy");
     const columns = [
-        {header: "Condition", field: "condition", width: 28, align: "left"},
+        {header: "Condition", field: "condition", width: 28, align: "left", truncate: true},
         {header: "Batches", field: "numBatchesAtOnce"},
         {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
@@ -55,19 +56,12 @@ export function reportBatchLengthComparison(ns) {
     const maxThreadsPerJob = 512;
     const tDelta = 100;
     const maxTotalRam = 16384;
+    const params = {maxThreadsPerJob, tDelta, maxTotalRam};
     columns.title = `Comparison of batches with at most ${maxThreadsPerJob} threads per job, at most ${ns.nFormat(maxTotalRam*1e9, "0.0 b")} RAM`;
+    const estimates = server.sweepParameters(params);
     const conditions = {};
-    for (const moneyPercent of [0.05, 0.10, 0.20, 0.30, 0.40, 0.80]) {
-        for (const hackMargin of [0, 0.1, 0.5]) {
-            for (const prepMargin of [hackMargin+0, hackMargin+0.5]) {
-                for (const naiveSplit of [true, false]) {
-                    server.estimateProfit({moneyPercent, maxThreadsPerJob, tDelta, hackMargin, prepMargin, naiveSplit, maxTotalRam});
-                    server.condition = `${moneyPercent*100}% money, ${server.batchSummary}`;
-                    if (moneyPercent < 0.1) {server.condition = ' ' + server.condition};
-                    conditions[server.condition] = server.copy();
-                }
-            }
-        }
+    for (const estimate of estimates) {
+        conditions[estimate.condition] ||= estimate;
     }
     return drawTable(columns, Object.values(conditions));
 }
@@ -85,11 +79,13 @@ export function mostProfitableServers(ns, hostnames, params) {
     ));
     for (const server of servers) {
         server.prepTime = server.estimatePrepTime(params);
-        server.profit = server.estimateProfit(params);
+        const bestParams = server.mostProfitableParameters(params);
+        server.profit = server.estimateProfit(bestParams);
+        server.condition = bestParams.info.condition;
         server.reload();
     }
     return servers.sort((a,b)=>(
-        b.profit - a.profit
+        b.moneyPerSec - a.moneyPerSec
     ));
 }
 
@@ -392,6 +388,42 @@ export class ServerModel {
         this.moneyPerSec = moneyPerSec;
         this.moneyPerSecPerGB = moneyPerSec / totalRam;
         return this.moneyPerSecPerGB;
+    }
+
+    sweepParameters(params) {
+        const defaults = {
+            maxThreadsPerJob: 512,
+            maxTotalRam: 16384,
+            tDelta: 100
+        };
+        params = Object.assign({}, defaults, params);
+        const estimates = [];
+        for (const moneyPercent of range(1/40, 1, 1/40)) {
+            for (const hackMargin of [0, 0.25]) {
+                for (const prepMargin of [0, 0.5]) {
+                    for (const naiveSplit of [false, true]) {
+                        const jobParams = {...params, moneyPercent, hackMargin, prepMargin, naiveSplit};
+                        this.estimateProfit(jobParams);
+                        this.condition = `${moneyPercent<0.1 ? ' ' : ''}${(moneyPercent*100).toFixed(1)}% $, ${this.batchSummary}`;
+                        this.jobParams = jobParams;
+                        this.jobParams.info = {
+                            condition: this.condition,
+                            moneyPerSec: this.moneyPerSec
+                        }
+                        estimates.push(this.copy());
+                    }
+                }
+            }
+        }
+        return estimates;
+    }
+
+    mostProfitableParameters(params) {
+        const estimates = this.sweepParameters(params);
+        const bestEstimate = estimates.sort((a,b)=>(
+            b.moneyPerSec - a.moneyPerSec
+        ))[0];
+        return bestEstimate.jobParams;
     }
 }
 
