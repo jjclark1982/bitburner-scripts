@@ -28,42 +28,58 @@ export async function main(ns) {
     }
 }
 
-export function reportMostProfitableServers(ns, server) {
+export function reportMostProfitableServers(ns) {
     const maxTotalRam = 16384;
     const params = {maxTotalRam};
     const columns = [
-        {header: "Hostname", field: "hostname", width: 18, align: "left"},
+        {header: "Hostname", field: "server.hostname", width: 18, align: "left"},
         {header: "Parameters", field: "condition", width: 20, align: "left", truncate: true},
         {header: "Prep Time", field: "prepTime", format: drawTable.time},
-        {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
+        {header: "RAM Used", field: "totalRamBytes", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
-        {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
+        // {header: "Max threads/job", field: "maxThreadsPerJob"}
+        // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
     columns.title = `Most Profitable Servers to Hack (${ns.nFormat(maxTotalRam*1e9, "0.0 b")} total RAM)`;
-    const rows = mostProfitableServers(ns, [], params).sort((a,b)=>b.moneyPerSec-a.moneyPerSec);
+    const rows = mostProfitableServers(ns, [], params);
+    eval("window").mostProfitableServers = rows;
     return drawTable(columns, rows);
 }
 
-export function reportBatchLengthComparison(ns) {
-    const server = new ServerModel(ns, ns.args[0] || "phantasy");
+export function reportBatchLengthComparison(ns, server) {
+    server ||= new ServerModel(ns, ns.args[0] || "phantasy");
     const columns = [
         {header: "Condition", field: "condition", width: 28, align: "left", truncate: true},
+        // {header: "Duration", field: "duration", format: drawTable.time},
         {header: "Batches", field: "numBatchesAtOnce"},
-        {header: "RAM Needed", field: "ramNeeded", format: ns.nFormat, formatArgs: ["0.0 b"]},
+        {header: "Max t", field: "maxThreadsPerJob"},
+        {header: "RAM Used", field: "totalRamBytes", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
-        {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
+        // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
-    const maxThreadsPerJob = 512;
     const tDelta = 100;
     const maxTotalRam = 16384;
+    const maxThreadsPerJob = 1024;
     const params = {maxThreadsPerJob, tDelta, maxTotalRam};
-    columns.title = `Comparison of batches with at most ${maxThreadsPerJob} threads per job, at most ${ns.nFormat(maxTotalRam*1e9, "0.0 b")} RAM`;
+    columns.title = `Comparison of batches with at most ${ns.nFormat(maxTotalRam*1e9, "0.0 b")} RAM, at most ${maxThreadsPerJob} threads per job`;
     const estimates = server.sweepParameters(params);
-    const conditions = {};
+    const estimatesByMoneyPct = {}
     for (const estimate of estimates) {
-        conditions[estimate.condition] ||= estimate;
+        estimate.totalRamBytes = estimate.totalRam * 1e9;
+        estimatesByMoneyPct[estimate.params.moneyPercent] ||= [];
+        estimatesByMoneyPct[estimate.params.moneyPercent].push(estimate);
     }
-    return drawTable(columns, Object.values(conditions));
+    const bestEstimates = {};
+    for (const moneyPercent of Object.keys(estimatesByMoneyPct)) {
+        const estimates = estimatesByMoneyPct[moneyPercent].sort((a,b)=>(
+            b.moneyPerSec - a.moneyPerSec
+        ));
+        for (const estimate of estimates) {
+            bestEstimates[estimate.condition] = estimate;
+            break;
+        }
+    }
+    return drawTable(columns, Object.values(bestEstimates));
 }
 
 export function mostProfitableServers(ns, hostnames, params) {
@@ -71,23 +87,23 @@ export function mostProfitableServers(ns, hostnames, params) {
     if (!hostnames || hostnames.length == 0) {
         hostnames = getAllHosts(ns);
     }
-    const servers = hostnames.map((host)=>{
+    const serverStats = hostnames.map((host)=>{
         const server = new ServerModel(ns, host);
         return server;
     }).filter((server)=>(
         server.canBeHacked(player)
-    ));
-    for (const server of servers) {
-        server.prepTime = server.estimatePrepTime(params);
+    )).map((server)=>{
         const bestParams = server.mostProfitableParameters(params);
-        server.profit = server.estimateProfit(bestParams);
-        server.condition = bestParams.info.condition;
-        server.batchParams = bestParams;
+        const batchCycle = server.planBatchCycle(bestParams);
+        batchCycle.prepTime = server.estimatePrepTime(params);
+        batchCycle.server = server;
+        batchCycle.totalRamBytes = batchCycle.totalRam * 1e9;
         server.reload();
-    }
-    return servers.sort((a,b)=>(
+        return batchCycle;
+    }).sort((a,b)=>(
         b.moneyPerSec - a.moneyPerSec
     ));
+    return serverStats;
 }
 
 /**
@@ -114,10 +130,18 @@ export class ServerModel {
 
     reload() {
         Object.assign(this, this.ns.getServer(this.hostname));
+        return this;
     }
 
     copy() {
         return new ServerModel(this.ns, this);
+    }
+
+    preppedCopy() {
+        const server = this.copy();
+        server.moneyAvailable = server.moneyMax;
+        server.hackDifficulty = server.minDifficulty;
+        return server;
     }
 
     /**
@@ -340,59 +364,70 @@ export class ServerModel {
         return batch.totalDuration(tDelta);
     }
 
-    assumePrepped() {
-        this.moneyAvailable = this.moneyMax;
-        this.hackDifficulty = this.minDifficulty;
-    }
-
     /**
      * Calculate metrics of a hacking batch.
      * @param {Object} params - Parameters for jobs to add to the batch. Additional values will be passed to planHackBatch and planPrepBatch.
-     * @param {number} [params.tDelta=100] - milliseconds between job completions
      * @param {number} [params.maxTotalRam=4096] - GB of ram to use for multiple batches
-     * @returns {number} money per second per GB
+     * @param {number} [params.tDelta=100] - milliseconds between job completions
+     * @returns {BatchCycle} Details of the planned batch cycle
      */
-    estimateProfit(params){
+    planBatchCycle(params){
         const defaults = {
             moneyPercent: 0.05,
+            maxTotalRam: 16384,
             maxThreadsPerJob: 512,
             hackMargin: 0.25,
             prepMargin: 0.5,
             naiveSplit: false,
             cores: 1,
-            tDelta: 100,
-            maxTotalRam: 16384
+            tDelta: 100
         };
         params = Object.assign({}, defaults, params);
-        const {tDelta, maxTotalRam} = params;
+        const {moneyPercent, maxTotalRam, tDelta} = params;
 
-        this.assumePrepped();
-        const batch = this.planHackingBatch(params);
-        const hackJob = batch[0];
+        const server = this.preppedCopy();
+        const batch = server.planHackingBatch(params);
 
-        const money = batch.moneyTaken();
-        const totalDuration = batch.totalDuration(tDelta);
-        const activeDuration = batch.activeDuration(tDelta);
+        const moneyPerBatch = batch.moneyTaken();
+        const cycleDuration = batch.totalDuration(tDelta);
 
-        const maxBatchesPerCycle = Math.floor(totalDuration / activeDuration);
-        const maxBatchesInRam = Math.floor(maxTotalRam / batch.avgRam());
-        const numBatchesAtOnce = Math.min(maxBatchesPerCycle, maxBatchesInRam);
-        const timeBetweenBatches = totalDuration / numBatchesAtOnce;
+        const numBatchesAtOnce = batch.maxBatchesAtOnce(maxTotalRam, tDelta);
+        const timeBetweenBatches = cycleDuration / numBatchesAtOnce;
 
-        const totalMoney = money * numBatchesAtOnce;
-        const moneyPerSec = totalMoney / (totalDuration / 1000);
+        const totalMoney = moneyPerBatch * numBatchesAtOnce;
+        const moneyPerSec = totalMoney / (cycleDuration / 1000);
 
+        // const totalThreads = numBatchesAtOnce * batch.avgThreads();
+        // const moneyPerSecPerThread = moneyPerSec / totalThreads;
         const totalRam = numBatchesAtOnce * batch.avgRam();
+        const moneyPerSecPerGB = moneyPerSec / totalRam;
 
-        this.batchSummary = batch.summary();
-        this.numBatchesAtOnce = numBatchesAtOnce;
-        this.ramNeeded = totalRam * 1e9;
-        this.moneyPerSec = moneyPerSec;
-        this.moneyPerSecPerGB = moneyPerSec / totalRam;
-        this.timeBetweenBatches = timeBetweenBatches;
-        return this.moneyPerSecPerGB;
+        const maxThreads = batch.maxThreads();
+        const condition = `${moneyPercent<0.09999 ? ' ' : ''}${(moneyPercent*100).toFixed(1)}% ${batch.summary()}`; // (t≤${maxThreads<100?' ':''}${maxThreads})
+
+        const batchCycle = {
+            condition,
+            batch,
+            params,
+            duration: cycleDuration,
+            numBatchesAtOnce,
+            timeBetweenBatches,
+            totalRam,
+            moneyPerSec,
+            moneyPerSecPerGB,
+            maxThreadsPerJob: maxThreads
+        };
+        return batchCycle;
     }
 
+    /**
+     * Sweep parameters to survey various types of batches.
+     * @param {Object} params 
+     * @param {number} [params.maxThreadsPerJob=512] - maximum amount of threads to use for a single job
+     * @param {number} [params.maxTotalRam=16384] - maximum amount of ram to use for an entire batch cycle
+     * @param {number} [params.tdelta=100] - milliseconds between actions
+     * @returns {BatchCycle[]} - list of ideal cycles for each set of parameters
+     */
     sweepParameters(params) {
         const defaults = {
             maxThreadsPerJob: 512,
@@ -404,16 +439,10 @@ export class ServerModel {
         for (const moneyPercent of range(1/40, 1, 1/40)) {
             for (const hackMargin of [0, 0.25]) {
                 for (const prepMargin of [0, 0.5]) {
-                    for (const naiveSplit of [false, true]) {
+                    for (const naiveSplit of [false]) {
                         const batchParams = {...params, moneyPercent, hackMargin, prepMargin, naiveSplit};
-                        this.estimateProfit(batchParams);
-                        this.condition = `${moneyPercent<0.1 ? ' ' : ''}${(moneyPercent*100).toFixed(1)}% $, ${this.batchSummary}`;
-                        this.batchParams = batchParams;
-                        this.batchParams.info = {
-                            condition: this.condition,
-                            moneyPerSec: this.moneyPerSec
-                        }
-                        estimates.push(this.copy());
+                        const batchCycle = this.planBatchCycle(batchParams);
+                        estimates.push(batchCycle);
                     }
                 }
             }
@@ -426,7 +455,7 @@ export class ServerModel {
         const bestEstimate = estimates.sort((a,b)=>(
             b.moneyPerSec - a.moneyPerSec
         ))[0];
-        return bestEstimate.batchParams;
+        return bestEstimate.params;
     }
 }
 
@@ -435,10 +464,26 @@ export class ServerModel {
  * @typedef {Object} Job
  * @property {string} task - the netscript function to call
  * @property {string[]} args - the arguments to the function
+ * @property {Object} change - expected changes of this operation
  */
 
 /**
- * A Batch is an array of jobs with methods for calculating useful metrics.
+ * BatchCycle
+ * @typedef {Object} BatchCycle
+ * @property {Batch} batch
+ * @property {Object} params
+ * @property {number} duration
+ * @property {number} numBatchesAtOnce
+ * @property {number} timeBetweenBatches
+ * @property {number} totalRam
+ * @property {number} moneyPerSec
+ * @property {number} moneyPerSecPerGB
+ * @property {number} maxThreadsPerJob
+ */
+
+/**
+ * Batch
+ * @typedef {Array} Batch - array of jobs with methods for calculating useful metrics
  * 
  * Jobs are ordered by their endTime and there is a clear firstEndTime and lastEndTime,
  * but the earliestStartTime also depends on other timing factors.
@@ -461,6 +506,12 @@ class Batch extends Array {
             total + job.threads * job.duration
         ), 0);
         return threadMSeconds / this.totalDuration();
+    }
+
+    maxThreads() {
+        return this.reduce((total, job)=>(
+            Math.max(total, job.threads)
+        ), 0);
     }
 
     peakRam() {
@@ -552,7 +603,26 @@ class Batch extends Array {
             job.endTime += offset;
         }
     }
+
+    maxBatchesAtOnce(maxTotalRam, tDelta=100) {
+        const totalDuration = this.totalDuration(tDelta);
+        const activeDuration = this.activeDuration(tDelta);
+        const maxBatchesPerCycle = Math.floor(totalDuration / activeDuration);
+
+        const maxBatchesInRam = Math.floor(maxTotalRam / this.avgRam());
+
+        return Math.min(maxBatchesPerCycle, maxBatchesInRam);
+    }
+
+    timeBetweenBatches(maxTotalRam, tDelta=100) {
+        const totalDuration = this.totalDuration(tDelta);
+        const numBatchesAtOnce = this.maxBatchesAtOnce(maxTotalRam, tDelta);
+        return (totalDuration / numBatchesAtOnce);
+
+    }
 }
+
+/* ----- library functions ----- */
 
 function range(min, max, step) {
     const result = [];
