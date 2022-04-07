@@ -1,5 +1,17 @@
 import { getThreadPool } from "/hive/worker";
-import { ServerModel } from "/hive/planner";
+import { ServerModel, mostProfitableServers } from "/hive/planner";
+
+const FLAGS = [
+    ["help", false],
+    ["port", 1],
+    ["moneyPercent", 0.05],
+    ["maxThreadsPerJob", 512],
+    ["hackMargin", 0.25],
+    ["prepMargin", 0.5],
+    ["naiveSplit", false],
+    ["cores", 1],
+    ["tDelta", 100]
+]
 
 /*
 
@@ -20,80 +32,93 @@ Then the general process for a target is:
     (This can result in the typical prep WGW and typical batch HWGW, but also HGHGHGW)
 */
 
+/*
+
+HackingManager just needs to keep track of pay windows for each target:
+
+- nextFreeTime (= latestEndTime + tDelta)
+- nextStartTime
+
+then it can loop:
+    plan a batch for nextFreeTime
+    sleep until nextStartTime
+    deploy the batch to either ServerPool or ThreadPool
 
 
-const t0_by_target = {};
-const next_start_by_target = {};
+To automatically select targets, we keep track of the above and calculate priorities.
 
-const FLAGS = [
-    ["help", false],
-    ["port", 1],
-    ["moneyPercent", 0.05],
-    ["tDelta", 200]
-];
+Measure total ram in the server pool
+while some ram is not reserved:
+- select the target with most $/sec/GB
+- reserve enough ram to completely exploit that target
+- if any ram remains, proceed to the next target
+
+*/
 
 /** @param {NS} ns **/
 export async function main(ns) {
-    ns.disableLog("asleep");
+    ns.disableLog('scan');
+    ns.disableLog('asleep');
     ns.clearLog();
-
     const flags = ns.flags(FLAGS);
-    const {moneyPercent, tDelta} = flags;
-    const targets = flags._;
-    const target = targets[0];
-
-    delete t0_by_target[target];
-
-    if (flags.help || targets.length == 0) {
-        ns.tprint("manage hacking a target");
+    if (flags.help) {
+        ns.tprint("manage hacking a server")
         return;
     }
+    delete flags.help;
+    const portNum = flags.port;
+    delete flags.port;
+    const targets = flags._;
+    delete flags._;
 
-    const threadPool = await getThreadPool(ns, flags.port);
-
-    const batch = planHWGW({ns, target, moneyPercent, tDelta})
-
-    await threadPool.dispatchJobs(batch);
-
-    ns.print("batch:", JSON.stringify(batch, null, 2));
-    ns.tail();
+    const manager = new HackingManager(ns, portNum, targets, flags)
+    await manager.work();
 }
 
+export class HackingManager {
+    constructor(ns, portNum=1, targets=[], params={}) {
+        this.ns = ns;
+        this.portNum = portNum,
+        this.params = params;
 
-export function planHWGW(params) {
-    const {ns, target, moneyPercent, tDelta} = params;
-
-    const batch = [];
-
-    if (t0_by_target[target] === undefined) {
-        const w0Job = planWeaken(params);
-        batch.push(w0Job);
-        t0_by_target[target] = Date.now() + w0Job.duration;
-    }
-    const t0 = t0_by_target[target];
-
-    // given an initial hack percentage and thread pool,
-    // maintain a virtual server object,
-    // and keep adding viable WGW jobs until it reaches equilibrium. (same as prep)
-    // to check if a step is viable, need to know the max threads available in the pool,
-    // or maintain an exclusion list.
-
-    const hJob  = planHack({  ...params, endTime: t0 + 1*tDelta, security:0 });
-    const w1Job = planWeaken({...params, endTime: t0 + 2*tDelta, security:hJob.security*1.1 });
-    const gJob  = planGrow({  ...params, endTime: t0 + 3*tDelta, security:0, moneyPercent: hJob.moneyMult*0.95});
-    const w2Job = planWeaken({...params, endTime: t0 + 4*tDelta, security:gJob.security*1.1 });
-
-    batch.push(hJob, w1Job, gJob, w2Job);
-
-    for (const job of batch) {
-        job.args.push({threads: job.threads});
-        // TODO: set {stock: true} for grow jobs if we hold a long position
-        //       set {stock: true} for hack jobs if we hold a short position
+        this.targets = mostProfitableServers(ns, targets, params);
     }
 
-    t0_by_target[target] = w2Job.endTime + tDelta;
-    next_start_by_target[target] = w1Job.startTime + 5 * tDelta;
-    const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;
+    async work() {
+        const {ns, targets} = this;
+        this.pool = await getThreadPool(ns, this.portNum);
 
-    return batch;
+        while (true) {
+            const target = this.targets[0];
+            await this.hackOneTargetOneTime(target);
+            // TODO: re-select optimal target as conditions change
+        }
+    }
+
+    async hackOneTargetOneTime(server) {
+        const {ns, params} = this;
+        const now = Date.now();
+
+        // plan a batch based on target state
+        const batch = server.planHackingBatch(params);
+
+        // schedule the batch
+        if (!server.nextFreeTime) {
+            batch.setStartTime(now);
+            server.nextFreeTime = batch.lastEndTime();
+        }
+        batch.setFirstEndTime(server.nextFreeTime + params.tDelta);
+        server.nextFreeTime = batch.lastEndTime();
+        server.nextStartTime = batch.earliestStartTime();
+
+        console.log(`nextFreeTime: ${server.nextFreeTime}, nextStartTime: ${server.nextStartTime}`);
+
+        // dispatch the batch
+        // TODO: check memory availability before dispatching. use total ram to calculate time between batches.
+        ns.print(`Starting ${batch.summary()} batch for ${server.hostname}`);
+        await this.pool.dispatchJobs(batch);
+
+        // block until the expected start time, so we don't spam the queue
+        await ns.asleep(server.nextStartTime - now);
+    }
 }

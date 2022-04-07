@@ -71,7 +71,9 @@ export function reportBatchLengthComparison(ns) {
 
 export function mostProfitableServers(ns, hostnames, params) {
     const player = ns.getPlayer();
-    hostnames ||= getAllHosts(ns);
+    if (!hostnames || hostnames.length == 0) {
+        hostnames = getAllHosts(ns);
+    }
     const servers = hostnames.map((host)=>{
         const server = new ServerModel(ns, host);
         return server;
@@ -118,7 +120,7 @@ export class ServerModel {
         return new ServerModel(this.ns, this);
     }
 
-    planHack(moneyPercent, maxThreads=Infinity) {
+    planHack(moneyPercent=0.05, maxThreads=Infinity) {
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
@@ -126,7 +128,7 @@ export class ServerModel {
         const duration = ns.formulas.hacking.hackTime(server, player);
 
         // Calculate threads
-        moneyPercent = Math.min(moneyPercent, 1.0);
+        moneyPercent = Math.max(0, Math.min(1.0, moneyPercent));
         const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player);
         const threads = Math.min(
             maxThreads,

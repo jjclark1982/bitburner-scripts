@@ -85,7 +85,7 @@ export class ThreadPool {
     async dispatchJobs(batch) {
         const workers = await this.getWorkers(batch);
         if (!workers) {
-            ns.tprint(`Failed to allocate workers for batch.`);
+            this.ns.tprint(`Failed to allocate workers for batch.`);
             return;
         }
         for (const job of batch) {
@@ -176,6 +176,7 @@ export class ThreadPool {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
         }
+        // TODO: instead of rounding up the thread count, check if a more capable worker will fit.
         if (false) {
             // Round up a process size to fill an entire server.
             // worker.id = `${server.hostname}-${worker.id}`;
@@ -255,7 +256,7 @@ export class ThreadPool {
             {header: "Worker", field: "id"},
             {header: " Threads ", field: "threads", format: [formatThreads]},
             {header: "Queue", field: "queue"},
-            {header: "Task  ", field: "task"},
+            {header: "Task", field: "task", width: 6, align: "center"},
             {header: "Elapsed ", field: "elapsedTime", format: drawTable.time},
             {header: "Remaining", field: "remainingTime", format: drawTable.time, formatArgs: [2]},
             {header: "Drift  ", field: "drift" }
