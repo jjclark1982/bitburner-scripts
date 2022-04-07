@@ -90,10 +90,10 @@ export function mostProfitableServers(ns, hostnames, params) {
     ));
 }
 
-/*
-shadow server class for planning potential sequences of actions
-*/
-
+/**
+ * A ServerModel tracks the state of a server through multiple hacking operations.
+ * It has all the fields of a Netscript Server object, plus methods to mutate state.
+ */
 export class ServerModel {
     constructor(ns, server) {
         this.ns = ns;
@@ -120,7 +120,14 @@ export class ServerModel {
         return new ServerModel(this.ns, this);
     }
 
-    planHack(moneyPercent=0.05, maxThreads=Infinity) {
+    /**
+     * Plan a "hack" job and mutate this server state to reflect its results.
+     * @param {number} [moneyPercent=0.05] - Amount of money to hack, from 0.0 to 1.0
+     * @param {number} [maxThreads]
+     * @param {boolean} [stock=false] - whether to manipulate stock prices
+     * @returns {Job}
+     */
+    planHack(moneyPercent=0.05, maxThreads=Infinity, stock) {
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
@@ -149,7 +156,7 @@ export class ServerModel {
         const job = {
             task: 'hack',
             threads: threads,
-            args: [server.hostname, {threads: threads}],
+            args: [server.hostname, {threads, stock}],
             duration: duration,
             change: {moneyMult, moneyChange, securityChange},
             result: this.copy(),
@@ -157,7 +164,14 @@ export class ServerModel {
         return job;
     }
 
-    planGrow(maxThreads, cores=1) {
+    /**
+     * Plan a "grow" job and mutate this server state to reflect its results.
+     * @param {number} [maxThreads] 
+     * @param {number} [cores=1]
+     * @param {boolean} [stock=false] - whether to manipulate stock prices
+     * @returns {Job}
+     */
+    planGrow(maxThreads, cores=1, stock) {
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
@@ -198,7 +212,7 @@ export class ServerModel {
         const job = {
             task: 'grow',
             threads: threads,
-            args: [server.hostname, {threads: threads}],
+            args: [server.hostname, {threads, stock}],
             duration: duration,
             change: {moneyMult, moneyChange, securityChange},
             result: this.copy(),
@@ -206,6 +220,12 @@ export class ServerModel {
         return job;
     }
 
+    /**
+     * Plan a 'weaken' job and mutate this server state to reflect its results.
+     * @param {number} [maxThreads] 
+     * @param {number} [cores=1] 
+     * @returns 
+     */
     planWeaken(maxThreads=Infinity, cores=1) {
         const {ns} = this;
         const server = this;
@@ -219,8 +239,9 @@ export class ServerModel {
         const threads = Math.min(maxThreads, Math.ceil(neededSecurity / securityPerThread));
 
         // Calculate result
-        const securityChange = -ns.weakenAnalyze(threads, cores);
-        this.hackDifficulty = Math.max(this.minDifficulty, this.hackDifficulty + securityChange);
+        const prevDifficulty = this.hackDifficulty;
+        this.hackDifficulty = Math.max(this.minDifficulty, this.hackDifficulty - ns.weakenAnalyze(threads, cores));
+        const securityChange = this.hackDifficulty - this.prevDifficulty;
 
         // Construct job
         const job = {
@@ -234,6 +255,16 @@ export class ServerModel {
         return job;
     }
 
+    /** 
+     * Construct a batch of 'grow' and 'weaken' jobs that will bring the server
+     * to a ready state (maximum money and minimum security).
+     * @param {Object} params
+     * @param {number} [params.maxThreadsPerJob=512]
+     * @param {number} [params.prepMargin=0.5] - amount of security above minimum to allow between jobs
+     * @param {boolean} [params.naiveSplit=false] - whether to place all jobs of the same type together
+     * @param {number} [params.cores=1]
+     * @retruns {Batch}
+     */
     planPrepBatch(params) {
         const defaults = {
             maxThreadsPerJob: 512,
@@ -244,8 +275,6 @@ export class ServerModel {
         params = Object.assign({}, defaults, params);
         const {maxThreadsPerJob, prepMargin, naiveSplit, cores} = params;
 
-        // Make a list of 'grow' and 'weaken' jobs that will bring the server
-        // to a ready state (maximum money and minimum security).
         const batch = new Batch();
         while (naiveSplit && this.hackDifficulty > this.minDifficulty + prepMargin) {
             batch.push(this.planWeaken(maxThreadsPerJob, cores));
@@ -262,7 +291,18 @@ export class ServerModel {
         return batch;
     }
 
-    planHackingBatch(params) {
+    /** 
+     * Construct a Batch of jobs that will hack a server and then return it to a ready state.
+     * Higher moneyPercent or hackMargin will result in more threads per job.
+     * @param {Object} params - Parameters for jobs to add to the batch. Additional values will be passed to planPrepBatch.
+     * @param {number}
+     * @param {number} [params.maxThreadsPerJob=512]
+     * @param {number} [params.prepMargin=0.5] - amount of security above minimum to allow between jobs
+     * @param {boolean} [params.naiveSplit=false] - whether to place all jobs of the same type together
+     * @param {number} [params.cores=1]
+     * @retruns {Batch}
+     */
+     planHackingBatch(params) {
         const defaults = {
             moneyPercent: 0.05,
             maxThreadsPerJob: 512,
@@ -272,8 +312,6 @@ export class ServerModel {
         params = Object.assign({}, defaults, params);
         const {moneyPercent, maxThreadsPerJob, hackMargin, cores} = params;
 
-        // Make a list of jobs that will hack a server and then return it to a ready state.
-        // Higher moneyPercent or hackMargin will result in more threads per job.
         const batch = new Batch();
         batch.push(...this.planPrepBatch(params));
         batch.push(this.planHack(moneyPercent, maxThreadsPerJob))
@@ -285,6 +323,13 @@ export class ServerModel {
         return batch;
     }
 
+    /**
+     * Calculate the amount of time it will take to bring a server from its current state
+     * to a ready state (max money and min security).
+     * @param {Object} params - Parameters for jobs to add to the batch. Additional values will be passed to planHackBatch and planPrepBatch.
+     * @param {number} [params.tDelta=100] - milliseconds between job completions
+     * @returns {number} ms
+     */
     estimatePrepTime(params) {
         const defaults = {
             tDelta: 100
@@ -300,6 +345,13 @@ export class ServerModel {
         this.hackDifficulty = this.minDifficulty;
     }
 
+    /**
+     * Calculate metrics of a hacking batch.
+     * @param {Object} params - Parameters for jobs to add to the batch. Additional values will be passed to planHackBatch and planPrepBatch.
+     * @param {number} [params.tDelta=100] - milliseconds between job completions
+     * @param {number} [params.maxTotalRam=4096] - GB of ram to use for multiple batches
+     * @returns {number} money per second per GB
+     */
     estimateProfit(params){
         const defaults = {
             moneyPercent: 0.05,
@@ -308,7 +360,8 @@ export class ServerModel {
             prepMargin: 0.5,
             naiveSplit: false,
             cores: 1,
-            tDelta: 100
+            tDelta: 100,
+            maxTotalRam: 4096 // TODO
         };
         params = Object.assign({}, defaults, params);
         const {tDelta} = params;
@@ -336,13 +389,20 @@ export class ServerModel {
     }
 }
 
-class Batch extends Array {
-    /*
-    A Batch is an array of jobs with methods for calculating useful metrics.
+/**
+ * Job
+ * @typedef {Object} Job
+ * @property {string} task - the netscript function to call
+ * @property {string[]} args - the arguments to the function
+ */
 
-    Jobs are ordered by their endTime and there is a clear firstEndTime and lastEndTime,
-    but the earliestStartTime also depends on other timing factors.
-    */
+/**
+ * A Batch is an array of jobs with methods for calculating useful metrics.
+ * 
+ * Jobs are ordered by their endTime and there is a clear firstEndTime and lastEndTime,
+ * but the earliestStartTime also depends on other timing factors.
+ */
+class Batch extends Array {
 
     summary() {
         const tasks = this.map((job)=>(job.task || '-').substr(0,1).toUpperCase());
