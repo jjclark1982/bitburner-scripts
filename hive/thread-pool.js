@@ -86,11 +86,14 @@ export class ThreadPool {
         const workers = await this.getWorkers(batch);
         if (!workers) {
             this.ns.tprint(`Failed to allocate workers for batch.`);
-            return;
+            return null;
         }
+        const results = [];
         for (const job of batch) {
-            await this.dispatchJob(job);
+            const result = await this.dispatchJob(job);
+            results.push(result);
         }
+        return results;
     }
 
     async dispatchJob(job) {

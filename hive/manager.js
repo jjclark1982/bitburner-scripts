@@ -4,6 +4,7 @@ import { serverPool } from "/net/server-pool";
 
 const FLAGS = [
     ["help", false],
+    ["backend", "thread-pool"],
     ["port", 1],
     ["moneyPercent", 0.05],
     ["hackMargin", 0.25],
@@ -12,7 +13,7 @@ const FLAGS = [
     ["cores", 1],
     ["maxTotalRam"],
     ["maxThreadsPerJob", 64],
-    ["tDelta", 100]
+    ["tDelta", 100],
 ]
 
 /*
@@ -68,8 +69,14 @@ export async function main(ns) {
         return;
     }
     delete flags.help;
-    const portNum = flags.port;
+
+    let backend;
+    if (flags.backend == "thread-pool") {
+        backend = await getThreadPool(ns, flags.port);
+    }
+    delete flags.backend;
     delete flags.port;
+
     const targets = flags._;
     delete flags._;
     if (!flags.maxTotalRam) {
@@ -79,52 +86,79 @@ export async function main(ns) {
         flags.maxTotalRam = Math.max(availableRam*0.85, availableRam-1024);
     }
 
-    const manager = new HackingManager(ns, portNum, targets, flags)
+    const manager = new HackingManager(ns, backend, targets, flags)
     await manager.work();
 }
 
 export class HackingManager {
-    constructor(ns, portNum=1, targets=[], params={}) {
+    constructor(ns, backend, targets=[], params={}) {
         this.ns = ns;
-        this.portNum = portNum,
+        this.backend = backend;
         this.params = params;
+        this.batchID = 0;
 
-        this.targets = mostProfitableServers(ns, targets, params);
+        this.targets = [];
+        this.plans = {};
+        for (const plan of mostProfitableServers(ns, targets, params)) {
+            this.targets.push(plan.server);
+            this.plans[plan.server.hostname] = plan;
+        }
     }
 
     async work() {
         const {ns, targets} = this;
-        this.pool = await getThreadPool(ns, this.portNum);
 
         while (true) {
             const target = this.targets[0];
+            eval("window").target = target;
             await this.hackOneTargetOneTime(target);
             // TODO: re-select optimal target as conditions change
         }
     }
 
     async hackOneTargetOneTime(server) {
-        const {ns, params} = this;
-        const now = Date.now();
+        const {ns} = this;
+        const batchCycle = this.plans[server.hostname];
+        const params = batchCycle.params;
+        const now = Date.now() + params.tDelta;
+        const prevServer = server.copy();
+        this.batchID++;
 
-        // plan a batch based on target state
-        const batch = server.planHackingBatch(server.batchParams);
+        // Plan a batch based on target state and parameters
+        const batch = server.planHackingBatch(params);
 
-        // schedule the batch
+        // Schedule the batch
         if (!server.nextFreeTime) {
             batch.setStartTime(now);
             server.nextFreeTime = batch.lastEndTime();
         }
         batch.setFirstEndTime(server.nextFreeTime + params.tDelta);
-        server.nextFreeTime = batch.lastEndTime() + params.tDelta + server.timeBetweenBatches;
+        if (batch.earliestStartTime() < now) {
+            ns.tprint("ERROR: batch.earliestStartTime was inconsistent")
+        }
+        server.nextFreeTime = batch.lastEndTime() + params.tDelta + batchCycle.timeBetweenBatches;
         server.nextStartTime = batch.earliestStartTime();
 
-        // dispatch the batch
+        // Dispatch the batch
         // TODO: check memory availability before dispatching. use total ram to calculate time between batches.
-        ns.print(`Starting ${batch.summary()} batch for ${server.hostname}`);
-        await this.pool.dispatchJobs(batch);
+        const result = await this.backend.dispatchJobs(batch);
+        if (result) {
+            ns.print(`Dispatched batch ${this.batchID}: ${batch.summary()} batch for ${server.hostname}`);
+        }
+        // If dispatch failed, rollback state and reduce thread size
+        if (!result) {
+            ns.print(`Failed to dispatch batch ${this.batchID}: ${batch.summary()} batch for ${server.hostname}. Recalculating parameters.`);
+            const newParams = server.mostProfitableParameters({
+                ...params,
+                maxThreadsPerJob: params.maxThreadsPerJob * 7/8,
+                maxTotalRam: params.maxTotalRam * 7/8
+            });
+            ns.tprint(JSON.stringify(newParams, null, 2));
+            this.plans[server.hostname] = server.planBatchCycle(newParams); // TODO: make this return an object instead of setting server.timeBetweenBatches
+            Object.assign(server, prevServer);
+        }
 
-        // block until the expected start time, so we don't spam the queue
-        await ns.asleep(server.nextStartTime - now);
+        // Block until the expected start time, so we don't spam the queue
+        await ns.asleep(server.nextStartTime - Date.now());
     }
 }
