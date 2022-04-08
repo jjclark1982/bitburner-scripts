@@ -51,6 +51,11 @@ class Worker {
         this.running = true;
         while (this.running) {
             await ns.asleep(1000);
+            // Terminate a worker that has not been used in a while.
+            if (!this.currentJob.task && this.elapsedTime() > 5*60*1000) {
+                this.running = false;
+            }
+            // TODO: terminate if the queue is empty and the average workload is less than half of the max workload
         }
         console.log(`Worker ${this.id} stopping.`);
     }
@@ -89,7 +94,6 @@ class Worker {
     }
 
     async runNextJob() {
-        // TODO: move this to the foreground thread to avoid "forgot to await a promise" errors
         const job = this.jobQueue.shift();
         this.currentJob = job;
         job.startTimeActual = Date.now();
@@ -99,10 +103,12 @@ class Worker {
         job.endTimeActual = Date.now();
         this.drift = job.endTimeActual - job.endTime;
         this.ns.print(`Completed job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
+        if (typeof(job.onFinish) === 'function') {
+            job.onFinish();
+        }
         this.currentJob = {
             startTime: Date.now()
         };
-        // TODO: if the queue is empty and the average workload is less than half of the max workload, stop running
     }
 
     elapsedTime(now) {

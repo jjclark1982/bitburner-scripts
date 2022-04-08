@@ -3,7 +3,8 @@ import { drawTable } from "/lib/box-drawing";
 
 const FLAGS = [
     ["port", 1],
-    ["verbose", false]
+    ["verbose", false],
+    ["test", false]
 ];
 
 const SCRIPT_CAPABILITIES = {
@@ -33,16 +34,20 @@ export async function main(ns) {
     const threadPool = new ThreadPool({ns, ...flags});
     eval("window").db = threadPool;
     
-    // const spec = [
-    //     {threads: 10},
-    //     {threads: 20},
-    //     {threads: 30},
-    //     {threads: 40},
-    //     {threads: 50, startTime: Date.now() + 1000}
-    // ];
-    // await threadPool.getWorkers(spec);
-    // await ns.asleep(2000);
-    // await threadPool.getWorkers(spec);
+    if (flags.test) {
+        setTimeout(async function(){
+            const spec = [
+                {threads: 10},
+                {threads: 20},
+                {threads: 30},
+                {threads: 40},
+                {threads: 50, startTime: Date.now() + 1000}
+            ];
+            await threadPool.getWorkers(spec);
+            await ns.asleep(2000);
+            await threadPool.getWorkers(spec);
+        }, 100)
+    }
 
     await threadPool.work();
 }
@@ -151,61 +156,60 @@ export class ThreadPool {
         }
     }
     
+    // Create a new worker with `threads` threads (ignores number of CPU cores)
     async spawnWorker(threads, capabilities) {
-        // Create a new worker with `threads` threads.
-        // (Ignores number of CPU cores.)
         const {ns, portNum} = this;
         threads = Math.ceil(threads);
 
-        // Assign unique workerID.
-        while (this.nextWorkerID in this.workers) {
-            this.nextWorkerID++;
-        }
-        const worker = {
-            id: this.nextWorkerID++,
-            running: false
-        };
-        this.workers[worker.id] = worker;
-
-        // Find a suitable server.
+        // Find a suitable script.
         const script = getScriptWithCapabilities(capabilities);
         if (!script) {
             this.logWarn(`Failed to start worker with ${threads} threads: No script capable of ${JSON.stringify(capabilities)}.`);
             return null;
         }
+
+        // Find a suitable server.
         const serverPool = new ServerPool({ns, scriptRam: script});
         const server = serverPool.smallestServerWithThreads(threads);
         if (!server) {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
         }
-        // TODO: instead of rounding up the thread count, check if a more capable worker will fit.
-        if (false) {
-            // Round up a process size to fill an entire server.
-            // worker.id = `${server.hostname}-${worker.id}`;
-            if ((server.availableThreads - threads < 4) || (threads > server.availableThreads * 3 / 4)) {
-                threads = server.availableThreads;
-            }
-        }
+        // TODO: instead of rounding up the thread count, check if a larger worker will fit.
+        // // Round up a process size to fill an entire server.
+        // // worker.id = `${server.hostname}-${worker.id}`;
+        // if ((server.availableThreads - threads < 4) || (threads > server.availableThreads * 3 / 4)) {
+        //     threads = server.availableThreads;
+        // }
 
-        // Spawn the worker process.
-        const args = ["--port", portNum, "--id", worker.id];
+        // Create the worker process.
+        while (this.nextWorkerID in this.workers) {
+            this.nextWorkerID++;
+        }
+        const workerID = this.nextWorkerID++;
+        this.workers[workerID] = {
+            id: workerID,
+            running: false
+        };
+        const args = ["--port", portNum, "--id", workerID];
         const pid = await serverPool.deploy({server, script, threads, args});
-        this.workers[worker.id].process = {pid, threads};
         if (!pid) {
-            this.logWarn(`Failed to start worker ${worker.id}.`);
+            this.logWarn(`Failed to start worker ${workerID}.`);
             return null;
         }
-        this.logInfo(`Running worker ${worker.id} (PID ${pid}) with ${threads} threads on ${server.hostname}.`);
-        while (!this.workers[worker.id].running) {
+        this.workers[workerID].process = {pid, threads};
+        this.logInfo(`Started worker ${workerID} (PID ${pid}) with ${threads} threads on ${server.hostname}.`);
+
+        // Wait for the worker process to register with us.
+        while (!this.workers[workerID].running) {
             await ns.asleep(20);
         }
-        return this.workers[worker.id];
+        return this.workers[workerID];
     }
 
+    // Link this worker and pool to each other
     registerWorker(worker) {
         const {ns} = this;
-        // Link this worker and pool to each other
         const launchedWorker = this.workers[worker.id];
         if (launchedWorker.running) {
             // If multiple workers claim the same ID, stop the older one.
