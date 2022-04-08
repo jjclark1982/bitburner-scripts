@@ -85,17 +85,22 @@ export function reportBatchLengthComparison(ns, server, backend) {
     return drawTable(columns, Object.values(bestEstimates));
 }
 
-export function mostProfitableServers(ns, hostnames, params) {
+export function getHackableServers(ns, hostnames) {
     const player = ns.getPlayer();
     if (!hostnames || hostnames.length == 0) {
         hostnames = getAllHosts(ns);
     }
-    const serverStats = hostnames.map((host)=>{
+    const servers = hostnames.map((host)=>{
         const server = new ServerModel(ns, host);
         return server;
     }).filter((server)=>(
         server.canBeHacked(player)
-    )).map((server)=>{
+    ));
+    return servers;
+}
+
+export function mostProfitableServers(ns, hostnames, params) {
+    const serverStats = getHackableServers(ns, hostnames).map((server)=>{
         const bestParams = server.mostProfitableParameters(params);
         const batchCycle = server.planBatchCycle(bestParams);
         batchCycle.prepTime = server.estimatePrepTime(params);
