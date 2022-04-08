@@ -2,7 +2,10 @@ import { drawTable } from "/lib/box-drawing";
 import { serverPool } from "/net/server-pool";
 
 const FLAGS = [
-    ["console", false]
+    ["console", false],
+    ["tDelta", 100],
+    ["maxTotalRam"],
+    ["maxThreadsPerJob", 1024]
 ];
 
 export function autocomplete(data, args) {
@@ -19,11 +22,15 @@ export async function main(ns) {
     ns.clearLog();
     ns.tail();
 
-    const backend = serverPool(ns, 2.0);
+    if (!(flags.maxTotalRam && flags.maxThreadsPerJob)) {
+        const backend = serverPool(ns, 1.75);
+        flags.maxTotalRam ||= (backend.totalRam - backend.totalUsedRam) * .9;
+        flags.maxThreadsPerJob ||= backend.largestThreadsAvailable();
+    }
 
-    ns.print(reportMostProfitableServers(ns, backend));
+    ns.print(reportMostProfitableServers(ns, flags));
 
-    ns.print(reportBatchLengthComparison(ns, server, backend));
+    ns.print(reportBatchLengthComparison(ns, server, flags));
 
     if (flags.console) {
         eval("window").server = server;
@@ -31,9 +38,7 @@ export async function main(ns) {
     }
 }
 
-export function reportMostProfitableServers(ns, backend) {
-    const maxTotalRam = backend ? (backend.totalRam - backend.totalUsedRam) * .9 : 16384;
-    const params = {maxTotalRam};
+export function reportMostProfitableServers(ns, params) {
     const columns = [
         {header: "Hostname", field: "server.hostname", width: 18, align: "left"},
         {header: "Parameters", field: "condition", width: 20, align: "left", truncate: true},
@@ -43,13 +48,13 @@ export function reportMostProfitableServers(ns, backend) {
         // {header: "Max threads/job", field: "maxThreadsPerJob"}
         // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
-    columns.title = `Most Profitable Servers to Hack (${ns.nFormat(maxTotalRam*1e9, "0.0 b")} total RAM)`;
+    columns.title = `Most Profitable Servers to Hack (${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} total RAM)`;
     const rows = mostProfitableServers(ns, [], params);
     eval("window").mostProfitableServers = rows;
     return drawTable(columns, rows);
 }
 
-export function reportBatchLengthComparison(ns, server, backend) {
+export function reportBatchLengthComparison(ns, server, params) {
     server ||= new ServerModel(ns, ns.args[0] || "phantasy");
     const columns = [
         {header: "Condition", field: "condition", width: 28, align: "left", truncate: true},
@@ -60,11 +65,7 @@ export function reportBatchLengthComparison(ns, server, backend) {
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
         {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
-    const tDelta = 100;
-    const maxTotalRam = backend ? (backend.totalRam - backend.totalUsedRam) * .9 : 16384;
-    const maxThreadsPerJob = 1024;
-    const params = {maxThreadsPerJob, tDelta, maxTotalRam};
-    columns.title = `Comparison of batches with at most ${ns.nFormat(maxTotalRam*1e9, "0.0 b")} RAM, at most ${maxThreadsPerJob} threads per job`;
+    columns.title = `Comparison of batches with at most ${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} RAM, at most ${params.maxThreadsPerJob} threads per job`;
     const estimates = server.sweepParameters(params);
     const estimatesByMoneyPct = {}
     for (const estimate of estimates) {
