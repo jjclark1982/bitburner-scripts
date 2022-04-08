@@ -170,10 +170,12 @@ export class ServerModel {
         // Calculate threads
         moneyPercent = Math.max(0, Math.min(1.0, moneyPercent));
         const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player);
-        const threads = Math.min(
-            maxThreads,
-            Math.ceil(moneyPercent / hackPercentPerThread)
-        );
+        let threads = Math.ceil(moneyPercent / hackPercentPerThread);
+        if (threads > maxThreads) {
+            // Split threads evenly among jobs
+            const numJobs = Math.ceil(threads / maxThreads);
+            threads = Math.ceil(threads / numJobs);
+        }
         const effectivePct = threads * hackPercentPerThread;
 
         // Calculate result
@@ -269,7 +271,11 @@ export class ServerModel {
         // Calculate threads
         const securityPerThread = -ns.weakenAnalyze(1, cores);
         const neededSecurity = server.minDifficulty - server.hackDifficulty;
-        const threads = Math.min(maxThreads, Math.ceil(neededSecurity / securityPerThread));
+        const threads = Math.min(
+            // Split threads with larger jobs first.
+            maxThreads,
+            Math.ceil(neededSecurity / securityPerThread)
+        );
 
         // Calculate result
         const prevDifficulty = this.hackDifficulty;
