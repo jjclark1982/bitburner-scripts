@@ -46,7 +46,7 @@ This system consists of loosely-coupled modules:
 
 
 
-#### Planner
+### Planner
 
 [planner.js](planner.js) defines these data structures:
 
@@ -65,7 +65,7 @@ Batch: Array[Job], ordered by intended endTime
 	minTimeBetweenBatches()
 ```
 ```	
-ServerModel: subclass of Netscript Server with planning methods that mutate state
+ServerModel: mutable snapshot of a Netscript Server
 	planHackJob(moneyPercent) -> Job
 	planGrowJob() -> Job
 	planWeakenJob() -> Job
@@ -79,19 +79,19 @@ Many methods of these objects take a `params` object with parameters to be passe
 
 ```
 Params: {
-	tDelta: Milliseconds between endTime of jobs targeting the same server
-	maxTotalRam: Maximum total GB of ram to use for multiple concurrent batches
+	tDelta:           Milliseconds between endTime of jobs targeting the same server
+	maxTotalRam:      Maximum total GB of ram to use for multiple concurrent batches
 	maxThreadsPerJob: Maximum number of threads to use on any single process
-	moneyPercent: Portion of money to take in a hack job (0.0 - 1.0)
-	hackMargin: Amount of security to allow without weakening after a hack job
-	prepMargin: Amount of security to allow without weakening after a grow job
-	naiveSplit: Whether to split a large job into multiple processes with the same endTime.
-	            For example: HWWGGGWW (naive) vs HWGWGWGW (default)
-	cores: Number of CPU cores used for a job
+	moneyPercent:     Portion of money to take in a hack job (0.0 - 1.0)
+	hackMargin:       Amount of security to allow without weakening after a hack job
+	prepMargin:       Amount of security to allow without weakening after a grow job
+	naiveSplit:       Whether to split large jobs into sequential processes of the same kind.
+	                  For example: HWWGGGWW (naive) vs HWGWGWGW (default)
+	cores:            Number of CPU cores used for a job
 }
 ```
 
-##### Planner Command-Line Interface
+#### Planner Command-Line Interface
 
 When run as an executable, calculate the most profitable parameters for each hackable server:
 
@@ -148,7 +148,7 @@ Comparison of batches with at most 16.4 TB RAM, at most 1024 threads per job
 
 
 
-#### ThreadPool
+### ThreadPool
 
 [ThreadPool](thread-pool.js) is a [grid computing](https://en.wikipedia.org/wiki/Grid_computing) system that dispatches jobs to long-lived worker processes running in the cloud.
 
@@ -158,7 +158,7 @@ An application can dispatch tasks to the `ThreadPool` and it will launch an appr
 
 ![System Diagram](system-diagram.svg)
 
-##### ThreadPool Command-Line Interface
+#### ThreadPool Command-Line Interface
 
 Start the thread pool:
 ```
@@ -170,7 +170,7 @@ Run an application on the pool:
 > run /hive/manager.js foodnstuff
 ```
 
-##### ThreadPool API
+#### ThreadPool API
 
 Applications can run jobs by calling `threadPool.dispatchJob(job)`, where a job is an object defining the `task`. For example:
 
