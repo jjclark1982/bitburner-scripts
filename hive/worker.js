@@ -5,8 +5,6 @@ const FLAGS = [
 
 /** @param {NS} ns **/
 export async function main(ns) {
-    ns.disableLog("asleep");
-
     // List the functions this worker is capable of, for static RAM calculation.
     const capabilities = {
         "hack": ns.hack,
@@ -19,6 +17,8 @@ export async function main(ns) {
 
 export class Worker {
     constructor(ns, capabilities={}) {
+        ns.disableLog("asleep");
+
         const flags = ns.flags(FLAGS);
 
         this.id = flags.id;
