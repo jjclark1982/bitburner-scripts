@@ -5,7 +5,7 @@ const FLAGS = [
     ["console", false],
     ["tDelta", 100],
     ["maxTotalRam"],
-    ["maxThreadsPerJob", 1024]
+    ["maxThreadsPerJob"]
 ];
 
 export function autocomplete(data, args) {
@@ -25,7 +25,7 @@ export async function main(ns) {
     if (!(flags.maxTotalRam && flags.maxThreadsPerJob)) {
         const backend = serverPool(ns, 1.75);
         flags.maxTotalRam ||= (backend.totalRam - backend.totalUsedRam) * .9;
-        flags.maxThreadsPerJob ||= backend.largestThreadsAvailable();
+        flags.maxThreadsPerJob ||= Math.floor(backend.largestThreadsAvailable() / 2);
     }
 
     ns.print(reportMostProfitableServers(ns, flags));
@@ -63,9 +63,9 @@ export function reportBatchLengthComparison(ns, server, params) {
         {header: "Max t", field: "maxThreadsPerJob"},
         {header: "RAM Used", field: "totalRamBytes", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
-        {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
+        // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
-    columns.title = `Comparison of batches with at most ${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} RAM, at most ${params.maxThreadsPerJob} threads per job`;
+    columns.title = `Comparison of batches with ≤ ${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} RAM, ≤ ${params.maxThreadsPerJob} threads per job`;
     const estimates = server.sweepParameters(params);
     const estimatesByMoneyPct = {}
     for (const estimate of estimates) {
