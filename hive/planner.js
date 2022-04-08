@@ -1,4 +1,5 @@
 import { drawTable } from "/lib/box-drawing";
+import { serverPool } from "/net/server-pool";
 
 const FLAGS = [
     ["console", false]
@@ -18,9 +19,11 @@ export async function main(ns) {
     ns.clearLog();
     ns.tail();
 
-    ns.print(reportMostProfitableServers(ns));
+    const backend = serverPool(ns, 2.0);
 
-    ns.print(reportBatchLengthComparison(ns, server));
+    ns.print(reportMostProfitableServers(ns, backend));
+
+    ns.print(reportBatchLengthComparison(ns, server, backend));
 
     if (flags.console) {
         eval("window").server = server;
@@ -28,8 +31,8 @@ export async function main(ns) {
     }
 }
 
-export function reportMostProfitableServers(ns) {
-    const maxTotalRam = 16384;
+export function reportMostProfitableServers(ns, backend) {
+    const maxTotalRam = backend ? (backend.totalRam - backend.totalUsedRam) * .9 : 16384;
     const params = {maxTotalRam};
     const columns = [
         {header: "Hostname", field: "server.hostname", width: 18, align: "left"},
@@ -46,7 +49,7 @@ export function reportMostProfitableServers(ns) {
     return drawTable(columns, rows);
 }
 
-export function reportBatchLengthComparison(ns, server) {
+export function reportBatchLengthComparison(ns, server, backend) {
     server ||= new ServerModel(ns, ns.args[0] || "phantasy");
     const columns = [
         {header: "Condition", field: "condition", width: 28, align: "left", truncate: true},
@@ -58,7 +61,7 @@ export function reportBatchLengthComparison(ns, server) {
         // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
     const tDelta = 100;
-    const maxTotalRam = 16384;
+    const maxTotalRam = backend ? (backend.totalRam - backend.totalUsedRam) * .9 : 16384;
     const maxThreadsPerJob = 1024;
     const params = {maxThreadsPerJob, tDelta, maxTotalRam};
     columns.title = `Comparison of batches with at most ${ns.nFormat(maxTotalRam*1e9, "0.0 b")} RAM, at most ${maxThreadsPerJob} threads per job`;
@@ -474,7 +477,7 @@ export class ServerModel {
  * @property {Object} params
  * @property {number} duration
  * @property {number} numBatchesAtOnce
- * @property {number} timeBetweenBatches
+ * @property {number} minTimeBetweenBatches
  * @property {number} totalRam
  * @property {number} moneyPerSec
  * @property {number} moneyPerSecPerGB
@@ -548,6 +551,9 @@ class Batch extends Array {
     }
 
     totalDuration(tDelta=100) {
+        if (this.length == 0) {
+            return 0;
+        }
         if (!this.earliestStartTime()) {
             this.setStartTime(1, tDelta);
         }
@@ -614,7 +620,7 @@ class Batch extends Array {
         return Math.min(maxBatchesPerCycle, maxBatchesInRam);
     }
 
-    timeBetweenBatches(maxTotalRam, tDelta=100) {
+    minTimeBetweenBatches(maxTotalRam, tDelta=100) {
         const totalDuration = this.totalDuration(tDelta);
         const numBatchesAtOnce = this.maxBatchesAtOnce(maxTotalRam, tDelta);
         return (totalDuration / numBatchesAtOnce);

@@ -1,5 +1,8 @@
 import { drawTable } from "lib/box-drawing";
 
+// TODO: define separate ServerPoolInfo and ServerPoolBackend classes,
+// to support different levels of RAM use for imports
+
 export async function deploy(params={}) {
     const {ns, script, threads, args, allowSplit, requireAll} = params;
     const serverPool = new ServerPool({ns, scriptRam: script, logLevel:2});
