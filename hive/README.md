@@ -30,13 +30,13 @@ Scheduling these operations for maximum profit per second is a [bounded knapsack
 
 This system consists of loosely-coupled modules:
 
-[planner.js](planner.js) is a library for planning batches of `hack`, `grow`, and `weaken` jobs, scheduling them, and optimizing their parameters.
+[Planner](#Planner) is a library for planning batches of `hack`, `grow`, and `weaken` jobs, scheduling them, and optimizing their parameters.
 
 [manager.js](manager.js) is a frontend for executing job batches. It matches job `endTime` with availability on target servers.
 
-[ThreadPool](thread-pool.js) is a backend that dispatches jobs to long-lived [Worker](worker.js) processes. It matches job `startTime` with availability on workers.
+[ThreadPool](#ThreadPool) is a backend that dispatches jobs to long-lived [Worker](worker.js) processes. It matches job `startTime` with availability on workers.
 
-[ServerPool](../net/server-pool.js) is a backend that launches processes in available RAM banks. It can optionally split threads among multiple processes.
+[ServerPool](../net/server-pool.js) launches processes in available RAM banks.
 
 [box-drawing.js](../lib/box-drawing.js) is a library for printing tables of data.
 
@@ -90,6 +90,39 @@ Params: {
 	cores:            Number of CPU cores used for a job
 }
 ```
+
+
+
+#### Planner API
+
+Example: prepare a server using sequential steps in one process
+
+```javascript
+import { ServerModel } from "/hive/planner";
+
+const server = new ServerModel(ns, hostname);
+const batch = server.planPrepBatch({
+	maxThreadsPerJob: ns.getRunningScript().threads
+});
+for (const job of batch) {
+  await ns[job.task](...job.args);
+}
+```
+
+Example: run a parallel hacking batch
+
+```javascript
+import { ServerModel } from "/hive/planner";
+
+const server = new ServerModel(ns, hostname);
+const params = server.mostProfitableParameters({maxTotalRam: 16384});
+const batch = server.planHackingBatch(params);
+for (const job of batch) {
+  // execute the appropriate process to run the job
+}
+```
+
+
 
 #### Planner Command-Line Interface
 
@@ -158,17 +191,9 @@ An application can dispatch tasks to the `ThreadPool` and it will launch an appr
 
 ![System Diagram](system-diagram.svg)
 
-#### ThreadPool Command-Line Interface
 
-Start the thread pool:
-```
-> run /hive/thread-pool.js --tail
-```
 
-Run an application on the pool:
-```
-> run /hive/manager.js foodnstuff
-```
+
 
 #### ThreadPool API
 
@@ -188,4 +213,18 @@ Applications can run jobs by calling `threadPool.dispatchJob(job)`, where a job 
 When the job runs, this object will be updated with `startTimeActual` and `endTimeActual`. Other fields will be preserved, so a user can record expectations here and compare them against results.
 
 To run multiple jobs at once, call `threadPool.dispatchJobs(batch)`. This will return a falsey value if the entire batch cannot be run. This will update each job’s `startTime` and `endTime` 
+
+
+
+#### ThreadPool Command-Line Interface
+
+Start the thread pool:
+```
+> run /hive/thread-pool.js --tail
+```
+
+Run an application on the pool:
+```
+> run /hive/manager.js foodnstuff
+```
 
