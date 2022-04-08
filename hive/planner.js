@@ -58,7 +58,7 @@ export function reportBatchLengthComparison(ns, server, backend) {
         {header: "Max t", field: "maxThreadsPerJob"},
         {header: "RAM Used", field: "totalRamBytes", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
-        // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
+        {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
     const tDelta = 100;
     const maxTotalRam = backend ? (backend.totalRam - backend.totalUsedRam) * .9 : 16384;
@@ -400,9 +400,9 @@ export class ServerModel {
         const totalMoney = moneyPerBatch * numBatchesAtOnce;
         const moneyPerSec = totalMoney / (cycleDuration / 1000);
 
-        // const totalThreads = numBatchesAtOnce * batch.avgThreads();
+        // const totalThreads = numBatchesAtOnce * batch.avgThreads(tDelta);
         // const moneyPerSecPerThread = moneyPerSec / totalThreads;
-        const totalRam = numBatchesAtOnce * batch.avgRam();
+        const totalRam = numBatchesAtOnce * batch.avgRam(tDelta);
         const moneyPerSecPerGB = moneyPerSec / totalRam;
 
         const maxThreads = batch.maxThreads();
@@ -504,11 +504,11 @@ class Batch extends Array {
         ), 0);
     }
 
-    avgThreads() {
+    avgThreads(tDelta) {
         const threadMSeconds = this.reduce((total,job)=>(
             total + job.threads * job.duration
         ), 0);
-        return threadMSeconds / this.totalDuration();
+        return threadMSeconds / this.totalDuration(tDelta);
     }
 
     maxThreads() {
@@ -523,12 +523,12 @@ class Batch extends Array {
         ), 0);
     }
 
-    avgRam() {
+    avgRam(tDelta) {
         const gbMSeconds = this.reduce((total,job)=>{
             const gb = TASK_RAM[job.task] || 2.0;
             return total + job.threads * gb * job.duration
         }, 0);
-        return gbMSeconds / this.totalDuration();
+        return gbMSeconds / this.totalDuration(tDelta);
     }
 
     moneyTaken() {
@@ -554,8 +554,8 @@ class Batch extends Array {
         if (this.length == 0) {
             return 0;
         }
-        if (!this.earliestStartTime()) {
-            this.setStartTime(1, tDelta);
+        if (!this.firstEndTime()) {
+            this.setFirstEndTime(1, tDelta);
         }
         return this.lastEndTime() + tDelta - this.earliestStartTime();
         // return this.maxDuration() + this.activeDuration(tDelta);
@@ -601,12 +601,18 @@ class Batch extends Array {
     }
 
     adjustSchedule(offset) {
-        if (!offset) {
-            offset = Date.now() - this.earliestStartTime()
+        if (offset) {
+            for (const job of this) {
+                job.startTime += offset;
+                job.endTime += offset;
+            }
         }
-        for (const job of this) {
-            job.startTime += offset;
-            job.endTime += offset;
+    }
+
+    ensureStartInFuture(now, tDelta) {
+        now ||= Date.now();
+        if (!(this.earliestStartTime() > now)) {
+            this.setStartTime(now, tDelta);
         }
     }
 
@@ -615,7 +621,7 @@ class Batch extends Array {
         const activeDuration = this.activeDuration(tDelta);
         const maxBatchesPerCycle = Math.floor(totalDuration / activeDuration);
 
-        const maxBatchesInRam = Math.floor(maxTotalRam / this.avgRam());
+        const maxBatchesInRam = Math.floor(maxTotalRam / this.avgRam(tDelta));
 
         return Math.min(maxBatchesPerCycle, maxBatchesInRam);
     }

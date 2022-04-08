@@ -96,6 +96,10 @@ export class ThreadPool {
             this.ns.tprint(`Failed to allocate workers for batch.`);
             return null;
         }
+        // Update batch schedule after getting workers, as it may have taken some time.
+        if (typeof(batch.ensureStartInFuture === 'function')) {
+            batch.ensureStartInFuture(Date.now());
+        }
         const results = [];
         for (const job of batch) {
             const result = await this.dispatchJob(job);

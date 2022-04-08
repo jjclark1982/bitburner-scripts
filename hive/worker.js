@@ -23,6 +23,7 @@ export class Worker {
 
         this.id = flags.id;
         this.portNum = flags.port;
+        this.tDelta = 100;
         this.ns = ns;
         this.scriptName = ns.getScriptName();
         this.capabilities = capabilities;
@@ -69,6 +70,7 @@ export class Worker {
     addJob(job) {
         const {ns} = this;
         const now = Date.now();
+
         // Validate job parameters.
         job.args ||= [];
         if (!job.startTime) {
@@ -82,9 +84,10 @@ export class Worker {
         if (!job.endTime && job.duration) {
             job.endTime = job.startTime + job.duration
         }
-        this.jobQueue.push(job);
-        this.nextFreeTime = job.endTime + 100;
+
         // Schedule the job to run.
+        this.jobQueue.push(job);
+        this.nextFreeTime = job.endTime + this.tDelta;
         setTimeout(()=>{
             this.runNextJob()
         }, job.startTime - now);
@@ -93,8 +96,14 @@ export class Worker {
     }
 
     async runNextJob() {
+        if (this.currentJob.task) {
+            this.pool.ns.tprint(`ERROR: Worker ${this.id} tried to start ${this.jobQueue[0]?.task} before finishing ${this.currentJob.task}`);
+        }
+        // Take the next job from the queue.
         const job = this.jobQueue.shift();
         this.currentJob = job;
+
+        // Run the job and record timing information.
         job.startTimeActual = Date.now();
         this.drift = job.startTimeActual - job.startTime;
         this.ns.print(`Starting job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
@@ -102,9 +111,13 @@ export class Worker {
         job.endTimeActual = Date.now();
         this.drift = job.endTimeActual - job.endTime;
         this.ns.print(`Completed job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
+
+        // Run an 'onFinish' callback if provided.
         if (typeof(job.onFinish) === 'function') {
-            job.onFinish();
+            job.onFinish(job);
         }
+
+        // Mark this worker as idle.
         this.currentJob = {
             startTime: Date.now()
         };

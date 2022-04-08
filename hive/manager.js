@@ -6,50 +6,26 @@ const FLAGS = [
     ["help", false],
     ["backend", "thread-pool"],
     ["port", 1],
-    ["moneyPercent", 0.05],
-    ["hackMargin", 0.25],
-    ["prepMargin", 0.5],
-    ["naiveSplit", false],
-    ["cores", 1],
-    ["maxTotalRam"],
-    ["maxThreadsPerJob", 64],
     ["tDelta", 100],
-]
+    ["maxTotalRam"],           // optional (will be read from backend)
+    ["maxThreadsPerJob", 128], // TODO: read this from backend
+    ["moneyPercent", 0.05],    // (will be overwritten by optimizer)
+    ["hackMargin", 0.25],      // (will be overwritten by optimizer)
+    ["prepMargin", 0.5],       // (will be overwritten by optimizer)
+    ["naiveSplit", false],     // not currently used
+    ["cores", 1],              // not currently used
+];
 
 /*
 
--> create a dashboard showing target information
+TODO: create a dashboard showing target information
     - number of jobs dispatched
     - number of jobs pending?
     - cycle duration
     - latestEndTime
     - latestStartTime
 
-Then the general process for a target is:
-    sleep until nextStartTime-ε
-    plan a batch:
-        if money is high: hack
-        while sec is high: weaken
-        while money is low: grow
-        while sec is high: weaken
-    (This can result in the typical prep WGW and typical batch HWGW, but also HGHGHGW)
-*/
-
-/*
-
-HackingManager just needs to keep track of pay windows for each target:
-
-- nextFreeTime (= latestEndTime + tDelta)
-- nextStartTime
-
-then it can loop:
-    plan a batch for nextFreeTime
-    sleep until nextStartTime
-    deploy the batch to either ServerPool or ThreadPool
-
-
-To automatically select targets, we keep track of the above and calculate priorities.
-
+TODO: support multiple targets.
 Measure total ram in the server pool
 while some ram is not reserved:
 - select the target with most $/sec/GB
@@ -65,7 +41,7 @@ export async function main(ns) {
     ns.clearLog();
     const flags = ns.flags(FLAGS);
     if (flags.help) {
-        ns.tprint("manage hacking a server")
+        ns.tprint("Manage hacking a server.")
         return;
     }
     delete flags.help;
@@ -132,33 +108,28 @@ export class HackingManager {
             batch.setStartTime(now);
             server.nextFreeTime = batch.lastEndTime();
         }
-        batch.setFirstEndTime(server.nextFreeTime + params.tDelta);
+        batch.setFirstEndTime(server.nextFreeTime);
         if (batch.earliestStartTime() < now) {
             ns.tprint("ERROR: batch.earliestStartTime was inconsistent")
         }
-        server.nextFreeTime = batch.lastEndTime() + params.tDelta + batchCycle.timeBetweenBatches;
-        server.nextStartTime = batch.earliestStartTime();
+
+        // TODO: add an `onFinish` callback to check on batch results and adjust params
+        // this.plans[server.hostname] = server.planBatchCycle(newParams);
 
         // Dispatch the batch
-        // TODO: check memory availability before dispatching. use total ram to calculate time between batches.
         const result = await this.backend.dispatchJobs(batch);
         if (result) {
             ns.print(`Dispatched batch ${this.batchID}: ${batch.summary()} batch for ${server.hostname}`);
         }
-        // If dispatch failed, rollback state and reduce thread size
+        // If dispatch failed, rollback state
         if (!result) {
-            ns.print(`Failed to dispatch batch ${this.batchID}: ${batch.summary()} batch for ${server.hostname}. Recalculating parameters.`);
-            const newParams = server.mostProfitableParameters({
-                ...params,
-                maxThreadsPerJob: params.maxThreadsPerJob * 7/8,
-                maxTotalRam: params.maxTotalRam * 7/8
-            });
-            ns.tprint(JSON.stringify(newParams, null, 2));
-            this.plans[server.hostname] = server.planBatchCycle(newParams); // TODO: make this return an object instead of setting server.timeBetweenBatches
+            ns.print(`Failed to dispatch batch ${this.batchID}: ${batch.summary()} batch for ${server.hostname}. Skipping this batch.`);
             Object.assign(server, prevServer);
         }
 
-        // Block until the expected start time, so we don't spam the queue
-        await ns.asleep(server.nextStartTime - Date.now());
+        // Update the schedule for this target, and block until the schedule is free.
+        server.nextFreeTime = batch.lastEndTime() + params.tDelta + batchCycle.timeBetweenBatches;
+        server.nextStartTime = batch.earliestStartTime();
+        await ns.asleep(server.nextStartTime - Date.now()); // this should be timeBetweenBatches before the following batch's earliest start
     }
 }
