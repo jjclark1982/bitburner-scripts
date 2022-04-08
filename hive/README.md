@@ -1,12 +1,26 @@
 ## HVMind Distributed Computing System
 
-This is a [grid computing](https://en.wikipedia.org/wiki/Grid_computing) system that dispatches tasks to long-lived worker processes running in the cloud.
+This is a collection of loosely-coupled scripts for hacking servers in [Bitburner](https://danielyxie.github.io/bitburner/).
 
-The system is controlled through a `ThreadPool` which communicates with `Worker` processes through a [Netscript Port](https://bitburner.readthedocs.io/en/latest/netscript/netscriptmisc.html#netscript-ports). The processes can connect to each other after being launched in any order, including reloading from save.
+[planner.js](planner.js) is a library for planning batches of `hack`, `grow`, and `weaken` actions, scheduling them, and optimizing their parameters.
+
+[manager.js](manager.js) is a frontend for executing job batches. It matches job `endTime` with availability on servers. It can make use of different backends.
+
+[ThreadPool](thread-pool.js) is a backend that dispatches jobs to long-lived [Worker](worker.js) processes. It matches job `startTime` with availability on workers.
+
+[ServerPool](../net/server-pool.js) is a backend that launches processes on any available cloud server. It can optionally split threads among multiple processes.
+
+---
+
+### ThreadPool
+
+[ThreadPool](thread-pool.js) is a [grid computing](https://en.wikipedia.org/wiki/Grid_computing) system that dispatches jobs to long-lived worker processes running in the cloud.
+
+The system is controlled through a `ThreadPool` process which communicates with `Worker` processes through a [Netscript Port](https://bitburner.readthedocs.io/en/latest/netscript/netscriptmisc.html#netscript-ports). The processes can connect to each other after being launched in any order, including reloading from save.
 
 An application can dispatch tasks to the `ThreadPool` and it will launch an appropriate size `Worker` on any available server, or assign the task to an already running `Worker`.
 
-![hvmind](system-diagram.svg)
+![System Diagram](system-diagram.svg)
 
 
 
