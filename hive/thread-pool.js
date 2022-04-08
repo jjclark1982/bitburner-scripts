@@ -98,7 +98,7 @@ export class ThreadPool {
         }
         // Update batch schedule after getting workers, as it may have taken some time.
         if (typeof(batch.ensureStartInFuture === 'function')) {
-            batch.ensureStartInFuture(Date.now());
+            batch.ensureStartInFuture(Date.now() + 100);
         }
         const results = [];
         for (const job of batch) {

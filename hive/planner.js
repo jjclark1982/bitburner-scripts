@@ -519,7 +519,7 @@ class Batch extends Array {
 
     peakRam() {
         return this.reduce((total, job)=>(
-            total + job.threads * (TASK_RAM[job.task] || 2.0)
+            total + job.threads * (TASK_RAM[job.task] || TASK_RAM['*'])
         ), 0);
     }
 
@@ -664,7 +664,9 @@ export function getAllHosts(ns) {
 }
 
 const TASK_RAM = {
+    null: 1.6,
     'hack': 1.7,
     'grow': 1.75,
-    'weaken': 1.75
+    'weaken': 1.75,
+    '*': 2.0
 };
