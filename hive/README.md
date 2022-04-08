@@ -1,18 +1,146 @@
 ## HVMind Distributed Computing System
 
-This is a collection of loosely-coupled scripts for hacking servers in [Bitburner](https://danielyxie.github.io/bitburner/).
+This is a system for optimizing the “hacking” mechanic in the game [Bitburner](https://danielyxie.github.io/bitburner/).
 
-[planner.js](planner.js) is a library for planning batches of `hack`, `grow`, and `weaken` actions, scheduling them, and optimizing their parameters.
+The game mechanic consists of three operations:
 
-[manager.js](manager.js) is a frontend for executing job batches. It matches job `endTime` with availability on servers. It can make use of different backends.
+- `hack`: Transfer money from a server to the player, increase the server’s security level.
 
-[ThreadPool](thread-pool.js) is a backend that dispatches jobs to long-lived [Worker](worker.js) processes. It matches job `startTime` with availability on workers.
+- `grow`: Increase money on a server, increase the server’s security level.
 
-[ServerPool](../net/server-pool.js) is a backend that launches processes on any available cloud server. It can optionally split threads among multiple processes.
+- `weaken`: Reduce a server’s security level.
+
+The duration of each operation is determined when the operation starts, and it depends on the server’s current security level.
+
+The effect size of each operation is determined when the operation ends, and it depends on the amount of RAM allocated to the operation.
+
+Scheduling these operations for maximum profit per second is a [bounded knapsack problem](https://en.wikipedia.org/wiki/Knapsack_problem). Here we implement an algorithm for optimizing the schedule of these operations based on these constraints:
+
+- maximum total RAM used
+- maximum RAM used per operation
+- minimum time between effects
 
 ---
 
-### ThreadPool
+### Modules
+
+This system consists of loosely-coupled modules:
+
+[planner.js](planner.js) is a library for planning batches of `hack`, `grow`, and `weaken` jobs, scheduling them, and optimizing their parameters.
+
+[manager.js](manager.js) is a frontend for executing job batches. It matches job `endTime` with availability on target servers.
+
+[ThreadPool](thread-pool.js) is a backend that dispatches jobs to long-lived [Worker](worker.js) processes. It matches job `startTime` with availability on workers.
+
+[ServerPool](../net/server-pool.js) is a backend that launches processes in available RAM banks. It can optionally split threads among multiple processes.
+
+[box-drawing.js](../lib/box-drawing.js) is a library for printing tables of data.
+
+---
+
+#### Planner
+
+[planner.js](planner.js) defines these data structures:
+
+```
+Job: {task, args, threads, startTime, duration, endTime}
+```
+```
+Batch: Array[Job], ordered by ascending endTime
+	peakRam()
+	avgRam()
+	activeDuration()
+	totalDuration()
+	setStartTime()
+	setFirstEndTime()
+	maxBatchesAtOnce()
+	minTimeBetweenBatches()
+```
+```	
+ServerModel: subclass of Netscript Server with planning methods that mutate state
+	planHackJob(moneyPercent) -> Job
+	planGrowJob() -> Job
+	planWeakenJob() -> Job
+	planPrepBatch() -> Batch
+	planHackingBatch() -> Batch
+	planBatchCycle() -> {batch, params}
+	mostProfitableParameters() -> params
+```
+
+Many methods of these objects take a `params` object with parameters to be passed on to subroutines:
+
+```
+Params: {
+	tDelta: Milliseconds between endTime of jobs targeting the same server
+	maxTotalRam: Maximum total GB of ram to use for multiple concurrent batches
+	maxThreadsPerJob: Maximum number of threads to use on any single process
+	moneyPercent: Portion of money to take in a hack job (0.0 - 1.0)
+	hackMargin: Amount of security to allow without weakening after a hack job
+	prepMargin: Amount of security to allow without weakening after a grow job
+	naiveSplit: Whether to split a large job into multiple processes with the same endTime.
+	            For example: HWGGGWWW (naive) vs HWGWGWGW (default)
+	cores: Number of CPU cores used for a job
+}
+```
+
+##### Planner Command-Line Interface
+
+When run as an executable, calculate the most profitable parameters for each hackable server:
+
+```bash
+> run /hive/planner.js
+```
+
+| Hostname | $ | Batch | Prep Time | Ram Used | $ / sec |
+| ---- | ----: | ---- | ----: | ----: | ----: |
+| alpha-ent          |  5.0% | HGHWGW  |     27:38 |  16.3 TB |   $153.6m |
+| phantasy           | 10.0% | HGW     |      0:49 |  16.4 TB |   $153.4m |
+| rho-construction   |  5.0% | HWGW    |     27:18 |  16.4 TB |   $150.0m |
+| the-hub            |  5.0% | HWGW    |     14:02 |  16.4 TB |   $142.1m |
+| max-hardware       | 15.0% | HGHWGW  |      1:21 |  16.3 TB |    $89.0m |
+| omega-net          |  2.5% | HGW     |      6:52 |  16.4 TB |    $87.7m |
+| silver-helix       |  5.0% | HGHWGW  |      4:42 |  16.2 TB |    $84.5m |
+| computek           |  5.0% | HGW     |     21:37 |  16.3 TB |    $80.9m |
+| foodnstuff         | 10.0% | HGHWGW  |      0:13 |  16.0 TB |    $13.4m |
+| n00dles            | 82.5% | HGHGW   |      0:08 |   2.3 TB |     $4.4m |
+
+It determines the optimum batch for each server by comparing moneyPercent and security margin parameters, with fixed RAM limits:
+
+```
+Comparison of batches with at most 16.4 TB RAM, at most 1024 threads per job
+┌───────────────────┬─────────┬───────┬──────────┬───────────┐
+│ Condition         │ Batches │ Max t │ RAM Used │   $ / sec │
+├───────────────────┼─────────┼───────┼──────────┼───────────┤
+│  2.5% HGHGHGHGHGW │      45 │    17 │   6.3 TB │    $58.4m │ -- limited by time
+│  5.0% HGHGHGW     │      72 │    34 │  12.1 TB │   $111.5m │    between actions
+│  7.5% HGHGHGW     │      69 │    48 │  16.2 TB │   $147.3m │
+│ 10.0% HGW         │     154 │    63 │  16.4 TB │   $153.4m │
+│ 12.5% HGHWGW      │      63 │    78 │  16.2 TB │   $149.7m │
+│ 15.0% HGW         │     103 │    96 │  16.4 TB │   $149.4m │
+│ 20.0% HWGW        │      76 │   130 │  16.2 TB │   $144.7m │
+│ 30.0% HWGW        │      49 │   205 │  16.1 TB │   $135.5m │
+│ 40.0% HWGW        │      36 │   293 │  16.4 TB │   $128.6m │ -- limited by
+│ 50.0% HWGW        │      27 │   396 │  16.0 TB │   $116.6m │    total RAM
+│ 60.0% HGHWGW      │      11 │   533 │  16.4 TB │   $105.7m │
+│ 70.0% HWGW        │      17 │   685 │  16.0 TB │    $94.4m │
+│ 80.0% HWGW        │      13 │   914 │  15.4 TB │    $77.6m │
+│ 82.5% HWGW        │      12 │   999 │  15.2 TB │    $72.5m │
+│ 85.0% HWGWGW      │      12 │  1024 │  16.1 TB │    $73.8m │ -- limited by
+│ 87.5% HWGWGW      │      11 │  1024 │  16.3 TB │    $69.8m │    threads per
+│ 90.0% HWGWGW      │      10 │  1024 │  16.2 TB │    $65.1m │    process
+│ 92.5% HWGWGW      │       8 │  1024 │  14.7 TB │    $53.7m │
+│ 95.0% HWGWGW      │       7 │  1024 │  14.6 TB │    $48.1m │
+│ 97.5% HWGWGWGW    │       6 │  1024 │  15.8 TB │    $42.3m │
+└───────────────────┴─────────┴───────┴──────────┴───────────┘
+```
+
+
+
+---
+
+
+
+#### ThreadPool
 
 [ThreadPool](thread-pool.js) is a [grid computing](https://en.wikipedia.org/wiki/Grid_computing) system that dispatches jobs to long-lived worker processes running in the cloud.
 
