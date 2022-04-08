@@ -20,7 +20,11 @@ Scheduling these operations for maximum profit per second is a [bounded knapsack
 - maximum RAM used per operation
 - minimum time between effects
 
+
+
 ---
+
+
 
 ### Modules
 
@@ -36,7 +40,11 @@ This system consists of loosely-coupled modules:
 
 [box-drawing.js](../lib/box-drawing.js) is a library for printing tables of data.
 
+
+
 ---
+
+
 
 #### Planner
 
@@ -46,7 +54,7 @@ This system consists of loosely-coupled modules:
 Job: {task, args, threads, startTime, duration, endTime}
 ```
 ```
-Batch: Array[Job], ordered by ascending endTime
+Batch: Array[Job], ordered by intended endTime
 	peakRam()
 	avgRam()
 	activeDuration()
@@ -78,7 +86,7 @@ Params: {
 	hackMargin: Amount of security to allow without weakening after a hack job
 	prepMargin: Amount of security to allow without weakening after a grow job
 	naiveSplit: Whether to split a large job into multiple processes with the same endTime.
-	            For example: HWGGGWWW (naive) vs HWGWGWGW (default)
+	            For example: HWWGGGWW (naive) vs HWGWGWGW (default)
 	cores: Number of CPU cores used for a job
 }
 ```
@@ -104,30 +112,30 @@ When run as an executable, calculate the most profitable parameters for each hac
 | foodnstuff         | 10.0% | HGHWGW  |      0:13 |  16.0 TB |    $13.4m |
 | n00dles            | 82.5% | HGHGW   |      0:08 |   2.3 TB |     $4.4m |
 
-It determines the optimum batch for each server by comparing moneyPercent and security margin parameters, with fixed RAM limits:
+The optimum batch for each server is determined by comparing moneyPercent and security margin parameters, with fixed RAM limits:
 
 ```
 Comparison of batches with at most 16.4 TB RAM, at most 1024 threads per job
 ┌───────────────────┬─────────┬───────┬──────────┬───────────┐
 │ Condition         │ Batches │ Max t │ RAM Used │   $ / sec │
 ├───────────────────┼─────────┼───────┼──────────┼───────────┤
-│  2.5% HGHGHGHGHGW │      45 │    17 │   6.3 TB │    $58.4m │ -- limited by time
+│  2.5% HGHGHGHGHGW │      45 │    17 │   6.3 TB │    $58.4m │ -- Limited by time
 │  5.0% HGHGHGW     │      72 │    34 │  12.1 TB │   $111.5m │    between actions
 │  7.5% HGHGHGW     │      69 │    48 │  16.2 TB │   $147.3m │
-│ 10.0% HGW         │     154 │    63 │  16.4 TB │   $153.4m │
+│ 10.0% HGW         │     154 │    63 │  16.4 TB │   $153.4m │ -- Maximum $ / sec
 │ 12.5% HGHWGW      │      63 │    78 │  16.2 TB │   $149.7m │
 │ 15.0% HGW         │     103 │    96 │  16.4 TB │   $149.4m │
 │ 20.0% HWGW        │      76 │   130 │  16.2 TB │   $144.7m │
 │ 30.0% HWGW        │      49 │   205 │  16.1 TB │   $135.5m │
-│ 40.0% HWGW        │      36 │   293 │  16.4 TB │   $128.6m │ -- limited by
+│ 40.0% HWGW        │      36 │   293 │  16.4 TB │   $128.6m │ -- Limited by
 │ 50.0% HWGW        │      27 │   396 │  16.0 TB │   $116.6m │    total RAM
 │ 60.0% HGHWGW      │      11 │   533 │  16.4 TB │   $105.7m │
 │ 70.0% HWGW        │      17 │   685 │  16.0 TB │    $94.4m │
 │ 80.0% HWGW        │      13 │   914 │  15.4 TB │    $77.6m │
 │ 82.5% HWGW        │      12 │   999 │  15.2 TB │    $72.5m │
-│ 85.0% HWGWGW      │      12 │  1024 │  16.1 TB │    $73.8m │ -- limited by
-│ 87.5% HWGWGW      │      11 │  1024 │  16.3 TB │    $69.8m │    threads per
-│ 90.0% HWGWGW      │      10 │  1024 │  16.2 TB │    $65.1m │    process
+│ 85.0% HWGWGW      │      12 │  1024 │  16.1 TB │    $73.8m │ -- Limited by threads
+│ 87.5% HWGWGW      │      11 │  1024 │  16.3 TB │    $69.8m │    per process
+│ 90.0% HWGWGW      │      10 │  1024 │  16.2 TB │    $65.1m │
 │ 92.5% HWGWGW      │       8 │  1024 │  14.7 TB │    $53.7m │
 │ 95.0% HWGWGW      │       7 │  1024 │  14.6 TB │    $48.1m │
 │ 97.5% HWGWGWGW    │       6 │  1024 │  15.8 TB │    $42.3m │
@@ -146,27 +154,11 @@ Comparison of batches with at most 16.4 TB RAM, at most 1024 threads per job
 
 The system is controlled through a `ThreadPool` process which communicates with `Worker` processes through a [Netscript Port](https://bitburner.readthedocs.io/en/latest/netscript/netscriptmisc.html#netscript-ports). The processes can connect to each other after being launched in any order, including reloading from save.
 
-An application can dispatch tasks to the `ThreadPool` and it will launch an appropriate size `Worker` on any available server, or assign the task to an already running `Worker`.
+An application can dispatch tasks to the `ThreadPool` and it will launch an appropriate size `Worker` on any available server (using [ServerPool](../net/server-pool.js)), or assign the task to an already running `Worker`.
 
 ![System Diagram](system-diagram.svg)
 
-
-
----
-
-### Installation
-
-Copy these scripts:
-```
-/lib/box-drawing.js
-/net/server-pool.js
-/hive/thread-pool.js
-/hive/worker.js
-/hive/manager.js
-/hive/planner.js
-```
-
-### CLI Usage
+##### ThreadPool Command-Line Interface
 
 Start the thread pool:
 ```
@@ -178,7 +170,7 @@ Run an application on the pool:
 > run /hive/manager.js foodnstuff
 ```
 
-### API Usage
+##### ThreadPool API
 
 Applications can run jobs by calling `threadPool.dispatchJob(job)`, where a job is an object defining the `task`. For example:
 
@@ -195,81 +187,5 @@ Applications can run jobs by calling `threadPool.dispatchJob(job)`, where a job 
 
 When the job runs, this object will be updated with `startTimeActual` and `endTimeActual`. Other fields will be preserved, so a user can record expectations here and compare them against results.
 
-> TODO: support running a callback as soon as the task finishes
-
-
-
-
-
----
-
-#### Design notes
-
-Is it possible to spawn a large number of persistent workers, then control them from a central manager?
-
-```
-netlink
-    hack-worker.js -t 18
-vitalife
-    grow-worker.js -t 18
-phantasy
-    weak-worker.js -t 18
-
-home
-    manager.js
-        workers: [
-            {
-                type: hack,
-                threads: 18,
-                nextFreeTime: 16039234038
-                addJob: ({target, threads, startTime, endTime})=>()
-            },
-            ...
-        ]
-```
-- always assign a job to the smallest worker that can handle it
-- if there is no worker of the right type, spawn one
-    (use max threads for host, or only the number needed?)
-- warn user if we weren't able to start one
-
-Then when we want to schedule a batch:
-
-for each job in the batch:
-    - find an existing worker that can schedule the job
-    - or spawn a new worker of the right size
-    - or split the job over multiple workers (this can change the batch timing)
-    - or cancel the batch
-
-----
-
-Class structure:
-
-```
-HackPlanner(ns, target)
-    planPrep()
-    planBatch() (needs ThreadPool to plan thread-splitting, or to embed a delegate function)
-        planHack()
-        planGrow()
-        planWeaken()
-    estimateProfit()
-
-HackManager(ns, portNum, targets)
-    planners
-    threadPool
-    runBatchOnPool()
-
-ThreadPool(ns, portNum)
-    dispatchJobs()
-    dispatchJob()
-    largestThreadSizeAtTime()
-
-Worker(ns, portNum, id)
-    addJob()
-
-ServerPool(ns, scriptRam)
-    smallestServersWithThreads()
-    largestServer()
-    deploy()
-```
-
+To run multiple jobs at once, call `threadPool.dispatchJobs(batch)`. This will return a falsey value if the entire batch cannot be run. This will update each job’s `startTime` and `endTime` 
 
