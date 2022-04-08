@@ -134,7 +134,7 @@ export class ServerPool {
         return this.largestServer?.availableThreads || 0;
     }
 
-    async deploy({server, host, script, threads, args, allowSplit, requireAll}) {
+    async deploy({server, host, script, threads, args, dependencies, allowSplit, requireAll}) {
         if (!server && host) {
             server = this.getServer(host);
         }
@@ -147,14 +147,14 @@ export class ServerPool {
             }
         }
         if (server) {
-            let result = await server.deploy({script, threads, args});
+            let result = await server.deploy({script, threads, args, dependencies});
             if (result.pid) {
                 this.logInfo(`Running on ${server.hostname} with PID ${result.pid}: ${result.threads}x ${script} ${(args||[]).join(' ')}`);
             }
             else {
                 this.logWarn(`Not enough available RAM on ${server.hostname} to run ${script}`);
             }
-            return result.pid;
+            return result;
         }
         else if (allowSplit) {
             const batch = this.splitJob({script, threads, args, requireAll});
@@ -199,15 +199,15 @@ export class ServerPool {
             this.logWarn("Not enough RAM in server pool to run entire batch");
             return null;
         }
-        const pids = [];
+        const results = [];
         for(const job of jobs) {
-            const pid = await this.deploy(job);
-            pids.push(pid)
+            const result = await this.deploy(job);
+            results.push(result)
         }
         if (jobs.length > 1) {
             this.logInfo(`Deployed ${this.ns.nFormat(totalThreads, '0,0')} total threads.`);
         }
-        return pids;
+        return results;
     }
 
     logInfo(...args) {
@@ -285,7 +285,7 @@ export class CloudServer {
         return (this.hasAdminRights && this.maxRam > 0)
     }
 
-    async deploy({script, threads, args}) {
+    async deploy({script, threads, args, dependencies=[]}) {
         const {ns} = this;
 
         if (threads == 'max') {
@@ -294,7 +294,7 @@ export class CloudServer {
 
         args ||= [];
 
-        await ns.scp(script, 'home', this.hostname);
+        await ns.scp([script, ...dependencies], 'home', this.hostname);
         const pid = ns.exec(script, this.hostname, threads, ...args);
         if (pid) {
             this.availableRam -= (threads * this.scriptRam);

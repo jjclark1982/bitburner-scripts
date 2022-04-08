@@ -1,7 +1,6 @@
 const FLAGS = [
     ["port", 1],
-    ["id"],
-    ["verbose", false]
+    ["id"]
 ];
 
 /** @param {NS} ns **/
@@ -18,7 +17,7 @@ export async function main(ns) {
     await worker.work();
 }
 
-class Worker {
+export class Worker {
     constructor(ns, capabilities={}) {
         const flags = ns.flags(FLAGS);
 
@@ -84,7 +83,7 @@ class Worker {
             job.endTime = job.startTime + job.duration
         }
         this.jobQueue.push(job);
-        this.nextFreeTime = job.endTime;
+        this.nextFreeTime = job.endTime + 100;
         // Schedule the job to run.
         setTimeout(()=>{
             this.runNextJob()

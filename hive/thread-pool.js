@@ -7,9 +7,12 @@ const FLAGS = [
     ["test", false]
 ];
 
-const SCRIPT_CAPABILITIES = {
-    "/hive/worker.js": ['hack', 'grow', 'weaken']
-};
+const SCRIPT_CAPABILITIES = [
+    {script: "/hive/worker-hack.js", capabilities: ['hack'], dependencies: ["/hive/worker.js"]},
+    {script: "/hive/worker-grow.js", capabilities: ['grow'], dependencies: ["/hive/worker.js"]},
+    {script: "/hive/worker-weaken.js", capabilities: ['weaken'], dependencies: ["/hive/worker.js"]},
+    {script: "/hive/worker.js", capabilities: ['hack', 'grow', 'weaken']}
+];
 
 /*
 
@@ -142,7 +145,8 @@ export class ThreadPool {
             !exclude[worker.id] && 
             worker.running &&
             worker.nextFreeTime < startTime &&
-            worker.process?.threads >= threads &&
+            worker.process.threads >= threads &&
+            worker.process.threads < threads*2 &&
             capabilities.every((task)=>task in worker.capabilities)
         )).sort((a,b)=>(
             a.threads - b.threads
@@ -162,7 +166,7 @@ export class ThreadPool {
         threads = Math.ceil(threads);
 
         // Find a suitable script.
-        const script = getScriptWithCapabilities(capabilities);
+        const {script, dependencies} = getScriptWithCapabilities(capabilities);
         if (!script) {
             this.logWarn(`Failed to start worker with ${threads} threads: No script capable of ${JSON.stringify(capabilities)}.`);
             return null;
@@ -192,7 +196,7 @@ export class ThreadPool {
             running: false
         };
         const args = ["--port", portNum, "--id", workerID];
-        const pid = await serverPool.deploy({server, script, threads, args});
+        const {pid} = await serverPool.deploy({server, script, threads, args, dependencies});
         if (!pid) {
             this.logWarn(`Failed to start worker ${workerID}.`);
             return null;
@@ -211,7 +215,7 @@ export class ThreadPool {
     registerWorker(worker) {
         const {ns} = this;
         const launchedWorker = this.workers[worker.id];
-        if (launchedWorker.running) {
+        if (launchedWorker?.running) {
             // If multiple workers claim the same ID, stop the older one.
             launchedWorker.running = false;
         }
@@ -274,10 +278,10 @@ export class ThreadPool {
     }
 }
 
-function getScriptWithCapabilities(capabilities) {
-    for (const [script, caps] of Object.entries(SCRIPT_CAPABILITIES)) {
-        if (capabilities.every((task)=>caps.includes(task))) {
-            return script;
+function getScriptWithCapabilities(caps) {
+    for (const workerType of SCRIPT_CAPABILITIES) {
+        if (caps.every((task)=>workerType.capabilities.includes(task))) {
+            return workerType;
         }
     }
     return null;
