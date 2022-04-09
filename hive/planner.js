@@ -41,7 +41,7 @@ export async function main(ns) {
 export function reportMostProfitableServers(ns, params) {
     const columns = [
         {header: "Hostname", field: "server.hostname", width: 18, align: "left"},
-        {header: "Parameters", field: "condition", width: 20, align: "left", truncate: true},
+        {header: "Parameters", field: "condition", width: 16, align: "left", truncate: true},
         {header: "Prep Time", field: "prepTime", format: drawTable.time},
         {header: "RAM Used", field: "totalRamBytes", format: ns.nFormat, formatArgs: ["0.0 b"]},
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
@@ -65,7 +65,7 @@ export function reportBatchLengthComparison(ns, server, params) {
         {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
         // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
     ];
-    columns.title = `Comparison of batches with ≤ ${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} RAM, ≤ ${params.maxThreadsPerJob} threads per job`;
+    columns.title = `Comparison of batches (${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} total RAM, max ${params.maxThreadsPerJob} threads per job)`;
     const estimates = server.sweepParameters(params);
     const estimatesByMoneyPct = {}
     for (const estimate of estimates) {
@@ -418,7 +418,7 @@ export class ServerModel {
         const moneyPerSecPerGB = moneyPerSec / totalRam;
 
         const maxThreads = batch.maxThreads();
-        const condition = `${moneyPercent<0.09999 ? ' ' : ''}${(moneyPercent*100).toFixed(1)}% ${batch.summary()}`; // (t≤${maxThreads<100?' ':''}${maxThreads})
+        const condition = batch.summary();
 
         const batchCycle = {
             condition,
@@ -506,8 +506,21 @@ export class ServerModel {
 class Batch extends Array {
 
     summary() {
+        const moneyPercent = this.actualMoneyPercent();
+        let summary = `${moneyPercent<0.09999 ? ' ' : ''}${(moneyPercent*100).toFixed(1)}% `;
         const tasks = this.map((job)=>(job.task || '-').substr(0,1).toUpperCase());
-        return tasks.join('');
+        summary += tasks.join('');
+        return summary;
+    }
+
+    longSummary() {
+        const moneyPercent = this.actualMoneyPercent();
+        let summary = `${moneyPercent<0.09999 ? ' ' : ''}${(moneyPercent*100).toFixed(1)}% `;
+        const tasks = this.map((job)=>(
+            job.task || '-').substr(0,1).toLowerCase() + job.threads
+        );
+        summary += tasks.join(' ');
+        return summary;
     }
 
     peakThreads() {
@@ -550,6 +563,14 @@ class Batch extends Array {
             }
             return total;
         }, 0);
+    }
+
+    actualMoneyPercent() {
+        const minMoneyMult = this.reduce((total, job)=>(
+            Math.min(total, job.change.moneyMult)
+        ), 1);
+        const moneyPercent = 1 - minMoneyMult;
+        return moneyPercent;
     }
 
     activeDuration(tDelta=100) {
