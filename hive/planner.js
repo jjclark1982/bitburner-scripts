@@ -4,8 +4,8 @@ import { serverPool } from "/net/server-pool";
 const FLAGS = [
     ["console", false],
     ["tDelta", 100],
-    ["maxTotalRam"],
-    ["maxThreadsPerJob"]
+    ["maxTotalRam", 0],
+    ["maxThreadsPerJob", 0]
 ];
 
 export function autocomplete(data, args) {
@@ -206,7 +206,7 @@ export class ServerModel {
      * @param {boolean} [stock=false] - whether to manipulate stock prices
      * @returns {Job}
      */
-    planGrow(maxThreads, cores=1, stock) {
+    planGrow(maxThreads=Infinity, cores=1, stock) {
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
@@ -214,25 +214,26 @@ export class ServerModel {
         const duration = ns.formulas.hacking.growTime(server, player);
 
         // Calculate threads using binary search
-        let minThreads = 1;
-        if (!maxThreads || maxThreads < 1 || maxThreads == Infinity) {
+        let loThreads = 1;
+        let hiThreads = maxThreads;
+        if (!hiThreads || hiThreads < 1 || hiThreads == Infinity) {
             // Establish an upper bound based on the single-thread formula which will be too high.
-            const growMult = server.moneyMax / Math.max(server.moneyMax, (server.moneyAvailable + minThreads));
-            const growMultPerThread = ns.formulas.hacking.growPercent(server, minThreads, player, cores);
-            maxThreads = Math.ceil((growMult-1) / (growMultPerThread-1)) + 1;
-        }
-        while (maxThreads - minThreads > 1) {
-            const midThreads = Math.ceil((minThreads + maxThreads) / 2);
+            const growMult = server.moneyMax / Math.min(server.moneyMax, (server.moneyAvailable + 1));
+            const growMultPerThread = ns.formulas.hacking.growPercent(server, 1, player, cores);
+            hiThreads = Math.ceil((growMult-1) / (growMultPerThread-1)) + 1;
+        } 
+        while (hiThreads - loThreads > 1) {
+            const midThreads = Math.ceil((loThreads + hiThreads) / 2);
             const serverGrowth = ns.formulas.hacking.growPercent(server, midThreads, player, cores);
             const newMoney = (server.moneyAvailable + midThreads) * serverGrowth;
             if (newMoney >= server.moneyMax) {
-                maxThreads = midThreads;
+                hiThreads = midThreads;
             }
             else {
-                minThreads = midThreads;
+                loThreads = midThreads;
             }
         }
-        const threads = maxThreads;
+        const threads = hiThreads;
 
         // Calculate result
         const prevMoney = this.moneyAvailable;
