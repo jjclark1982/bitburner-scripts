@@ -1,16 +1,14 @@
-## Bitburner Hacking Planner
+## Bitburner Hacking Optimization System
 
-This is a system for optimizing the “hacking” mechanic in the game [Bitburner](https://danielyxie.github.io/bitburner/).
+The game [Bitburner](https://danielyxie.github.io/bitburner/) includes a “hacking” mechanic which consists of three operations:
 
-The game mechanic consists of three operations:
-
-- `hack`: Transfer money from a server to the player, increase the server’s security level.
-- `grow`: Increase money on a server, increase the server’s security level.
+- `hack`: Transfer money from a server to the player, and increase the server’s security level.
+- `grow`: Increase money on a server (from nowhere), and increase the server’s security level.
 - `weaken`: Reduce a server’s security level.
 
 The duration of each operation is determined when the operation **starts**, and it depends on the server’s current security level.
 
-The effect size of each operation is determined when the operation **ends**, and it depends on the amount of RAM allocated to the operation.
+The effect of each operation is determined when the operation **ends**, and its magnitude depends on the amount of RAM allocated to the operation.
 
 Scheduling these operations for maximum profit per second is a [bounded knapsack problem](https://en.wikipedia.org/wiki/Knapsack_problem) based on these constraints:
 
@@ -18,7 +16,7 @@ Scheduling these operations for maximum profit per second is a [bounded knapsack
 - maximum RAM used per operation
 - minimum time between effects
 
-We calculate the theoretical maximum profit with perfect scheduling, and the minimum profit with no possible scheduling conflicts. We implement an algorithm that can come within x% of theoretical maximum profit.
+We calculate the expected profit with no chance of scheduling conflicts (cf. Stalefish), and the theoretical maximum profit with perfect scheduling. We implement an algorithm that can operate within these bounds.
 
 
 ---
@@ -28,9 +26,9 @@ We calculate the theoretical maximum profit with perfect scheduling, and the min
 
 This system consists of loosely-coupled modules:
 
-[Planner](#Planner) is a library for planning batches of `hack`, `grow`, and `weaken` jobs, scheduling them, and optimizing their parameters.
+[Hacking Planner](#Hacking_Planner) is a library for planning batches of `hack`, `grow`, and `weaken` jobs, scheduling them, and optimizing their parameters.
 
-[manager.js](manager.js) is a frontend for executing job batches. It matches job `endTime` with availability on target servers.
+[Hacking Manager](#Hacking_Manager) is a frontend for executing job batches. It matches job `endTime` with availability on target servers.
 
 [ThreadPool](../hive/) is a backend that dispatches jobs to long-lived [Worker](worker.js) processes. It matches job `startTime` with availability on workers.
 
@@ -42,15 +40,17 @@ This system consists of loosely-coupled modules:
 ---
 
 
-### Planner
+### Hacking Planner
 
 [planner.js](planner.js) is a library for planning batches of `hack`, `grow`, and `weaken` jobs, scheduling them, and optimizing their parameters.
 
-When run as an executable, it displays the most profitable parameters for each hackable server:
+#### Planner Command-Line Interface
 
 ```bash
-> run /hacking/planner.js
+> run /hacking/planner.js [--maxTotalRam n] [--maxThreadsPerJob n] [--tDelta n]
 ```
+
+When run as an executable, it displays the most profitable parameters for each hackable server:
 
 | Hostname         |     $ | Batch  | Prep Time | Ram Used | $ / sec |
 | ---------------- | ----: | ------ | --------: | -------: | ------: |
@@ -150,6 +150,7 @@ const batch = server.planPrepBatch({
 	maxThreadsPerJob: ns.getRunningScript().threads
 });
 for (const job of batch) {
+  // execute the task in this process
   await ns[job.task](...job.args);
 }
 ```
@@ -164,5 +165,31 @@ const params = server.mostProfitableParameters({maxTotalRam: 16384});
 const batch = server.planHackingBatch(params);
 for (const job of batch) {
   // execute the appropriate process to run the job
+  backend.dispatch(job);
 }
 ```
+
+
+
+---
+
+
+
+### Hacking Manager
+
+[manager.js](manager.js) is a frontend for executing job batches calculated by [Planner](#Hacking Planner). It matches job `endTime` with availability on target servers. It delegates execution to a backend (such as [ThreadPool](../hive/)) which can match job `startTime` with availability in RAM banks.
+
+#### Manager Command-Line Interface
+
+```bash
+> run /hacking/manager.js [target ...] [--maxTotalRam n] [--maxThreadsPerJob n] [--tDelta n]
+```
+
+
+
+##### Example: Hack the server `phantasy` using up to 5TB of total RAM:
+
+```bash
+> run /hacking/manager.js phantasy --tail --maxTotalRam 5000
+```
+
