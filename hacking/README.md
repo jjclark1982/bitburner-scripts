@@ -16,10 +16,15 @@ Scheduling these operations for maximum profit per second is a [bounded knapsack
 - maximum RAM used per operation
 - minimum time between effects
 
-We calculate the expected profit with no chance of scheduling conflicts (cf. Stalefish), and the theoretical maximum profit with perfect scheduling. We implement an algorithm that can operate within these bounds.
+The basic strategy is to repeat batches of Hack-Weaken-Grow-Weaken operations (*cf.* Stalefish [1]). This system considers a wider range of batch patterns, some of which can be better packed into available timeslots or RAM banks.
+
+
+
+1. Fish S. (2022), Periodic Batching, *J. Bitb. Disc.*
 
 
 ---
+
 
 
 ### Modules
@@ -37,7 +42,10 @@ This system consists of loosely-coupled modules:
 [box-drawing.js](../lib/box-drawing.js) is a library for printing tables of data.
 
 
+
+
 ---
+
 
 
 ### Hacking Planner
@@ -140,6 +148,29 @@ Params: {
 }
 ```
 
+
+
+##### Example: Plan an HWGW batch
+
+```javascript
+import { ServerModel } from "/hacking/planner";
+
+const server = new ServerModel(ns, hostname);
+const params = {
+  tDelta: 100,
+  maxTotalRam: 16384,
+  maxThreadsPerJob: 512,
+  moneyPercent: 0.05,
+  hackMargin: 0,
+  prepMargin: 0,
+};
+const batchCycle = server.planBatchCycle(params);
+console.log(batchCycle.condition); // " 5% HWGW"
+const batch = batchCycle.batch;
+```
+
+
+
 ##### Example: Prepare a server using sequential steps in one process
 
 ```javascript
@@ -154,6 +185,8 @@ for (const job of batch) {
   await ns[job.task](...job.args);
 }
 ```
+
+
 
 ##### Example: Run a hacking batch on parallel processes
 
@@ -177,7 +210,7 @@ for (const job of batch) {
 
 ### Hacking Manager
 
-[manager.js](manager.js) is a frontend for executing job batches calculated by [Planner](#Hacking Planner). It matches job `endTime` with availability on target servers. It delegates execution to a backend (such as [ThreadPool](../hive/)) which can match job `startTime` with availability in RAM banks.
+[manager.js](manager.js) is a frontend for executing job batches calculated by [Planner](#Hacking Planner). It matches job `endTime` with availability on target servers. It delegates execution to a backend which can match job `startTime` with availability in RAM banks. The backend must implement the `dispatchJobs(batch)` method, which should return a falsey value if it is not able to run the entire batch, and may adjust the timing of the batch.
 
 #### Manager Command-Line Interface
 
@@ -188,6 +221,14 @@ for (const job of batch) {
 
 
 ##### Example: Hack the server `phantasy` using up to 5TB of total RAM:
+
+Start the backend, such as [ThreadPool](../hive/):
+
+```bash
+> run /hive/thread-pool.js --tail
+```
+
+Then run hacking manager:
 
 ```bash
 > run /hacking/manager.js phantasy --tail --maxTotalRam 5000
