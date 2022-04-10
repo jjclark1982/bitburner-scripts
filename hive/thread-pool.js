@@ -264,14 +264,12 @@ export class ThreadPool {
     report() {
         const {ns} = this;
         const formatThreads = function(t){
-            if (!t) {
-                return '';
-            }
+            if (!t) { return ''; }
             return ns.nFormat(t, "0a");
         }
         const now = Date.now();
         const columns = [
-            {header: "Worker", field: "id"},
+            {header: "Worker", field: "description"},
             {header: " Threads ", field: "threads", format: [formatThreads]},
             {header: "Task", field: "task", width: 6, align: "center"},
             {header: "Queue", field: "queue", align: "left", truncate: true},
@@ -297,10 +295,10 @@ function getScriptWithCapabilities(caps) {
 function workerReport(worker, now) {
     now ||= Date.now();
     return {
-        id: worker.id,
+        description: worker.description,
         threads: [worker.currentJob?.threads, worker.process?.threads],
-        queue: (new Batch(...(worker.jobQueue || []))).summary(),
         task: worker.currentJob?.task,
+        queue: (new Batch(...(worker.jobQueue || []))).summary(),
         elapsedTime: worker.elapsedTime? worker.elapsedTime(now) : null,
         remainingTime: worker.remainingTime? worker.remainingTime(now) : null,
         drift: worker.drift ? worker.drift.toFixed(0) + ' ms' : ''

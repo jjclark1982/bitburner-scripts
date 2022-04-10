@@ -28,7 +28,8 @@ export class Worker {
         this.ns = ns;
         this.scriptName = ns.getScriptName();
         this.capabilities = capabilities;
-        this.nextFreeTime = Date.now();
+        this.description = Object.keys(this.capabilities).map((c)=>`${c.substr(0,1).toUpperCase()}${this.id}`).join('');
+        this.nextFreeTime = Date.now() + flags.tDelta;
         this.jobQueue = [];
         this.currentJob = {
             startTime: Date.now()
@@ -46,6 +47,7 @@ export class Worker {
             ns.tprint(`Worker unable to find ThreadPool on port ${this.portNum}. Exiting.`);
             return;
         }
+        this.nextFreeTime = Date.now();
         this.pool.registerWorker(this);
         ns.print(`Worker ${this.id} registered with thread pool. Starting work.`);
         // Block until something sets running to false
@@ -97,7 +99,10 @@ export class Worker {
     }
 
     async runNextJob(expectedJob) {
-        if (this.running && this.currentJob.task) {
+        if (!this.running) {
+            return;
+        }
+        if (this.currentJob.task) {
             setTimeout(()=>{
                 this.runNextJob(expectedJob);
             }, 100);
@@ -108,16 +113,22 @@ export class Worker {
             ].join('\n'));
             return;
         }
+        
         // Take the next job from the queue.
         const job = this.jobQueue.shift();
         this.currentJob = job;
 
-        // Run the job and record timing information.
+        // Record actual start time.
         job.startTimeActual = Date.now();
         this.drift = job.startTimeActual - job.startTime;
         this.ns.print(`Starting job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
+
+        // Run the task.
         await this.capabilities[job.task](...(job.args||[]));
+
+        // Record actual end time.
         job.endTimeActual = Date.now();
+        job.durationActual = job.endTimeActual - job.startTimeActual;
         this.drift = job.endTimeActual - job.endTime;
         this.ns.print(`Completed job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
 
