@@ -1,6 +1,7 @@
 const FLAGS = [
     ["port", 1],
-    ["id"]
+    ["id"],
+    ["tDelta", 1000]
 ];
 
 /** @param {NS} ns **/
@@ -23,7 +24,7 @@ export class Worker {
 
         this.id = flags.id;
         this.portNum = flags.port;
-        this.tDelta = 100;
+        this.tDelta = flags.tDelta;
         this.ns = ns;
         this.scriptName = ns.getScriptName();
         this.capabilities = capabilities;
@@ -52,7 +53,7 @@ export class Worker {
         while (this.running) {
             await ns.asleep(1000);
             // Terminate a worker that has not been used in a while.
-            if (!this.currentJob.task && this.elapsedTime() > 5*60*1000) {
+            if (!this.currentJob.task && this.elapsedTime() > 1*60*1000) {
                 this.running = false;
             }
             // TODO: terminate if the queue is empty and the average workload is less than half of the max workload
@@ -89,15 +90,23 @@ export class Worker {
         this.jobQueue.push(job);
         this.nextFreeTime = job.endTime + this.tDelta;
         setTimeout(()=>{
-            this.runNextJob()
+            this.runNextJob(job);
         }, job.startTime - now);
-        console.log(`Worker ${this.id} accepted job: ${job.task} ${JSON.stringify(job.args)} (${(job.startTime - now).toFixed(0)} ms)`);
+        // console.log(`Worker ${this.id} accepted job: ${job.task} ${JSON.stringify(job.args)} (${(job.startTime - now).toFixed(0)} ms)`);
         return true;
     }
 
-    async runNextJob() {
-        if (this.currentJob.task) {
-            this.pool.ns.tprint(`ERROR: Worker ${this.id} tried to start ${this.jobQueue[0]?.task} before finishing ${this.currentJob.task}`);
+    async runNextJob(expectedJob) {
+        if (this.running && this.currentJob.task) {
+            setTimeout(()=>{
+                this.runNextJob(expectedJob);
+            }, 100);
+            console.log([
+                `ERROR: Worker ${this.id} tried to start ${this.jobQueue[0]?.task} before finishing ${this.currentJob.task}`,
+                `current end: ${this.currentJob.endTime}, next start: ${this.jobQueue[0].startTime} (${this.jobQueue[0].startTime - this.currentJob.endTime})`,
+                `now: ${Date.now()}, expected start time: ${expectedJob.startTime}`
+            ].join('\n'));
+            return;
         }
         // Take the next job from the queue.
         const job = this.jobQueue.shift();
@@ -107,7 +116,7 @@ export class Worker {
         job.startTimeActual = Date.now();
         this.drift = job.startTimeActual - job.startTime;
         this.ns.print(`Starting job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
-        await this.capabilities[job.task](...job.args);
+        await this.capabilities[job.task](...(job.args||[]));
         job.endTimeActual = Date.now();
         this.drift = job.endTimeActual - job.endTime;
         this.ns.print(`Completed job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);

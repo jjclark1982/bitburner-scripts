@@ -1,5 +1,6 @@
 import { ServerPool } from "/net/server-pool";
 import { drawTable } from "/lib/box-drawing";
+import { Batch } from "/hive/planner";
 
 const FLAGS = [
     ["port", 1],
@@ -91,15 +92,17 @@ export class ThreadPool {
     }
 
     async dispatchJobs(batch) {
+        // Get workers (this can take some time due to launching and registering)
         const workers = await this.getWorkers(batch);
         if (!workers) {
             this.ns.tprint(`Failed to allocate workers for batch.`);
             return null;
         }
-        // Update batch schedule after getting workers, as it may have taken some time.
+        // Update batch schedule after getting workers
         if (typeof(batch.ensureStartInFuture === 'function')) {
             batch.ensureStartInFuture(Date.now() + 100);
         }
+        // Dispatch each job
         const results = [];
         for (const job of batch) {
             const result = await this.dispatchJob(job);
@@ -270,8 +273,8 @@ export class ThreadPool {
         const columns = [
             {header: "Worker", field: "id"},
             {header: " Threads ", field: "threads", format: [formatThreads]},
-            {header: "Queue", field: "queue"},
             {header: "Task", field: "task", width: 6, align: "center"},
+            {header: "Queue", field: "queue", align: "left", truncate: true},
             {header: "Elapsed ", field: "elapsedTime", format: drawTable.time},
             {header: "Remaining", field: "remainingTime", format: drawTable.time, formatArgs: [2]},
             {header: "Drift  ", field: "drift" }
@@ -296,7 +299,7 @@ function workerReport(worker, now) {
     return {
         id: worker.id,
         threads: [worker.currentJob?.threads, worker.process?.threads],
-        queue: worker.jobQueue?.length,
+        queue: (new Batch(...(worker.jobQueue || []))).summary(),
         task: worker.currentJob?.task,
         elapsedTime: worker.elapsedTime? worker.elapsedTime(now) : null,
         remainingTime: worker.remainingTime? worker.remainingTime(now) : null,

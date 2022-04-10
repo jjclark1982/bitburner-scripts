@@ -260,7 +260,7 @@ export class ServerModel {
      * Plan a 'weaken' job and mutate this server state to reflect its results.
      * @param {number} [maxThreads] 
      * @param {number} [cores=1] 
-     * @returns 
+     * @returns {Job}
      */
     planWeaken(maxThreads=Infinity, cores=1) {
         const {ns} = this;
@@ -419,7 +419,7 @@ export class ServerModel {
         const moneyPerSecPerGB = moneyPerSec / totalRam;
 
         const maxThreads = batch.maxThreads();
-        const condition = batch.summary();
+        const condition = `${batch.moneySummary()} ${batch.summary()}`;
 
         const batchCycle = {
             condition,
@@ -504,24 +504,18 @@ export class ServerModel {
  * Jobs are ordered by their endTime and there is a clear firstEndTime and lastEndTime,
  * but the earliestStartTime also depends on other timing factors.
  */
-class Batch extends Array {
+export class Batch extends Array {
 
     summary() {
-        const moneyPercent = this.actualMoneyPercent();
-        let summary = `${moneyPercent<0.09999 ? ' ' : ''}${(moneyPercent*100).toFixed(1)}% `;
         const tasks = this.map((job)=>(job.task || '-').substr(0,1).toUpperCase());
-        summary += tasks.join('');
-        return summary;
+        return tasks.join('');
     }
 
     longSummary() {
-        const moneyPercent = this.actualMoneyPercent();
-        let summary = `${moneyPercent<0.09999 ? ' ' : ''}${(moneyPercent*100).toFixed(1)}% `;
         const tasks = this.map((job)=>(
             job.task || '-').substr(0,1).toLowerCase() + job.threads
         );
-        summary += tasks.join(' ');
-        return summary;
+        return tasks.join(' ');
     }
 
     peakThreads() {
@@ -572,6 +566,11 @@ class Batch extends Array {
         ), 1);
         const moneyPercent = 1 - minMoneyMult;
         return moneyPercent;
+    }
+
+    moneySummary() {
+        const moneyPercent = this.actualMoneyPercent();
+        return `${moneyPercent<0.09999 ? ' ' : ''}${(moneyPercent*100).toFixed(1)}%`;
     }
 
     activeDuration(tDelta=100) {

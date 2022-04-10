@@ -7,7 +7,7 @@ const FLAGS = [
     ["backend", "thread-pool"],
     ["port", 1],
     ["tDelta", 100],
-    ["maxTotalRam"],           // optional (will be read from backend)
+    ["maxTotalRam", 0],        // optional (will be read from backend)
     ["maxThreadsPerJob", 128], // TODO: read this from backend
     ["moneyPercent", 0.05],    // (will be overwritten by optimizer)
     ["hackMargin", 0.25],      // (will be overwritten by optimizer)
@@ -15,6 +15,11 @@ const FLAGS = [
     ["naiveSplit", false],     // not currently used
     ["cores", 1],              // not currently used
 ];
+
+export function autocomplete(data, args) {
+    data.flags(FLAGS);
+    return data.servers;
+}
 
 /*
 
@@ -59,7 +64,7 @@ export async function main(ns) {
         const pool = serverPool(ns);
         const availableRam = pool.totalRam - pool.totalUsedRam;
         // reserve at most 1 TB of ram for other purposes
-        flags.maxTotalRam = Math.max(availableRam*0.85, availableRam-1024);
+        flags.maxTotalRam = Math.max(availableRam*0.9, availableRam-1024);
     }
 
     const manager = new HackingManager(ns, backend, targets, flags)
@@ -98,7 +103,7 @@ export class HackingManager {
         const params = batchCycle.params;
         const now = Date.now() + params.tDelta;
         const prevServer = server.copy();
-        this.batchID++;
+        const batchID = this.batchID++;
 
         // Plan a batch based on target state and parameters
         const batch = server.planHackingBatch(params);
@@ -113,18 +118,30 @@ export class HackingManager {
             ns.tprint("ERROR: batch.earliestStartTime was inconsistent")
         }
 
-        // TODO: add an `onFinish` callback to check on batch results and adjust params
-        // this.plans[server.hostname] = server.planBatchCycle(newParams);
+        // Add an `onFinish` callback to check on batch results and adjust params
+        batch[batch.length-1].onFinish = function(job){
+            const expectedServer = job.result;
+            const actualServer = job.result.copy().reload();
+            if (actualServer.hackDifficulty > expectedServer.hackDifficulty) {
+                ns.print(`WARNING: desync detected after batch ${batchID}. Reloading server state and adjusting parameters.`);
+                server.reload();
+                const newParams = server.mostProfitableParameters(this.params);
+                this.plans[server.hostname] = server.planBatchCycle(newParams);
+                server.reload();
+            }
+            // console.log(`Finished batch ${batchID}. Expected security:`, job.result.hackDifficulty, "Actual:", job.result.copy().reload().hackDifficulty);
+        }
 
         // Dispatch the batch
         const result = await this.backend.dispatchJobs(batch);
         if (result) {
-            ns.print(`Dispatched batch ${this.batchID}: ${batch.summary()} batch for ${server.hostname}`);
+            ns.print(`Dispatched batch ${batchID}: ${batch.moneySummary()} ${batch.summary()} batch for ${server.hostname}`);
         }
         // If dispatch failed, rollback state
         if (!result) {
-            ns.print(`Failed to dispatch batch ${this.batchID}: ${batch.summary()} batch for ${server.hostname}. Skipping this batch.`);
+            ns.print(`Failed to dispatch batch ${batchID}: ${batch.summary()} batch for ${server.hostname}. Skipping this batch.`);
             Object.assign(server, prevServer);
+            // TODO: check whether params.maxThreadsPerJob still fits in backend
         }
 
         // Update the schedule for this target, and block until the schedule is free.
