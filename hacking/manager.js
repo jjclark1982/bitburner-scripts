@@ -1,5 +1,5 @@
 import { getThreadPool } from "/hive/worker";
-import { ServerModel, mostProfitableServers } from "/hive/planner";
+import { ServerModel, mostProfitableServers } from "/hacking/planner";
 import { serverPool } from "/net/server-pool";
 
 const FLAGS = [
