@@ -8,15 +8,17 @@ The game mechanic consists of three operations:
 - `grow`: Increase money on a server, increase the server’s security level.
 - `weaken`: Reduce a server’s security level.
 
-The duration of each operation is determined when the operation starts, and it depends on the server’s current security level.
+The duration of each operation is determined when the operation **starts**, and it depends on the server’s current security level.
 
-The effect size of each operation is determined when the operation ends, and it depends on the amount of RAM allocated to the operation.
+The effect size of each operation is determined when the operation **ends**, and it depends on the amount of RAM allocated to the operation.
 
-Scheduling these operations for maximum profit per second is a [bounded knapsack problem](https://en.wikipedia.org/wiki/Knapsack_problem). Here we implement an algorithm for optimizing the schedule of these operations based on these constraints:
+Scheduling these operations for maximum profit per second is a [bounded knapsack problem](https://en.wikipedia.org/wiki/Knapsack_problem) based on these constraints:
 
 - maximum total RAM used
 - maximum RAM used per operation
 - minimum time between effects
+
+We calculate the theoretical maximum profit with perfect scheduling, and the minimum profit with no possible scheduling conflicts. We implement an algorithm that can come within x% of theoretical maximum profit.
 
 
 
