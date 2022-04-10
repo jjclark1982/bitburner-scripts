@@ -68,10 +68,15 @@ export function buyUpgrades(ns, upgrades, target) {
         if (upgrade == "Sell for Money") {
             continue;
         }
+        else if (upgrade.match(/Corporation/) && !ns.getPlayer().hasCorporation) {
+            continue;
+        }
         else if (upgrade == "Bladeburner") {
             buyBladeburnerUpgrades(ns);
         }
-        buyMaxUpgrades(ns, upgrade, target);
+        else {
+            buyMaxUpgrades(ns, upgrade, target);
+        }
     }
     if (upgrades.includes("Sell for Money")) {
         sellHashesForMoney(ns);
