@@ -5,7 +5,8 @@ const FLAGS = [
     ["console", false],
     ["tDelta", 100],
     ["maxTotalRam", 0],
-    ["maxThreadsPerJob", 0]
+    ["maxThreadsPerJob", 0],
+    ["reserveRam", false]
 ];
 
 export function autocomplete(data, args) {
@@ -385,6 +386,7 @@ export class ServerModel {
      * @param {Object} params - Parameters for jobs to add to the batch. Additional values will be passed to planHackBatch and planPrepBatch.
      * @param {number} [params.maxTotalRam=4096] - GB of ram to use for multiple batches
      * @param {number} [params.tDelta=100] - milliseconds between job completions
+     * @param {boolean} [params.reserveRam=false] - whether to plan based on peak RAM usage instead of average RAM usage
      * @returns {BatchCycle} Details of the planned batch cycle
      */
     planBatchCycle(params){
@@ -396,10 +398,11 @@ export class ServerModel {
             prepMargin: 0.5,
             naiveSplit: false,
             cores: 1,
-            tDelta: 100
+            tDelta: 100,
+            reserveRam: false
         };
         params = Object.assign({}, defaults, params);
-        const {moneyPercent, maxTotalRam, tDelta} = params;
+        const {moneyPercent, maxTotalRam, tDelta, reserveRam} = params;
 
         const server = this.preppedCopy();
         const batch = server.planHackingBatch(params);
@@ -407,7 +410,7 @@ export class ServerModel {
         const moneyPerBatch = batch.moneyTaken();
         const cycleDuration = batch.totalDuration(tDelta);
 
-        const numBatchesAtOnce = batch.maxBatchesAtOnce(maxTotalRam, tDelta);
+        const numBatchesAtOnce = batch.maxBatchesAtOnce(maxTotalRam, tDelta, reserveRam);
         const timeBetweenBatches = cycleDuration / numBatchesAtOnce;
 
         const totalMoney = moneyPerBatch * numBatchesAtOnce;
@@ -649,12 +652,13 @@ export class Batch extends Array {
         }
     }
 
-    maxBatchesAtOnce(maxTotalRam, tDelta=100) {
+    maxBatchesAtOnce(maxTotalRam, tDelta=100, reserveRam=false) {
         const totalDuration = this.totalDuration(tDelta);
         const activeDuration = this.activeDuration(tDelta);
         const maxBatchesPerCycle = Math.floor(totalDuration / activeDuration);
+        const ramUsed = reserveRam ? this.peakRam() : this.avgRam(tDelta);
 
-        const maxBatchesInRam = Math.floor(maxTotalRam / this.avgRam(tDelta));
+        const maxBatchesInRam = Math.floor(maxTotalRam / ramUsed);
 
         return Math.min(maxBatchesPerCycle, maxBatchesInRam);
     }
