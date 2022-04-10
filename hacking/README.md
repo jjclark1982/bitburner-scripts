@@ -112,39 +112,39 @@ Job: {task, args, threads, startTime, duration, endTime}
 ```
 ```
 Batch: Array[Job], ordered by intended endTime
-	peakRam()
-	avgRam()
-	activeDuration()
-	totalDuration()
-	setStartTime()
-	setFirstEndTime()
-	maxBatchesAtOnce()
-	minTimeBetweenBatches()
+    peakRam()
+    avgRam()
+    activeDuration()
+    totalDuration()
+    setStartTime()
+    setFirstEndTime()
+    maxBatchesAtOnce()
+    minTimeBetweenBatches()
 ```
 ```	
 ServerModel: mutable snapshot of a Netscript Server
-	planHackJob(moneyPercent) -> Job
-	planGrowJob() -> Job
-	planWeakenJob() -> Job
-	planPrepBatch() -> Batch
-	planHackingBatch() -> Batch
-	planBatchCycle() -> {batch, params}
-	mostProfitableParameters() -> params
+    planHackJob(moneyPercent) -> Job
+    planGrowJob() -> Job
+    planWeakenJob() -> Job
+    planPrepBatch() -> Batch
+    planHackingBatch() -> Batch
+    planBatchCycle() -> {batch, params}
+    mostProfitableParameters() -> params
 ```
 
 Many methods of these objects take a `params` object with parameters to be passed on to subroutines:
 
 ```
 Params: {
-	tDelta:           Milliseconds between endTime of jobs targeting the same server
-	maxTotalRam:      Maximum total GB of ram to use for multiple concurrent batches
-	maxThreadsPerJob: Maximum number of threads to use on any single process
-	moneyPercent:     Portion of money to take in a hack job (0.0 - 1.0)
-	hackMargin:       Amount of security to allow without weakening after a hack job
-	prepMargin:       Amount of security to allow without weakening after a grow job
-	naiveSplit:       Whether to split large jobs into sequential processes of the same kind.
-	                  For example: HWWGGGWW (naive) vs HWGWGWGW (default)
-	cores:            Number of CPU cores used for a job
+    tDelta:           Milliseconds between endTime of jobs targeting the same server
+    maxTotalRam:      Maximum total GB of ram to use for multiple concurrent batches
+    maxThreadsPerJob: Maximum number of threads to use on any single process
+    moneyPercent:     Portion of money to take in a hack job (0.0 - 1.0)
+    hackMargin:       Amount of security to allow without weakening after a hack job
+    prepMargin:       Amount of security to allow without weakening after a grow job
+    naiveSplit:       Whether to split large jobs into sequential processes of the same kind.
+                      For example: HWWGGGWW (naive) vs HWGWGWGW (default)
+    cores:            Number of CPU cores used for a job
 }
 ```
 
@@ -157,12 +157,12 @@ import { ServerModel } from "/hacking/planner";
 
 const server = new ServerModel(ns, hostname);
 const params = {
-  tDelta: 100,
-  maxTotalRam: 16384,
-  maxThreadsPerJob: 512,
-  moneyPercent: 0.05,
-  hackMargin: 0,
-  prepMargin: 0,
+    tDelta: 100,
+    maxTotalRam: 16384,
+    maxThreadsPerJob: 512,
+    moneyPercent: 0.05,
+    hackMargin: 0,
+    prepMargin: 0,
 };
 const batchCycle = server.planBatchCycle(params);
 console.log(batchCycle.condition); // " 5% HWGW"
@@ -178,11 +178,11 @@ import { ServerModel } from "/hacking/planner";
 
 const server = new ServerModel(ns, hostname);
 const batch = server.planPrepBatch({
-	maxThreadsPerJob: ns.getRunningScript().threads
+    maxThreadsPerJob: ns.getRunningScript().threads
 });
 for (const job of batch) {
-  // execute the task in this process
-  await ns[job.task](...job.args);
+    // execute the task in this process
+    await ns[job.task](...job.args);
 }
 ```
 
@@ -197,8 +197,8 @@ const server = new ServerModel(ns, hostname);
 const params = server.mostProfitableParameters({maxTotalRam: 16384});
 const batch = server.planHackingBatch(params);
 for (const job of batch) {
-  // execute the appropriate process to run the job
-  backend.dispatch(job);
+    // execute the appropriate process to run the job
+    backend.dispatch(job);
 }
 ```
 
