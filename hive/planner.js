@@ -271,7 +271,7 @@ export class ServerModel {
 
         // Calculate threads
         const securityPerThread = -ns.weakenAnalyze(1, cores);
-        const neededSecurity = server.minDifficulty - server.hackDifficulty;
+        const neededSecurity = server.minDifficulty - server.hackDifficulty - 1;
         const threads = Math.min(
             // Split threads with larger jobs first.
             maxThreads,
