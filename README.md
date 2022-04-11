@@ -41,7 +41,7 @@ Would like to move most of these into `net/` or `hacking/`.
 
 - libraries / utilities  
     - [x] `/hive/table.js` -> move to `/lib/box-drawing.js`  
-    - [ ] `/inspect/server.js` -> move to `/net/info.js`?  
+    - ~~`/inspect/server.js` -> move to `/net/info.js`?  ~~
 
 - server / memory management -> move to `/net/` (maybe rename to `/cloud/`)  
     - [x] `/hive/server-pool.js` -> move to `/net/server-pool.js`  
@@ -56,19 +56,20 @@ Would like to move most of these into `net/` or `hacking/`.
     - [ ] `/hive/worker.js` (class definition)  
 
 - hack planning  
-    - [ ] `/batch/analyze.js`  
+    - [ ] `/batch/analyze.js` -> merge into `/hacking/planner.js`
+    - [x] `/hive/planner.js` -> move to `/hacking/planner.js`
 
 - unmanaged hacking -> move to `/unmanaged-hacking/`
     - [x] `/batch/early-hacking.js`  
     - [x] `/batch/spawn-early-hacking.js`  
 
-- managed hacking (single-run process)  
+- batched hacking (single-function process)
     - [ ] `/batch/prep.js`  
     - [ ] `/batch/manage.js`  
     - [ ] `/batch/{hack,grow,weaken}.js`  
 
-- managed hacking (persistent process)  
-    - [ ] `/hive/manage.js`  
+- remote-controlled hacking (persistent process)
+    - [x] `/hive/manage.js` -> move to `/hacking/manager.js`
     - [ ] `/hive/worker.js` (main function)  
 
 
@@ -77,4 +78,3 @@ Would like to move most of these into `net/` or `hacking/`.
 - [ ] remove `.js` from import statements
 
 - [x] refactor `server-pool` to have a unified interface for different deployment types
-
