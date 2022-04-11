@@ -55,10 +55,9 @@ export class Worker {
         while (this.running) {
             await ns.asleep(1000);
             // Terminate a worker that has not been used in a while.
-            if (!this.currentJob.task && this.elapsedTime() > 1*60*1000) {
+            if (!this.currentJob.task && this.jobQueue.length == 0 && this.elapsedTime() > 1*60*1000) {
                 this.running = false;
             }
-            // TODO: terminate if the queue is empty and the average workload is less than half of the max workload
         }
         console.log(`Worker ${this.id} stopping.`);
     }
