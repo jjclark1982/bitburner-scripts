@@ -418,6 +418,7 @@ export class ServerModel {
 
         // const totalThreads = numBatchesAtOnce * batch.avgThreads(tDelta);
         // const moneyPerSecPerThread = moneyPerSec / totalThreads;
+        const peakRam = numBatchesAtOnce * batch.peakRam();
         const totalRam = numBatchesAtOnce * batch.avgRam(tDelta);
         const moneyPerSecPerGB = moneyPerSec / totalRam;
 
@@ -431,6 +432,7 @@ export class ServerModel {
             duration: cycleDuration,
             numBatchesAtOnce,
             timeBetweenBatches,
+            peakRam,
             totalRam,
             moneyPerSec,
             moneyPerSecPerGB,
