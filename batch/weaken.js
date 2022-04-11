@@ -1,7 +1,7 @@
 const FLAGS = [
     ["verbose", false],
-    ["loop", false],
-    ["startTime"]
+    ["startTime", 0],
+    ["repeatPeriod", 0]
 ];
 
 export function autocomplete(data, args) {
@@ -13,21 +13,25 @@ export function autocomplete(data, args) {
 export async function main(ns) {
     const flags = ns.flags(FLAGS);
     const target = flags._.shift();
-    if (flags.startTime) {
-        const delay = flags.startTime - Date.now();
-        if (delay < -10*1000) {
-            return;
+
+    let now = Date.now();
+    let startTime = flags.startTime || now;
+    while (startTime >= now) {
+        // Wait until startTime.
+        if (startTime > now) {
+            await ns.asleep(startTime - now);
         }
-        await ns.sleep(delay);
-    }
-    let count = 0;
-    while (flags.loop || count++ == 0) {
-        if (flags.verbose) {
-            ns.tprint(`  ${Date.now()}: Starting weaken ${JSON.stringify(ns.args)}`);
-        }
+
+        // Run the operation.
+        if (flags.verbose) { ns.tprint(`  ${Date.now()}: Starting weaken ${JSON.stringify(ns.args)}`); }
         await ns.weaken(target);
-        if (flags.verbose) {
-            ns.tprint(`  ${Date.now()}: Finished weaken ${JSON.stringify(ns.args)}`);
+        now = Date.now();
+        if (flags.verbose) { ns.tprint(`  ${Date.now()}: Finished weaken ${JSON.stringify(ns.args)}`); }
+
+        // Update startTime if repeat is enabled.
+        if (flags.repeatPeriod > 0) {
+            const numPeriods = 1 + Math.floor((now - startTime) / flags.repeatPeriod);
+            startTime += numPeriods * flags.repeatPeriod;
         }
     }
 }
