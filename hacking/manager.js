@@ -106,6 +106,16 @@ export class HackingManager {
         const prevServer = server.copy();
         const batchID = this.batchID++;
 
+        // TODO: handle prep batches differently than hack batches.
+        //  - check that prepDifficulty is set correctly.
+        //    if server.hackDifficulty > server.minDifficulty: resync?
+        //    (need some margin in case we are currently in an active window)
+        //    (the last-job callback we currently use is probably ideal)
+        //  - insert a delay after the prep batch?
+        //    (this is best if RAM is maxed out during that batch, which is reasonable)
+        //    server.nextStartTime = prepBatch.lastEndTime() + tDelta
+
+
         // Plan a batch based on target state and parameters
         const batch = server.planHackingBatch(params);
 

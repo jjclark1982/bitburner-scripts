@@ -124,9 +124,12 @@ export class ServerModel {
     constructor(ns, server) {
         this.ns = ns;
         if (typeof(server) === "string") {
-            server = ns.getServer(server);
+            this.hostname = server;
+            this.reload();
         }
-        Object.assign(this, server);
+        else {
+            Object.assign(this, server);
+        }
     }
 
     canBeHacked(player) {
@@ -140,6 +143,7 @@ export class ServerModel {
 
     reload() {
         Object.assign(this, this.ns.getServer(this.hostname));
+        this.prepDifficulty = this.hackDifficulty;
         return this;
     }
 
@@ -151,6 +155,7 @@ export class ServerModel {
         const server = this.copy();
         server.moneyAvailable = server.moneyMax;
         server.hackDifficulty = server.minDifficulty;
+        server.prepDifficulty = server.minDifficulty;
         return server;
     }
 
@@ -166,7 +171,11 @@ export class ServerModel {
         const server = this;
         const player = ns.getPlayer();
     
-        const duration = ns.formulas.hacking.hackTime(server, player);
+        // Calculate duration based on last known security level
+        const duration = ns.formulas.hacking.hackTime(
+            {...server, hackDifficulty: this.prepDifficulty},
+            player
+        );
 
         // Calculate threads
         moneyPercent = Math.max(0, Math.min(1.0, moneyPercent));
@@ -212,7 +221,11 @@ export class ServerModel {
         const server = this;
         const player = ns.getPlayer();
 
-        const duration = ns.formulas.hacking.growTime(server, player);
+        // Calculate duration based on last known security level
+        const duration = ns.formulas.hacking.growTime(
+            {...server, hackDifficulty: this.prepDifficulty},
+            player
+        );
 
         // Calculate threads using binary search
         let loThreads = 1;
@@ -268,7 +281,11 @@ export class ServerModel {
         const server = this;
         const player = ns.getPlayer();
     
-        const duration = ns.formulas.hacking.weakenTime(server, player);
+        // Calculate duration based on last known security level
+        const duration = ns.formulas.hacking.weakenTime(
+            {...server, hackDifficulty: this.prepDifficulty},
+            player
+        );
 
         // Calculate threads
         const securityPerThread = -ns.weakenAnalyze(1, cores);
@@ -329,6 +346,7 @@ export class ServerModel {
         while (this.hackDifficulty > this.minDifficulty) {
             batch.push(this.planWeaken(maxThreadsPerJob, cores));
         }
+        this.prepDifficulty = this.hackDifficulty; // This isn't true until some delay has passed. Should that delay be represented in the batch data structure?
         return batch;
     }
 
@@ -354,7 +372,6 @@ export class ServerModel {
         const {moneyPercent, maxThreadsPerJob, hackMargin, cores} = params;
 
         const batch = new Batch();
-        batch.push(...this.planPrepBatch(params));
         batch.push(this.planHack(moneyPercent, maxThreadsPerJob))
         while (this.hackDifficulty < this.minDifficulty + hackMargin) {
             batch.push(this.planGrow(maxThreadsPerJob, cores));
