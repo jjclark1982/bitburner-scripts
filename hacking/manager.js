@@ -13,6 +13,7 @@ const FLAGS = [
     ["hackMargin", 0.25],      // (will be overwritten by optimizer)
     ["prepMargin", 0.5],       // (will be overwritten by optimizer)
     ["naiveSplit", false],     // not currently used
+    ["reserveRam", true],      // weather to calculate batch RAM requirement based on peak amount
     ["cores", 1],              // not currently used
 ];
 
