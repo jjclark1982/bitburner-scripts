@@ -101,18 +101,23 @@ export function *getHackableServers(ns, hostnames) {
 }
 
 export function mostProfitableServers(ns, hostnames, params) {
-    const serverStats = getHackableServers(ns, hostnames).map((server)=>{
-        const bestParams = server.mostProfitableParameters(params);
+    const plans = [];
+    for (const server of getHackableServers(ns, hostnames)) {
+        const bestParams = server.mostProfitableParamsSync(params);
         const batchCycle = server.planBatchCycle(bestParams);
         batchCycle.prepTime = server.estimatePrepTime(params);
+        const ONE_HOUR = 60 * 60 * 1000;
+        const cycleTimeInNextHour = Math.max(1000, ONE_HOUR - batchCycle.prepTime);
+        batchCycle.moneyInNextHour = batchCycle.moneyPerSec * cycleTimeInNextHour;
         batchCycle.server = server;
-        batchCycle.totalRamBytes = batchCycle.totalRam * 1e9;
+        batchCycle.totalRamBytes = batchCycle.peakRam * 1e9;
         server.reload();
-        return batchCycle;
-    }).sort((a,b)=>(
-        b.moneyPerSec - a.moneyPerSec
+        plans.push(batchCycle);
+    }
+    const bestPlans = plans.sort((a,b)=>(
+        b.moneyInNextHour - a.moneyInNextHour
     ));
-    return serverStats;
+    return bestPlans;
 }
 
 /**
@@ -424,19 +429,19 @@ export class ServerModel {
         const batch = server.planHackingBatch(params);
 
         const moneyPerBatch = batch.moneyTaken();
-        const cycleDuration = batch.totalDuration(tDelta);
+        const period = batch.totalDuration(tDelta);
 
         const numBatchesAtOnce = batch.maxBatchesAtOnce(maxTotalRam, tDelta, reserveRam);
-        const timeBetweenBatches = cycleDuration / numBatchesAtOnce;
+        const timeBetweenStarts = period / numBatchesAtOnce;
 
         const totalMoney = moneyPerBatch * numBatchesAtOnce;
-        const moneyPerSec = totalMoney / (cycleDuration / 1000);
+        const moneyPerSec = totalMoney / (period / 1000);
 
         // const totalThreads = numBatchesAtOnce * batch.avgThreads(tDelta);
         // const moneyPerSecPerThread = moneyPerSec / totalThreads;
         const peakRam = numBatchesAtOnce * batch.peakRam();
-        const totalRam = numBatchesAtOnce * batch.avgRam(tDelta);
-        const moneyPerSecPerGB = moneyPerSec / totalRam;
+        const avgRam = numBatchesAtOnce * batch.avgRam(tDelta);
+        const moneyPerSecPerGB = moneyPerSec / avgRam;
 
         const maxThreads = batch.maxThreads();
         const condition = `${batch.moneySummary()} ${batch.summary()}`;
@@ -445,11 +450,11 @@ export class ServerModel {
             condition,
             batch,
             params,
-            duration: cycleDuration,
+            period,
             numBatchesAtOnce,
-            timeBetweenBatches,
+            timeBetweenStarts,
             peakRam,
-            totalRam,
+            avgRam,
             moneyPerSec,
             moneyPerSecPerGB,
             maxThreadsPerJob: maxThreads
@@ -521,13 +526,15 @@ export class ServerModel {
 
 /**
  * BatchCycle
- * @typedef {Object} BatchCycle
- * @property {Batch} batch
+ * @typedef {Object} BatchCycle - also called a plan
+ * @property {string} condition
  * @property {Object} params
- * @property {number} duration
- * @property {number} numBatchesAtOnce
- * @property {number} minTimeBetweenBatches
- * @property {number} totalRam
+ * @property {Batch} batch
+ * @property {number} period
+ * @property {number} numBatchesAtOnce - aka "depth"
+ * @property {number} timeBetweenStarts
+ * @property {number} peakRam - ram use if all processes reserve ram
+ * @property {number} totalRam - ram use 
  * @property {number} moneyPerSec
  * @property {number} moneyPerSecPerGB
  * @property {number} maxThreadsPerJob

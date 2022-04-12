@@ -136,7 +136,7 @@ export class HackingManager {
             if (actualServer.hackDifficulty > expectedServer.hackDifficulty) {
                 ns.print(`WARNING: desync detected after batch ${batchID}. Reloading server state and adjusting parameters.`);
                 server.reload();
-                const newParams = server.mostProfitableParameters(this.params);
+                const newParams = await server.mostProfitableParams(this.params);
                 this.plans[server.hostname] = server.planBatchCycle(newParams);
                 server.reload();
             }
@@ -156,8 +156,8 @@ export class HackingManager {
         }
 
         // Update the schedule for this target, and block until the schedule is free.
-        server.nextFreeTime = batch.lastEndTime() + params.tDelta + batchCycle.timeBetweenBatches;
+        server.nextFreeTime = batch.lastEndTime() + params.tDelta + batchCycle.timeBetweenStarts;
         server.nextStartTime = batch.earliestStartTime();
-        await ns.asleep(server.nextStartTime - Date.now()); // this should be timeBetweenBatches before the following batch's earliest start
+        await ns.asleep(server.nextStartTime - Date.now()); // this should be timeBetweenStarts before the following batch's earliest start
     }
 }
