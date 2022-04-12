@@ -28,7 +28,7 @@ export class Worker {
         this.ns = ns;
         this.scriptName = ns.getScriptName();
         this.capabilities = capabilities;
-        this.description = Object.keys(this.capabilities).map((c)=>`${c.substr(0,1)}${this.id}`).join('');
+        this.description = Object.keys(this.capabilities).map((c)=>`${c.substr(0,1)}`).join('')+`${this.id}`;
         this.nextFreeTime = Date.now() + flags.tDelta;
         this.jobQueue = [];
         this.currentJob = {

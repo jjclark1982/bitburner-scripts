@@ -173,25 +173,25 @@ export class ThreadPool {
         threads = Math.ceil(threads);
 
         // Find a suitable script.
-        const {script, dependencies} = getScriptWithCapabilities(capabilities);
+        let {script, dependencies} = getScriptWithCapabilities(capabilities);
         if (!script) {
             this.logWarn(`Failed to start worker with ${threads} threads: No script capable of ${JSON.stringify(capabilities)}.`);
             return null;
         }
 
         // Find a suitable server.
-        const serverPool = new ServerPool({ns, scriptRam: script});
+        const serverPool = new ServerPool({ns, script});
         const server = serverPool.smallestServerWithThreads(threads);
         if (!server) {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
         }
-        // TODO: instead of rounding up the thread count, check if a larger worker will fit.
-        // // Round up a process size to fill an entire server.
-        // // worker.id = `${server.hostname}-${worker.id}`;
-        // if ((server.availableThreads - threads < 4) || (threads > server.availableThreads * 3 / 4)) {
-        //     threads = server.availableThreads;
-        // }
+        // Promote the worker to a larger or more capable one if the server is nearly full.
+        if (server.availableRam >= 2.0 * threads && server.availableRam < 2.5 * threads) {
+            script = getScriptWithCapabilities(['hack', 'grow', 'weaken']).script;
+            dependencies = [];
+            threads = Math.min(server.availableRam / 2.0);
+        }
 
         // Create the worker process.
         while (this.nextWorkerID in this.workers) {
