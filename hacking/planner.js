@@ -70,7 +70,7 @@ export function reportBatchLengthComparison(ns, server, params) {
     const estimates = server.sweepParameters(params);
     const estimatesByMoneyPct = {}
     for (const estimate of estimates) {
-        estimate.totalRamBytes = estimate.totalRam * 1e9;
+        estimate.totalRamBytes = estimate.peakRam * 1e9;
         estimatesByMoneyPct[estimate.params.moneyPercent] ||= [];
         estimatesByMoneyPct[estimate.params.moneyPercent].push(estimate);
     }
