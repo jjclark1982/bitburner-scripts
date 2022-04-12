@@ -87,18 +87,17 @@ export function reportBatchLengthComparison(ns, server, params) {
     return drawTable(columns, Object.values(bestEstimates));
 }
 
-export function getHackableServers(ns, hostnames) {
+export function *getHackableServers(ns, hostnames) {
     const player = ns.getPlayer();
     if (!hostnames || hostnames.length == 0) {
         hostnames = getAllHosts(ns);
     }
-    const servers = hostnames.map((host)=>{
-        const server = new ServerModel(ns, host);
-        return server;
-    }).filter((server)=>(
-        server.canBeHacked(player)
-    ));
-    return servers;
+    for (const hostname of hostnames) {
+        const server = new ServerModel(ns, hostname);
+        if (server.canBeHacked(player)) {
+            yield server;
+        }
+    }
 }
 
 export function mostProfitableServers(ns, hostnames, params) {
@@ -466,7 +465,7 @@ export class ServerModel {
      * @param {number} [params.tdelta=100] - milliseconds between actions
      * @returns {BatchCycle[]} - list of ideal cycles for each set of parameters
      */
-    sweepParameters(params) {
+    *sweepParameters(params) {
         const defaults = {
             maxThreadsPerJob: 512,
             maxTotalRam: 16384,
@@ -480,7 +479,7 @@ export class ServerModel {
                     for (const naiveSplit of [false]) {
                         const batchParams = {...params, moneyPercent, hackMargin, prepMargin, naiveSplit};
                         const batchCycle = this.planBatchCycle(batchParams);
-                        estimates.push(batchCycle);
+                        yield batchCycle;
                     }
                 }
             }
@@ -488,8 +487,23 @@ export class ServerModel {
         return estimates;
     }
 
-    mostProfitableParameters(params) {
-        const estimates = this.sweepParameters(params);
+    mostProfitableParamsSync(params) {
+        const estimates = [...this.sweepParameters(params)];
+        const bestEstimate = estimates.sort((a,b)=>(
+            b.moneyPerSec - a.moneyPerSec
+        ))[0];
+        return bestEstimate.params;
+    }
+
+    async mostProfitableParams(params) {
+        const estimates = [];
+        let i = 0;
+        for (const estimate of this.sweepParameters(params)) {
+            estimates.push(estimate);
+            if (++i % 10 == 0) {
+                await sleep(1);
+            }
+        }
         const bestEstimate = estimates.sort((a,b)=>(
             b.moneyPerSec - a.moneyPerSec
         ))[0];
@@ -700,6 +714,10 @@ function range(min, max, step) {
         i += step;
     }
     return result;
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export function getAllHosts(ns) {
