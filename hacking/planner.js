@@ -182,9 +182,6 @@ export class ServerModel {
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
-        if (typeof(stock) === 'undefined') {
-            stock = this.getStockInfo()?.netShares < 0;
-        }
 
         // Calculate duration based on last known security level
         const duration = ns.formulas.hacking.hackTime(
@@ -234,9 +231,6 @@ export class ServerModel {
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
-        if (typeof(stock) === 'undefined') {
-            stock = this.getStockInfo()?.netShares >= 0;
-        }
 
         // Calculate duration based on last known security level
         const duration = ns.formulas.hacking.growTime(
@@ -346,6 +340,7 @@ export class ServerModel {
             maxThreadsPerJob: 512,
             prepMargin: 0.5,
             naiveSplit: false,
+            growStock: this.getStockInfo()?.netShares >= 0,
             cores: 1
         };
         params = Object.assign({}, defaults, params);
@@ -386,6 +381,8 @@ export class ServerModel {
             moneyPercent: 0.05,
             maxThreadsPerJob: 512,
             hackMargin: 0.25,
+            hackStock: this.getStockInfo()?.netShares < 0,
+            growStock: this.getStockInfo()?.netShares >= 0,
             cores: 1
         };
         params = Object.assign({}, defaults, params);
@@ -533,20 +530,25 @@ export class ServerModel {
 
     getStockInfo(portNum=5) {
         const {ns} = this;
-        const server = this;
-        if (!server.organizationName) {
-            return null;
+        if ("stockInfo" in this) {
+            return this.stockInfo;
         }
-        const port = ns.getPortHandle(portNum);
-        if (port.empty()) {
-            return null;
+        let stockInfo = null;
+        if (this.organizationName) {
+            const port = ns.getPortHandle(portNum);
+            if (!port.empty()) {
+                const stockService = port.peek();
+                if (typeof(stockService.getStockInfo) == 'function') {
+                    stockInfo = stockService.getStockInfo(this.organizationName);
+                }
+            }
         }
-        const stockService = port.peek();
-        if (!typeof(stockService.getStockInfo) == 'function') {
-            return null;
-        }
-        const stockInfo = stockService.getStockInfo(server.organizationName);
-        return stockInfo;
+        this.stockInfo = stockInfo;
+        // cache this info for 1 ms
+        setTimeout(()=>{
+            delete this.stockInfo;
+        }, 1);
+        return this.stockInfo;
     }
 }
 
