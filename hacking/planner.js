@@ -198,13 +198,12 @@ export class ServerModel {
             const numJobs = Math.ceil(threads / maxThreads);
             threads = Math.ceil(threads / numJobs);
         }
-        const effectivePct = threads * hackPercentPerThread;
 
         // Calculate result
-        const prevMoney = this.moneyAvailable;
-        const moneyMult = 1 - effectivePct;
-        this.moneyAvailable = Math.max(0, this.moneyAvailable * moneyMult);
-        const moneyChange = this.moneyAvailable - prevMoney;
+        const effectivePercent = Math.min(1, threads * hackPercentPerThread);
+        const moneyMult = 1 - effectivePercent;
+        const moneyChange = this.moneyAvailable * -effectivePercent;
+        this.moneyAvailable = this.moneyAvailable * moneyMult;
 
         const securityChange = ns.hackAnalyzeSecurity(threads);
         this.hackDifficulty += securityChange;
