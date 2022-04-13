@@ -130,8 +130,9 @@ export class HackingManager {
 
         // Schedule the batch
         if (!server.nextFreeTime) {
+            // TODO: keep track of server "safe" time versus "active" time
             batch.setStartTime(now);
-            server.nextFreeTime = batch.lastEndTime();
+            server.nextFreeTime = batch.firstEndTime();
         }
         batch.setFirstEndTime(server.nextFreeTime);
         if (batch.earliestStartTime() < now) {
