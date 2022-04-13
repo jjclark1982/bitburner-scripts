@@ -66,7 +66,8 @@ export async function main(ns) {
         const availableRam = pool.totalRam - pool.totalUsedRam;
         // reserve at most 1 TB of ram for other purposes
         flags.maxTotalRam ||= Math.max(availableRam*0.9, availableRam-1024);
-        flags.maxThreadsPerJob = Math.floor(serverPool.medianThreadSize() / 2);
+        // flags.maxThreadsPerJob ||= Math.floor(backend.medianThreadSize());
+        flags.maxThreadsPerJob ||= Math.floor(pool.largestThreadsAvailable() / 4);
     }
 
     const manager = new HackingManager(ns, backend, targets, flags)
@@ -86,12 +87,18 @@ export class HackingManager {
             this.targets.push(plan.server);
             this.plans[plan.server.hostname] = plan;
         }
+        ns.atExit(this.tearDown.bind(this));
+    }
+
+    tearDown() {
+        this.running = false;
     }
 
     async work() {
         const {ns, targets} = this;
 
-        while (true) {
+        this.running = true;
+        while (this.running) {
             const target = this.targets[0];
             eval("window").target = target;
             await this.hackOneTargetOneTime(target);
@@ -119,7 +126,7 @@ export class HackingManager {
         const isPrepBatch = !server.isPrepared();
 
         // Plan a batch based on target state and parameters
-        const batch = isPrepBatch ? server.planPrepBatch() : server.planHackingBatch(params);
+        const batch = isPrepBatch ? server.planPrepBatch(params) : server.planHackingBatch(params);
 
         // Schedule the batch
         if (!server.nextFreeTime) {
@@ -132,7 +139,8 @@ export class HackingManager {
         }
 
         // Add an `onFinish` callback to check on batch results and adjust params
-        batch[batch.length-1].onFinish = function(job){
+        batch[batch.length-1].onFinish = (job)=>{
+            if (!this.running) {return;}
             const expectedServer = job.result;
             const actualServer = job.result.copy().reload();
             if (actualServer.hackDifficulty > expectedServer.hackDifficulty) {
