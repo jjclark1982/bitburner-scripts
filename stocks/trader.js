@@ -1,10 +1,21 @@
+import { StockSymbols } from '/stocks/companies';
+
 export async function main(ns) {
-    ns.disableLog("sleep");
+    ns.disableLog("asleep");
     ns.disableLog("stock.buy");
     ns.disableLog("stock.sell");
+
+    const stockService = {
+        getStockInfo: (symbol)=>getStockInfo(ns, symbol)
+    };
+    const port = ns.getPortHandle(5);
+    port.clear();
+    port.write(stockService);
+    ns.atExit(()=>port.clear());
+
     while (true) {
         tendStocks(ns);
-        await ns.sleep(1*60*1000);
+        await ns.asleep(1*60*1000);
     }
 }
 
@@ -28,36 +39,48 @@ function tendStocks(ns) {
     ns.print(`Net worth: ${ns.nFormat(totalValue, "$0.000a")} = ${ns.nFormat(portfolioValue, "$0.0a")} stocks + ${ns.nFormat(cashValue, "$0.0a")} cash`);
 }
 
+export function getStockInfo(ns, symbol) {
+    getStockInfo.allSymbols ||= ns.stock.getSymbols();
+    if (symbol in StockSymbols) {
+        // look up organization name
+        symbol = StockSymbols[symbol];
+    }
+    if (!getStockInfo.allSymbols.includes(symbol)) {
+        return null;
+    }
+    const pos = ns.stock.getPosition(symbol);
+    const stock = {
+        symbol: symbol,
+        forecast: ns.stock.getForecast(symbol),
+        volatility: ns.stock.getVolatility(symbol),
+        askPrice: ns.stock.getAskPrice(symbol),
+        bidPrice: ns.stock.getBidPrice(symbol),
+        maxShares: ns.stock.getMaxShares(symbol),
+        shares: pos[0],
+        sharesAvgPrice: pos[1],
+        sharesShort: pos[2],
+        sharesAvgPriceShort: pos[3],
+    };
+    stock.netShares = stock.shares - stock.sharesShort;
+    stock.netValue = stock.bidPrice * stock.shares - stock.askPrice * stock.sharesShort;
+    stock.summary = `${stock.symbol}: ${stock.forecast.toFixed(3)} ± ${stock.volatility.toFixed(3)}`;
+    return stock;
+}
+
 export function getAllStocks(ns) {
     // make a lookup table of all stocks and all their properties
     const stockSymbols = ns.stock.getSymbols();
     const stocks = {};
     for (const symbol of stockSymbols) {
-        const forecast = ns.stock.getForecast(symbol);
-        const volatility = ns.stock.getVolatility(symbol);
-        const pos = ns.stock.getPosition(symbol);
-        const stock = {
-            symbol: symbol,
-            forecast: ns.stock.getForecast(symbol),
-            volatility: ns.stock.getVolatility(symbol),
-            askPrice: ns.stock.getAskPrice(symbol),
-            bidPrice: ns.stock.getBidPrice(symbol),
-            maxShares: ns.stock.getMaxShares(symbol),
-            shares: pos[0],
-            sharesAvgPrice: pos[1],
-            sharesShort: pos[2],
-            sharesAvgPriceShort: pos[3]
-        };
-        stock.summary = `${stock.symbol}: ${stock.forecast.toFixed(3)} ± ${stock.volatility.toFixed(3)}`;
-        stocks[symbol] = stock;
+        stocks[symbol] = getStockInfo(ns, symbol);
     }
-    return stocks;    
+    return stocks;
 }
 
 function getPortfolioValue(stocks) {
     let value = 0;
     for (const stock of Object.values(stocks)) {
-        value += stock.bidPrice * stock.shares - stock.askPrice * stock.sharesShort;
+        value += stock.netValue;
     }
     return value;
 }

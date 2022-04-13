@@ -1,5 +1,3 @@
-import {StockSymbols} from "stocks/companies.js"
-
 const FLAGS = [
     ['refreshrate', 200],
     ['help', false],
@@ -28,9 +26,6 @@ export async function main(ns) {
         ns.clearLog();
 
         const server = ns.getServer(host);
-        if (server.organizationName) {
-            server.stockSymbol = StockSymbols[server.organizationName];
-        }
 
         const money = server.moneyAvailable;
         const maxMoney = server.moneyMax;
@@ -41,17 +36,13 @@ export async function main(ns) {
     
         ns.print(`${host}:`);
         if (server.organizationName) {
-            let ticker = StockSymbols[server.organizationName];
-            if (ticker) {
-                ticker = ` (${ticker})`;
-            }
-            else {
-                ticker = '';
-            }
-            ns.print(` Organization: ${server.organizationName}${ticker}`);
-            server.stockSymbol = StockSymbols[server.organizationName];
+            ns.print(` Organization: ${server.organizationName}`);
         }
-        ns.print(` Required Hacking Skill: ${server.requiredHackingSkill} ${ns.getPlayer().hacking >= server.requiredHackingSkill ? '✓' : '✗'}`);
+        const stockInfo = getStockInfo(ns, server);
+        if (stockInfo) {
+            ns.print(` ${stockInfo.symbol} stock: ${ns.nFormat(stockInfo.netShares || 0, "0.[0]a")} shares held (${ns.nFormat(stockInfo.netValue || 0, "$0.[0]a")})`);
+        }
+        ns.print(`\n Required Hacking Skill: ${server.requiredHackingSkill} ${ns.getPlayer().hacking >= server.requiredHackingSkill ? '✓' : '✗'}`);
         ns.print(` Ports Open: ${server.openPortCount} / ${server.numOpenPortsRequired} ${server.hasAdminRights ? '(admin ✓)' : ''} ${server.backdoorInstalled ? '(backdoor ✓)' : ''}`);
         ns.print(` RAM: ${ns.nFormat(server.ramUsed * 1e9, "0.[0] b")} / ${ns.nFormat(server.maxRam * 1e9, "0.[0] b")}\n`)
         // ns.print(` Admin Access: ${server.hasAdminRights ? '✓' : '✗'}, Backdoor: ${server.backdoorInstalled ? '✓' : '✗'}`);
@@ -66,4 +57,17 @@ export async function main(ns) {
         
         await ns.sleep(flags.refreshrate);
     }
+}
+
+function getStockInfo(ns, server={}, portNum=5) {
+    if (!server.organizationName) {
+        return null;
+    }
+    const port = ns.getPortHandle(portNum);
+    if (port.empty()) {
+        return null;
+    }
+    const stockService = port.peek();
+    const stockInfo = stockService.getStockInfo(server.organizationName);
+    return stockInfo;
 }
