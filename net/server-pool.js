@@ -160,7 +160,7 @@ export class ServerPool {
                 this.logInfo(`Running on ${server.hostname} with PID ${result.pid}: ${result.threads}x ${script} ${(args||[]).join(' ')}`);
             }
             else {
-                this.logWarn(`Not enough available RAM on ${server.hostname} to run ${script}`);
+                this.logWarn(`Failed to deploy ${threads}x ${script} on ${server.hostname} (${this.ns.nFormat(this.ns.getScriptRam(script, 'home')*threads*1e9, "0.0 b")} / ${this.ns.nFormat(server.availableRam * 1e9, "0 b")} RAM)`);
             }
             return result;
         }
