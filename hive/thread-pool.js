@@ -156,7 +156,7 @@ export class ThreadPool {
             worker.process.threads < threads*2 &&
             capabilities.every((task)=>task in worker.capabilities)
         )).sort((a,b)=>(
-            a.threads - b.threads
+            a.process?.threads - b.process?.threads
         ));
         const worker = matchingWorkers[0];
         if (worker) {
@@ -206,6 +206,7 @@ export class ThreadPool {
         const {pid} = await serverPool.deploy({server, script, threads, args, dependencies});
         if (!pid) {
             this.logWarn(`Failed to start worker ${workerID}.`);
+            delete this.workers[workerID];
             return null;
         }
         this.workers[workerID].process = {pid, threads};
@@ -238,6 +239,7 @@ export class ThreadPool {
     }
 
     findWorkerProcess(worker) {
+        // Locate the process for a script that wasn't launched by this pool (such as after reload from save)
         const {ns} = this;
         const scriptName = worker.ns.getScriptName();
         const args = worker.ns.args;
