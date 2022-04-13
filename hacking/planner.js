@@ -182,6 +182,9 @@ export class ServerModel {
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
+        if (typeof(stock) === 'undefined') {
+            stock = this.getStockInfo()?.netShares < 0;
+        }
 
         // Calculate duration based on last known security level
         const duration = ns.formulas.hacking.hackTime(
@@ -231,6 +234,9 @@ export class ServerModel {
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
+        if (typeof(stock) === 'undefined') {
+            stock = this.getStockInfo()?.netShares >= 0;
+        }
 
         // Calculate duration based on last known security level
         const duration = ns.formulas.hacking.growTime(
@@ -331,6 +337,7 @@ export class ServerModel {
      * @param {number} [params.maxThreadsPerJob=512]
      * @param {number} [params.prepMargin=0.5] - amount of security above minimum to allow between jobs
      * @param {boolean} [params.naiveSplit=false] - whether to place all jobs of the same type together
+     * @param {boolean} [params.growStock] - whether to manipulate stock performance for 'grow' actions
      * @param {number} [params.cores=1]
      * @retruns {Batch}
      */
@@ -342,7 +349,7 @@ export class ServerModel {
             cores: 1
         };
         params = Object.assign({}, defaults, params);
-        const {maxThreadsPerJob, prepMargin, naiveSplit, cores} = params;
+        const {maxThreadsPerJob, prepMargin, naiveSplit, growStock, cores} = params;
 
         const batch = new Batch();
         while (naiveSplit && this.hackDifficulty > this.minDifficulty + prepMargin) {
@@ -352,7 +359,7 @@ export class ServerModel {
             while (!naiveSplit && this.hackDifficulty > this.minDifficulty + prepMargin) {
                 batch.push(this.planWeaken(maxThreadsPerJob, cores));
             }
-            batch.push(this.planGrow(maxThreadsPerJob, cores));
+            batch.push(this.planGrow(maxThreadsPerJob, cores, growStock));
         }
         while (this.hackDifficulty > this.minDifficulty) {
             batch.push(this.planWeaken(maxThreadsPerJob, cores));
@@ -369,6 +376,8 @@ export class ServerModel {
      * @param {number} [params.maxThreadsPerJob=512]
      * @param {number} [params.prepMargin=0.5] - amount of security above minimum to allow between jobs
      * @param {boolean} [params.naiveSplit=false] - whether to place all jobs of the same type together
+     * @param {boolean} [params.hackStock] - whether to manipulate stock performance for 'hack' actions
+     * @param {boolean} [params.growStock] - whether to manipulate stock performance for 'grow' actions
      * @param {number} [params.cores=1]
      * @retruns {Batch}
      */
@@ -380,13 +389,13 @@ export class ServerModel {
             cores: 1
         };
         params = Object.assign({}, defaults, params);
-        const {moneyPercent, maxThreadsPerJob, hackMargin, cores} = params;
+        const {moneyPercent, maxThreadsPerJob, hackMargin, hackStock, growStock, cores} = params;
 
         const batch = new Batch();
-        batch.push(this.planHack(moneyPercent, maxThreadsPerJob))
+        batch.push(this.planHack(moneyPercent, maxThreadsPerJob, hackStock))
         while (this.hackDifficulty < this.minDifficulty + hackMargin) {
-            batch.push(this.planGrow(maxThreadsPerJob, cores));
-            batch.push(this.planHack(moneyPercent, maxThreadsPerJob));
+            batch.push(this.planGrow(maxThreadsPerJob, cores, growStock));
+            batch.push(this.planHack(moneyPercent, maxThreadsPerJob, hackStock));
         }
         batch.push(...this.planPrepBatch(params));
         return batch;
@@ -520,6 +529,24 @@ export class ServerModel {
             b.moneyPerSec - a.moneyPerSec
         ))[0];
         return bestEstimate.params;
+    }
+
+    getStockInfo(portNum=5) {
+        const {ns} = this;
+        const server = this;
+        if (!server.organizationName) {
+            return null;
+        }
+        const port = ns.getPortHandle(portNum);
+        if (port.empty()) {
+            return null;
+        }
+        const stockService = port.peek();
+        if (!typeof(stockService.getStockInfo) == 'function') {
+            return null;
+        }
+        const stockInfo = stockService.getStockInfo(server.organizationName);
+        return stockInfo;
     }
 }
 
