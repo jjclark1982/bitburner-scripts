@@ -25,8 +25,9 @@ export async function main(ns) {
 
     if (!(flags.maxTotalRam && flags.maxThreadsPerJob)) {
         const backend = serverPool(ns, 1.75);
-        flags.maxTotalRam ||= (backend.totalRam - backend.totalUsedRam) * .9;
-        flags.maxThreadsPerJob ||= Math.floor(backend.largestThreadsAvailable() / 2);
+        flags.maxTotalRam ||= (backend.totalThreadsAvailable * backend.scriptRam * 0.9);
+        // flags.maxThreadsPerJob ||= Math.floor(backend.medianThreadSize());
+        flags.maxThreadsPerJob ||= Math.floor(backend.largestThreadsAvailable() / 4);
     }
 
     ns.print(reportMostProfitableServers(ns, flags));
@@ -145,6 +146,13 @@ export class ServerModel {
         )
     }
 
+    isPrepared(secMargin=0.75, moneyMargin=0.125) {
+        return (
+            this.hackDifficulty < this.minDifficulty + secMargin &&
+            this.moneyAvailable > this.moneyMax * (1 - moneyMargin)
+        )
+    }
+
     reload() {
         Object.assign(this, this.ns.getServer(this.hostname));
         this.prepDifficulty = this.hackDifficulty;
@@ -174,7 +182,7 @@ export class ServerModel {
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
-    
+
         // Calculate duration based on last known security level
         const duration = ns.formulas.hacking.hackTime(
             {...server, hackDifficulty: this.prepDifficulty},
@@ -183,7 +191,7 @@ export class ServerModel {
 
         // Calculate threads
         moneyPercent = Math.max(0, Math.min(1.0, moneyPercent));
-        const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player);
+        const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player) || 0.00001;
         let threads = Math.ceil(moneyPercent / hackPercentPerThread);
         if (threads > maxThreads) {
             // Split threads evenly among jobs

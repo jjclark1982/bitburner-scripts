@@ -61,11 +61,12 @@ export async function main(ns) {
 
     const targets = flags._;
     delete flags._;
-    if (!flags.maxTotalRam) {
-        const pool = serverPool(ns);
+    if (!(flags.maxTotalRam && flags.maxThreadsPerJob)) {
+        const pool = serverPool(ns, 1.75);
         const availableRam = pool.totalRam - pool.totalUsedRam;
         // reserve at most 1 TB of ram for other purposes
-        flags.maxTotalRam = Math.max(availableRam*0.9, availableRam-1024);
+        flags.maxTotalRam ||= Math.max(availableRam*0.9, availableRam-1024);
+        flags.maxThreadsPerJob = Math.floor(serverPool.medianThreadSize() / 2);
     }
 
     const manager = new HackingManager(ns, backend, targets, flags)
@@ -115,9 +116,10 @@ export class HackingManager {
         //    (this is best if RAM is maxed out during that batch, which is reasonable)
         //    server.nextStartTime = prepBatch.lastEndTime() + tDelta
 
+        const isPrepBatch = !server.isPrepared();
 
         // Plan a batch based on target state and parameters
-        const batch = server.planHackingBatch(params);
+        const batch = isPrepBatch ? server.planPrepBatch() : server.planHackingBatch(params);
 
         // Schedule the batch
         if (!server.nextFreeTime) {
@@ -136,7 +138,7 @@ export class HackingManager {
             if (actualServer.hackDifficulty > expectedServer.hackDifficulty) {
                 ns.print(`WARNING: desync detected after batch ${batchID}. Reloading server state and adjusting parameters.`);
                 server.reload();
-                const newParams = await server.mostProfitableParams(this.params);
+                const newParams = server.mostProfitableParamsSync(this.params);
                 this.plans[server.hostname] = server.planBatchCycle(newParams);
                 server.reload();
             }
@@ -156,8 +158,13 @@ export class HackingManager {
         }
 
         // Update the schedule for this target, and block until the schedule is free.
-        server.nextFreeTime = batch.lastEndTime() + params.tDelta + batchCycle.timeBetweenStarts;
-        server.nextStartTime = batch.earliestStartTime();
+        if (isPrepBatch) {
+            server.nextStartTime = batch.lastEndTime() + params.tDelta;
+        }
+        else {
+            server.nextFreeTime = batch.lastEndTime() + params.tDelta + batchCycle.timeBetweenStarts;
+            server.nextStartTime = batch.earliestStartTime() - params.tDelta + batchCycle.timeBetweenStarts;
+        }
         await ns.asleep(server.nextStartTime - Date.now()); // this should be timeBetweenStarts before the following batch's earliest start
     }
 }
