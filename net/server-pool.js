@@ -137,6 +137,11 @@ export class ServerPool {
         return this.largestServer?.availableThreads || 0;
     }
 
+    medianThreadSize() {
+        const server = this.smallestServers[Math.floor(this.smallestServers.length*7/8)];
+        return Math.floor(server.maxRam / this.scriptRam);
+    }
+
     async deploy({server, host, script, threads, args, dependencies, allowSplit, requireAll}) {
         if (!server && host) {
             server = this.getServer(host);
