@@ -28,7 +28,7 @@ export class Worker {
         this.ns = ns;
         this.scriptName = ns.getScriptName();
         this.capabilities = capabilities;
-        this.description = Object.keys(this.capabilities).map((c)=>`${c.substr(0,1)}`).join('')+`${this.id}`;
+        this.description = `${this.shortCaps()}${this.id || '???'}`
         this.nextFreeTime = Date.now() + flags.tDelta;
         this.jobQueue = [];
         this.currentJob = {
@@ -65,8 +65,16 @@ export class Worker {
     tearDown() {
         // When this worker exits for any reason, remove it from the pool database.
         if (this.pool) {
-            delete this.pool.workers[this.id];
+            this.pool.removeWorker(this.id);
         }
+    }
+
+    shortCaps() {
+        if (Object.keys(this.capabilities).length == 1) {
+            const cap = Object.keys(this.capabilities)[0];
+            return `${cap.substr(0,1)}`;
+        }
+        return '*';
     }
 
     addJob(job) {

@@ -180,7 +180,7 @@ export class ThreadPool {
         }
 
         // Find a suitable server.
-        const serverPool = new ServerPool({ns, script});
+        const serverPool = new ServerPool({ns, scriptRam: script});
         const server = serverPool.smallestServerWithThreads(threads);
         if (!server) {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
@@ -190,7 +190,7 @@ export class ThreadPool {
         if (server.availableRam >= 2.0 * threads && server.availableRam < 2.5 * threads) {
             script = getScriptWithCapabilities(['hack', 'grow', 'weaken']).script;
             dependencies = [];
-            threads = Math.min(server.availableRam / 2.0);
+            threads = Math.floor(server.availableRam / 2.0);
         }
 
         // Create the worker process.
@@ -253,6 +253,22 @@ export class ThreadPool {
         return null;
     }
 
+    removeWorker(workerID) {
+        const worker = this.workers[workerID];
+        delete this.workers[workerID];
+        worker.process = this.ns.getRunningScript(worker.process.pid);
+        this.process.offlineExpGained += worker.process.offlineExpGained;
+        this.process.offlineMoneyMade += worker.process.offlineMoneyMade;
+        this.process.onlineExpGained += worker.process.onlineExpGained;
+        this.process.onlineMoneyMade += worker.process.onlineMoneyMade;
+    }
+
+    getOnlineMoneyMade() {
+        return Object.values(this.workers).reduce((total, worker)=>(
+            total + (worker.process?.onlineMoneyMade || 0)
+        ), this.process.onlineMoneyMade);
+    }
+
     logWarn(...args) {
         this.ns.tprint(...args);
     }
@@ -279,7 +295,10 @@ export class ThreadPool {
             {header: "Remaining", field: "remainingTime", format: drawTable.time, formatArgs: [2]},
             {header: "Drift  ", field: "drift" }
         ];
-        columns.title = `Thread Pool (Port ${this.portNum})`;
+        let moneyMade = this.getOnlineMoneyMade();
+        const moneyPerSec = ns.nFormat((moneyMade / (this.process.onlineRunningTime / 1000)) || 0, "$0.0 a")
+        moneyMade = ns.nFormat(moneyMade, "$0.0 a");
+        columns.title = `Thread Pool (Port ${this.portNum}) Money made: ${moneyMade} (${moneyPerSec} / sec)`;
         const rows = Object.values(this.workers).map((worker)=>workerReport(worker, now));
         return drawTable(columns, rows);
     }
@@ -297,7 +316,7 @@ function getScriptWithCapabilities(caps) {
 function workerReport(worker, now) {
     now ||= Date.now();
     return {
-        description: worker.description,
+        description: worker.description || worker.id,
         threads: [worker.currentJob?.threads, worker.process?.threads],
         task: worker.currentJob?.task,
         queue: (new Batch(...(worker.jobQueue || []))).summary(),
