@@ -84,7 +84,8 @@ export class ThreadPool {
     }
 
     tearDown() {
-        // When the pool process exits, signal all the workers to stop.
+        // When the pool process exits, signal all the workers and clients to stop.
+        this.running = false;
         for (const worker of Object.values(this.workers)) {
             worker.running = false;
         }
@@ -256,16 +257,18 @@ export class ThreadPool {
     removeWorker(workerID) {
         const worker = this.workers[workerID];
         delete this.workers[workerID];
-        worker.process = this.ns.getRunningScript(worker.process.pid);
-        this.process.offlineExpGained += worker.process.offlineExpGained;
-        this.process.offlineMoneyMade += worker.process.offlineMoneyMade;
-        this.process.onlineExpGained += worker.process.onlineExpGained;
-        this.process.onlineMoneyMade += worker.process.onlineMoneyMade;
+        if (!this.port.empty()) {
+            worker.process = this.ns.getRunningScript(worker.process.pid);
+            this.process.offlineExpGained += worker.process.offlineExpGained;
+            this.process.offlineMoneyMade += worker.process.offlineMoneyMade;
+            this.process.onlineExpGained += worker.process.onlineExpGained;
+            this.process.onlineMoneyMade += worker.process.onlineMoneyMade;
+        }
     }
 
     getOnlineMoneyMade() {
         return Object.values(this.workers).reduce((total, worker)=>(
-            total + (worker.process?.onlineMoneyMade || 0)
+            total + (this.ns.getRunningScript(worker.process.pid).onlineMoneyMade || 0)
         ), this.process.onlineMoneyMade);
     }
 
@@ -293,10 +296,10 @@ export class ThreadPool {
             {header: "Queue", field: "queue", align: "left", truncate: true},
             {header: "Elapsed ", field: "elapsedTime", format: drawTable.time},
             {header: "Remaining", field: "remainingTime", format: drawTable.time, formatArgs: [2]},
-            {header: "Drift  ", field: "drift" }
+            {header: "Drift   ", field: "drift" }
         ];
         let moneyMade = this.getOnlineMoneyMade();
-        const moneyPerSec = ns.nFormat((moneyMade / (this.process.onlineRunningTime / 1000)) || 0, "$0.0 a")
+        const moneyPerSec = ns.nFormat((moneyMade / (ns.getRunningScript().onlineRunningTime / 1000)) || 0, "$0.0 a")
         moneyMade = ns.nFormat(moneyMade, "$0.0 a");
         columns.title = `Thread Pool (Port ${this.portNum}) Money made: ${moneyMade} (${moneyPerSec} / sec)`;
         const rows = Object.values(this.workers).map((worker)=>workerReport(worker, now));

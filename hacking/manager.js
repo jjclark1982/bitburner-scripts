@@ -8,7 +8,7 @@ const FLAGS = [
     ["port", 1],
     ["tDelta", 100],
     ["maxTotalRam", 0],        // optional (will be read from backend)
-    ["maxThreadsPerJob", 128], // TODO: read this from backend
+    ["maxThreadsPerJob", 0],   // optional (will be read from backend)
     ["moneyPercent", 0.05],    // (will be overwritten by optimizer)
     ["hackMargin", 0.25],      // (will be overwritten by optimizer)
     ["prepMargin", 0.5],       // (will be overwritten by optimizer)
@@ -67,7 +67,7 @@ export async function main(ns) {
         // reserve at most 1 TB of ram for other purposes
         flags.maxTotalRam ||= Math.max(availableRam*0.9, availableRam-1024);
         // flags.maxThreadsPerJob ||= Math.floor(backend.medianThreadSize());
-        flags.maxThreadsPerJob ||= Math.floor(pool.largestThreadsAvailable() / 4);
+        flags.maxThreadsPerJob ||= Math.max(16, Math.floor(pool.largestThreadsAvailable() / 8));
     }
 
     const manager = new HackingManager(ns, backend, targets, flags)
@@ -98,7 +98,7 @@ export class HackingManager {
         const {ns, targets} = this;
 
         this.running = true;
-        while (this.running) {
+        while (this.running && this.backend.running) {
             const target = this.targets[0];
             eval("window").target = target;
             await this.hackOneTargetOneTime(target);
