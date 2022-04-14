@@ -50,8 +50,7 @@ export async function main(ns) {
 
 class ServerService {
     constructor(ns) {
-        this.ns = ns;
-        this.knownHosts = {};
+        this.__proto__.ns = ns;
     }
 
     loadServer(hostname) {
@@ -66,19 +65,33 @@ class ServerService {
         return allServers;
     }
 
+    getScriptableServers() {
+        return Object.values(this.getAllServers()).filter((server)=>(
+            server.canRunScripts()
+        ));
+    }
+
+    getHackableServers(player) {
+        return Object.values(this.getAllServers()).filter((server)=>(
+            server.canBeHacked(player)
+        ));
+    }
+
     getAllHosts() {
         const {ns} = this;
+        this.getAllHosts.cache ||= {};
+        const scanned = this.getAllHosts.cache;
         const toScan = ['home'];
         while (toScan.length > 0) {
             const hostname = toScan.shift();
-            this.knownHosts[hostname] = true;
+            scanned[hostname] = true;
             for (const nextHost of ns.scan(hostname)) {
-                if (!(nextHost in this.knownHosts)) {
+                if (!(nextHost in scanned)) {
                     toScan.push(nextHost);
                 }
             }
         }
-        const allHosts = Object.keys(this.knownHosts);
+        const allHosts = Object.keys(scanned);
         return allHosts;
     }
 }

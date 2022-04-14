@@ -7,6 +7,8 @@ Defines these data structures:
 ServerService
 - loadServer(hostname) -> Server
 - getAllServers() -> Map[hostname: Server]
+- getScriptableServers() -> Array[Server]
+- getHackableServers(player) -> Array[Server]
 
 Server
 - canRunScripts()
@@ -42,4 +44,14 @@ if (server.canBeHacked(ns.getPlayer())) {
         await ns.hack(server.hostname, {stock: this.getStockInfo()?.netShares < 0})
     }
 }
+```
+
+The service is also available in the browser console:
+```javascript
+> serverService.getAllServers().length
+72
+> serverService.getScriptableServers().length
+46
+> serverService.getHackableServers({hacking:166}).length
+13
 ```
