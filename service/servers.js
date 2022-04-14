@@ -34,11 +34,13 @@ export async function main(ns) {
     }
 
     const serverService = new ServerService(ns);
+    eval('window').serverService = serverService;
     const portHandle = ns.getPortHandle(flags.port);
     portHandle.clear();
     portHandle.write(serverService);
     ns.atExit(()=>{
         portHandle.clear();
+        delete eval('window').serverService;
     });
     ns.print(`Started Server Service on port ${flags.port}`);
     while (true) {
@@ -65,6 +67,7 @@ class ServerService {
     }
 
     getAllHosts() {
+        const {ns} = this;
         const toScan = ['home'];
         while (toScan.length > 0) {
             const hostname = toScan.shift();
@@ -82,7 +85,7 @@ class ServerService {
 
 class Server {
     constructor(ns, data) {
-        this.ns = ns;
+        this.__proto__.ns = ns;
         if (typeof(data) === 'string') {
             this.hostname = data;
             data = undefined;
@@ -97,7 +100,7 @@ class Server {
     }
 
     copy() {
-        return new Server(ns, this);
+        return new Server(this.ns, this);
     }
 
     canRunScripts() {
