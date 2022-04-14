@@ -34,22 +34,24 @@ function getServerService(ns, portNum=7) {
 const serverService = getServerService(ns);
 const server = serverService.loadServer("foodnstuff");
 if (server.canBeHacked(ns.getPlayer())) {
-    if (server.hackDifficulty > server.minDifficulty) {
-        await ns.weaken(server.hostname);
-    }
-    else if (server.moneyAvailable < server.moneyMax) {
-        await ns.grow(server.hostname, {stock: server.getStockInfo()?.netShares >= 0});
-    }
-    else {
-        await ns.hack(server.hostname, {stock: this.getStockInfo()?.netShares < 0})
+    while (true) {
+        server.reload();
+        if (server.hackDifficulty > server.minDifficulty) {
+            await ns.weaken(server.hostname);
+        }
+        else if (server.moneyAvailable < server.moneyMax) {
+            await ns.grow(server.hostname);
+        }
+        else {
+            await ns.hack(server.hostname)
+        }
     }
 }
-server.reload();
 ```
 
 The service is also available in the browser console:
 ```javascript
-> serverService.getAllServers().length
+> serverService.getAllHosts().size
 72
 > serverService.getScriptableServers().length
 46
