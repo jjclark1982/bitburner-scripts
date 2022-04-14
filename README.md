@@ -46,7 +46,7 @@ Would like to move most of these into `net/` or `hacking/`.
 - server / memory management -> move to `/net/` (maybe rename to `/cloud/`)  
     - [x] `/hive/server-pool.js` -> move to `/net/server-pool.js`  
     - [x] `/net/lib.js` -> merge into `server-pool`  
-    - [ ] `/batch/pool.js` -> merge into `server-pool`, rename the rest to `scheduler`  
+    - [x] `/batch/pool.js` -> merge into `/service/compute.js`
     - [x] `/net/crack-servers.js` -> `/net/register-servers.js`  
     - [x] `/net/buy-server.js` -> split out 'retire' function  
     - [x] `/net/retire-server.js` -> rename to `delete-server`

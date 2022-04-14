@@ -24,7 +24,13 @@ export async function main(ns) {
 }
 
 export class ComputeService extends ServerService {
-    async deploy({server, script, threads, args, dependencies, allowSplit, requireAll}) {
+    ServerClass = ScriptableServer;
+
+    async deploy(job) {
+        let {server, script, threads=1, args, dependencies, allowSplit, requireAll} = job;
+        if (!this.running) {
+            return;
+        }
         const {ns} = this;
         const scriptRam = ns.getScriptRam(script, 'home');
 
@@ -33,16 +39,16 @@ export class ComputeService extends ServerService {
         }
         if (!server) {
             if (threads == 'max') {
-                server = this.getServersWithMostThreads(scriptRam)[0];
+                server = this.getBiggestServers(scriptRam)[0];
             }
             else {
                 server = this.getSmallestServersWithThreads(scriptRam, threads)[0];
             }
         }
         if (server) {
-            let result = await server.deploy({script, threads, args, dependencies});
-            if (result.pid) {
-                ns.tprint(`Running on ${server.hostname} with PID ${result.pid}: ${result.threads}x ${script} ${(args||[]).join(' ')}`);
+            let result = await server.deploy(job);
+            if (result.process?.pid) {
+                ns.tprint(`Running on ${server.hostname} with PID ${result.process.pid}: ${result.process.threads}x ${script} ${(args||[]).join(' ')}`);
             }
             else {
                 ns.tprint(`ERROR: Failed to deploy ${threads}x ${script} on ${server.hostname} (${this.ns.nFormat(scriptRam*threads*1e9, "0.0 b")} / ${this.ns.nFormat(server.availableRam() * 1e9, "0 b")} RAM)`);
@@ -58,7 +64,14 @@ export class ComputeService extends ServerService {
         }
     }
 
-    splitJob({script, threads, args, requireAll}) {
+    deployLater(job) {
+        const now = Date.now();
+        job.startTime ||= now;
+        setTimeout(this.deploy.bind(this, job), job.startTime - now);
+        return job;
+    }
+
+    splitJob({script, threads, args, startTime, requireAll}) {
         const {ns} = this;
         const scriptRam = ns.getScriptRam(script, 'home');
         const maxThreads = this.totalThreadsAvailable(scriptRam);
@@ -73,14 +86,14 @@ export class ComputeService extends ServerService {
         while (threadsNeeded > 0) {
             let server = this.getSmallestServersWithThreads(scriptRam, threadsNeeded, usedServers)[0];
             if (!server) {
-                server = this.getServersWithMostThreads(scriptRam, usedServers)[0];
+                server = this.getBiggestServers(scriptRam, usedServers)[0];
             }
             if (!server) {
                 break;
             }
             usedServers[server.hostname] = true;
             const threadsToUse = Math.min(threadsNeeded, server.availableThreads(scriptRam));
-            const job = {script, args, threads:threadsToUse, server};
+            const job = {script, args, threads:threadsToUse, server, startTime};
             batch.push(job);
             threadsNeeded -= threadsToUse;
         }
@@ -88,6 +101,9 @@ export class ComputeService extends ServerService {
     }
 
     async deployBatch(jobs=[]) {
+        if (!this.running) {
+            return;
+        }
         const {ns} = this;
 
         const totalThreads = jobs.reduce((total, job)=>(total + job.threads), 0);
@@ -98,11 +114,17 @@ export class ComputeService extends ServerService {
         }
         const results = [];
         for(const job of jobs) {
-            const result = await this.deploy(job);
-            results.push(result)
+            if (job.startTime) {
+                this.deployLater(job);
+                results.push(job);
+            }
+            else {
+                const result = await this.deploy(job);
+                results.push(result)
+            }
         }
         if (jobs.length > 1) {
-            ns.tprint(`Deployed ${this.ns.nFormat(totalThreads, '0,0')} total threads.`);
+            ns.tprint(`INFO: Deployed ${this.ns.nFormat(totalThreads, '0,0')} total threads.`);
         }
         return results;
     }
@@ -137,16 +159,21 @@ export class ComputeService extends ServerService {
 }
 
 export class ScriptableServer extends Server {
-    async deploy({script, threads, args=[], dependencies=[]}) {
+    async deploy(job) {
         const {ns} = this;
-        scriptRam = ns.getScriptRam(script, 'home');
-
-        if (threads == 'max') {
-            threads = this.getAvailableThreads(scriptRam);
+        job.args ||= [];
+        job.threads ||= 1;
+        if (job.threads == 'max') {
+            const scriptRam = ns.getScriptRam(job.script, 'home');
+            job.threads = this.availableThreads(scriptRam);
         }
 
-        await ns.scp([script, ...dependencies], 'home', this.hostname);
-        const pid = ns.exec(script, this.hostname, threads, ...args);
-        return {pid, server:this.hostname, script, threads}
+        const {script, threads, args, dependencies} = job;
+        if (threads > 0) {
+            await ns.scp([script, ...(dependencies||[])], 'home', this.hostname);
+            const pid = ns.exec(script, this.hostname, threads, ...args);
+            job.process = {pid, server:this.hostname, script, threads};
+        }
+        return job;
     }
 }

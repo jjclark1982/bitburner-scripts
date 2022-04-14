@@ -38,6 +38,8 @@ export async function main(ns) {
 }
 
 export class ServerService {
+    ServerClass = Server;
+
     constructor(ns) {
         this.ns = ns;
     }
@@ -50,6 +52,7 @@ export class ServerService {
         portHandle.clear();
         portHandle.write(this);
         ns.atExit(()=>{
+            this.running = false;
             portHandle.clear();
             delete eval('window')[name];
         });
@@ -66,7 +69,7 @@ export class ServerService {
     }
 
     loadServer(hostname) {
-        return new Server(this.ns, hostname);
+        return new this.ServerClass(this.ns, hostname);
     }
 
     getAllServers() {
@@ -168,7 +171,7 @@ export class Server {
     }
 
     copy() {
-        return new Server(this.ns, this);
+        return new this.constructor(this.ns, this);
     }
 
     canRunScripts() {
