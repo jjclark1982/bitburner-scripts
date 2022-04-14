@@ -1,5 +1,14 @@
 ## Netscript Port Services
 
+Netscript port services used in this repository:
+
+- Port 1: [ThreadPool](../hive/) - Run netscript functions on a grid computing system
+- Port 5: [StockTrader](../stocks/trader.js) - Information about stocks
+- Port 7: [ServerService](#Server_Service) - Information about servers
+- Port 8: [ComputeService](#Compute_Service) - Run scripts on any server
+
+---
+
 ### Server Service
 
 Defines these data structures:
@@ -25,13 +34,13 @@ Server
 Then you can read server info with no RAM cost for the client:
 
 ```javascript
-function getServerService(ns, portNum=7) {
+function getService(ns, portNum=7) {
     const portHandle = ns.getPortHandle(portNum);
     if (!portHandle.empty()) {
         return portHandle.peek();
     }
 }
-const serverService = getServerService(ns);
+const serverService = getService(ns, 7);
 const server = serverService.loadServer("foodnstuff");
 if (server.canBeHacked(ns.getPlayer())) {
     while (true) {
@@ -57,4 +66,35 @@ The service is also available in the browser console:
 46
 > serverService.getHackableServers({hacking:166}).length
 13
+```
+
+---
+
+### Compute Service
+
+This is a subclass of ServerService, extended with script execution methods.
+
+ComputeService
+- deploy({script, threads, args, [dependencies]})
+- deployLater({script, threads, args, [dependencies], [startTime]})
+- deployBatch([jobs]) - will run all jobs or none of them
+
+**Usage:** Run the service (5.8 GB daemon):
+
+```bash
+> run /service/compute.js
+```
+
+Then you can deploy scripts to any available server, with no RAM cost for the client:
+
+```javascript
+function getService(ns, portNum=8) {
+    const portHandle = ns.getPortHandle(portNum);
+    if (!portHandle.empty()) {
+        return portHandle.peek();
+    }
+}
+const computeService = getService(ns, 8);
+const job = {script: "/batch/weaken.js", threads: 1000, args: ["foodnstuff"], allowSplit: true})
+computeService.deploy(job);
 ```
