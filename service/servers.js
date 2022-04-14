@@ -50,7 +50,7 @@ export async function main(ns) {
 
 class ServerService {
     constructor(ns) {
-        this.__proto__.ns = ns;
+        this.ns = ns;
     }
 
     loadServer(hostname) {
@@ -79,20 +79,19 @@ class ServerService {
 
     getAllHosts() {
         const {ns} = this;
-        this.getAllHosts.cache ||= {};
+        this.getAllHosts.cache ||= new Set();
         const scanned = this.getAllHosts.cache;
         const toScan = ['home'];
         while (toScan.length > 0) {
             const hostname = toScan.shift();
-            scanned[hostname] = true;
+            scanned.add(hostname);
             for (const nextHost of ns.scan(hostname)) {
-                if (!(nextHost in scanned)) {
+                if (!scanned.has(nextHost)) {
                     toScan.push(nextHost);
                 }
             }
         }
-        const allHosts = Object.keys(scanned);
-        return allHosts;
+        return scanned;
     }
 }
 
@@ -154,17 +153,16 @@ class Server {
         if ("stockInfo" in this) {
             return this.stockInfo;
         }
-        let stockInfo = null;
+        this.stockInfo = null;
         if (this.organizationName) {
             const port = ns.getPortHandle(portNum);
             if (!port.empty()) {
                 const stockService = port.peek();
                 if (typeof(stockService.getStockInfo) == 'function') {
-                    stockInfo = stockService.getStockInfo(this.organizationName);
+                    this.stockInfo = stockService.getStockInfo(this.organizationName);
                 }
             }
         }
-        this.stockInfo = stockInfo;
         // cache this info for 1 ms, so many calls can be made in the same tick
         setTimeout(()=>{
             delete this.stockInfo;

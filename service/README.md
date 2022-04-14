@@ -44,6 +44,7 @@ if (server.canBeHacked(ns.getPlayer())) {
         await ns.hack(server.hostname, {stock: this.getStockInfo()?.netShares < 0})
     }
 }
+server.reload();
 ```
 
 The service is also available in the browser console:
