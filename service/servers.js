@@ -34,23 +34,35 @@ export async function main(ns) {
     }
 
     const serverService = new ServerService(ns);
-    eval('window').serverService = serverService;
-    const portHandle = ns.getPortHandle(flags.port);
-    portHandle.clear();
-    portHandle.write(serverService);
-    ns.atExit(()=>{
-        portHandle.clear();
-        delete eval('window').serverService;
-    });
-    ns.print(`Started Server Service on port ${flags.port}`);
-    while (true) {
-        await ns.asleep(60*60*1000);
-    }
+    await serverService.work(flags.port);
 }
 
-class ServerService {
+export class ServerService {
     constructor(ns) {
         this.ns = ns;
+    }
+
+    async work(portNum=7) {
+        const {ns} = this;
+        const name = this.constructor.name.substr(0,1).toLowerCase() + this.constructor.name.substr(1);
+        eval('window')[name] = this;
+        const portHandle = ns.getPortHandle(portNum);
+        portHandle.clear();
+        portHandle.write(this);
+        ns.atExit(()=>{
+            portHandle.clear();
+            delete eval('window')[name];
+        });
+        ns.tprint(`Started ${this.constructor.name} on port ${portNum}`);
+        this.running = true;
+        while (this.running) {
+            if (this.report) {
+                ns.clearLog();
+                ns.print(this.report());    
+            }
+            await ns.asleep(1000);
+        }
+        ns.tprint(`Stopping ${this.constructor.name} on port ${portNum}`);
     }
 
     loadServer(hostname) {
@@ -59,7 +71,7 @@ class ServerService {
 
     getAllServers() {
         const allServers = {};
-        for (const hostname of this.getAllHosts()) {
+        for (const hostname of this.scanAllHosts()) {
             allServers[hostname] = this.loadServer(hostname);
         }
         return allServers;
@@ -77,10 +89,30 @@ class ServerService {
         ));
     }
 
-    getAllHosts() {
+    getSmallestServersWithThreads(scriptRam, threads, exclude={}) {
+        const smallestServers = Object.values(this.getAllServers()).filter((server)=>(
+            !(server.hostname in exclude) &&
+            server.availableThreads(scriptRam) >= threads
+        )).sort((a,b)=>(
+            a.availableThreads(scriptRam) - b.availableThreads(scriptRam)
+        ));
+        return smallestServers;
+    }
+
+    getBiggestServers(scriptRam, exclude={}) {
+        const biggestServers = Object.values(this.getAllServers()).filter((server)=>(
+            !(server.hostname in exclude) &&
+            server.availableThreads(scriptRam) >= 1
+        )).sort((a,b)=>(
+            b.maxRam - a.maxRam
+        ));
+        return biggestServers;
+    }
+
+    scanAllHosts() {
         const {ns} = this;
-        this.getAllHosts.cache ||= new Set();
-        const scanned = this.getAllHosts.cache;
+        this.scanAllHosts.cache ||= new Set();
+        const scanned = this.scanAllHosts.cache;
         const toScan = ['home'];
         while (toScan.length > 0) {
             const hostname = toScan.shift();
@@ -93,9 +125,33 @@ class ServerService {
         }
         return scanned;
     }
+
+    totalRamUsed() {
+        return this.getScriptableServers().reduce((total, server)=>(
+            total + server.ramUsed
+        ), 0);
+    }
+
+    totalRam() {
+        return this.getScriptableServers().reduce((total, server)=>(
+            total + server.maxRam
+        ), 0);
+    }
+
+    totalThreadsAvailable(scriptRam=1.75) {
+        return this.getScriptableServers().reduce((total, server)=>(
+            total + server.availableThreads(scriptRam)
+        ), 0);
+    }
+
+    maxThreadsAvailable(scriptRam=1.75) {
+        return this.getScriptableServers().reduce((total, server)=>(
+            Math.max(total, server.availableThreads(scriptRam))
+        ), 0);
+    }
 }
 
-class Server {
+export class Server {
     constructor(ns, data) {
         this.__proto__.ns = ns;
         if (typeof(data) === 'string') {
@@ -140,6 +196,9 @@ class Server {
     }
 
     availableThreads(scriptRam=1.75) {
+        if (!this.canRunScripts()) {
+            return 0;
+        }
         return Math.floor(this.availableRam() / scriptRam) || 0;
     }
 
