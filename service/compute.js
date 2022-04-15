@@ -173,6 +173,7 @@ export class ScriptableServer extends Server {
             await ns.scp([script, ...(dependencies||[])], 'home', this.hostname);
             const pid = ns.exec(script, this.hostname, threads, ...args);
             job.process = {pid, server:this.hostname, script, threads};
+            this.reload();
         }
         return job;
     }

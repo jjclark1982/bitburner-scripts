@@ -1,6 +1,6 @@
 ## Netscript Port Services
 
-Netscript port services used in this repository:
+Netscript port numbers used in this repository:
 
 - Port 1: [ThreadPool](../hive/) - Run netscript functions on a grid computing system
 - Port 5: [StockTrader](../stocks/trader.js) - Information about stocks
@@ -95,6 +95,6 @@ function getService(ns, portNum=8) {
     }
 }
 const computeService = getService(ns, 8);
-const job = {script: "/batch/weaken.js", threads: 1000, args: ["foodnstuff"], allowSplit: true})
+const job = {script: "/batch/weaken.js", args: ["foodnstuff"], threads: 100})
 computeService.deploy(job);
 ```

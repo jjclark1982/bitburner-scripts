@@ -73,11 +73,34 @@ export class ServerService {
     }
 
     getAllServers() {
-        const allServers = {};
-        for (const hostname of this.scanAllHosts()) {
-            allServers[hostname] = this.loadServer(hostname);
+        if (!this.getAllServers.cache) {
+            const allServers = {};
+            for (const hostname of this.getAllHostnames()) {
+                allServers[hostname] = this.loadServer(hostname);
+            }
+            this.getAllServers.cache = allServers;
+            setTimeout(() => {
+                delete this.getAllServers.cache;
+            }, 1);
         }
-        return allServers;
+        return this.getAllServers.cache;
+    }
+
+    getAllHostnames() {
+        const {ns} = this;
+        this.getAllHostnames.cache ||= new Set();
+        const scanned = this.getAllHostnames.cache;
+        const toScan = ['home'];
+        while (toScan.length > 0) {
+            const hostname = toScan.shift();
+            scanned.add(hostname);
+            for (const nextHost of ns.scan(hostname)) {
+                if (!scanned.has(nextHost)) {
+                    toScan.push(nextHost);
+                }
+            }
+        }
+        return scanned;
     }
 
     getScriptableServers() {
@@ -110,23 +133,6 @@ export class ServerService {
             b.maxRam - a.maxRam
         ));
         return biggestServers;
-    }
-
-    scanAllHosts() {
-        const {ns} = this;
-        this.scanAllHosts.cache ||= new Set();
-        const scanned = this.scanAllHosts.cache;
-        const toScan = ['home'];
-        while (toScan.length > 0) {
-            const hostname = toScan.shift();
-            scanned.add(hostname);
-            for (const nextHost of ns.scan(hostname)) {
-                if (!scanned.has(nextHost)) {
-                    toScan.push(nextHost);
-                }
-            }
-        }
-        return scanned;
     }
 
     totalRamUsed() {
