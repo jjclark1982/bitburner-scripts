@@ -105,7 +105,11 @@ export function getGraftableAugs(ns, {domains, canAfford}) {
     const ownedAugs = ns.getOwnedAugmentations(true);
     const exclude = ["The Red Pill", "NeuroFlux Governor"];
 
-    let graftableAugs = allAugs.map(function(aug){
+    let graftableAugs = allAugs.filter((aug)=>(
+        (!aug.isSpecial) &&
+        (!exclude.includes(aug.name)) &&
+        (!ownedAugs.includes(aug.name))
+    )).map(function(aug){
         estimateGraftValues(ns, aug);
         aug.totalValue = averageValue(aug, domains);
         aug.price = ns.grafting.getAugmentationGraftPrice(aug.name);
@@ -113,11 +117,7 @@ export function getGraftableAugs(ns, {domains, canAfford}) {
         aug.sortKey = (aug.totalValue-1) / (aug.time + 15*60*1000);
         aug.prereqsMet = aug.prereqs.every((a)=>ownedAugs.includes(a));
         return aug;
-    }).filter((aug)=>(
-        (!aug.isSpecial) &&
-        (!exclude.includes(aug.name)) &&
-        (!ownedAugs.includes(aug.name))
-    )).sort(function(a,b){
+    }).sort(function(a,b){
         return b.sortKey - a.sortKey;
     });
 
