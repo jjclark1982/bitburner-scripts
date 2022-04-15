@@ -38,7 +38,7 @@ export async function main(ns) {
 }
 
 export class ServerService {
-    ServerClass = Server;
+    ServerClass = ServerModel;
 
     constructor(ns) {
         this.ns = ns;
@@ -160,7 +160,7 @@ export class ServerService {
     }
 }
 
-export class Server {
+export class ServerModel {
     constructor(ns, server) {
         this.__proto__.ns = ns;
         if (typeof(server) === 'string') {

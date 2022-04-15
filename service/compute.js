@@ -1,5 +1,5 @@
 import { drawTable } from "lib/box-drawing";
-import { Server, ServerService } from '/service/servers';
+import { ServerModel, ServerService } from '/service/servers';
 
 const FLAGS = [
     ["help", false],
@@ -158,7 +158,7 @@ export class ComputeService extends ServerService {
     }
 }
 
-export class ScriptableServer extends Server {
+export class ScriptableServer extends ServerModel {
     async deploy(job) {
         const {ns} = this;
         job.args ||= [];

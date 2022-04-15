@@ -1,5 +1,5 @@
 import { drawTable } from "/lib/box-drawing";
-import { ServerService, Server } from "/service/servers";
+import { ServerService, ServerModel } from "/service/servers";
 
 const FLAGS = [
     ["console", false],
@@ -125,7 +125,7 @@ export function mostProfitableServers(ns, hostnames, params) {
  * A HackableServer tracks the state of a server through multiple hacking operations.
  * It has all the fields of a Netscript Server object, plus methods to mutate state.
  */
-export class HackableServer extends Server {
+export class HackableServer extends ServerModel {
     reload(data) {
         data ||= this.ns.getServer(this.hostname);
         Object.assign(this, data);
