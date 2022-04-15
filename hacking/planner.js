@@ -1,5 +1,5 @@
 import { drawTable } from "/lib/box-drawing";
-import { ServerService, ServerModel } from "/service/servers";
+import { ServerList, ServerModel } from "/net/server-model";
 
 const FLAGS = [
     ["console", false],
@@ -24,7 +24,7 @@ export async function main(ns) {
     ns.tail();
 
     if (!(flags.maxTotalRam && flags.maxThreadsPerJob)) {
-        const backend = new ServerService(ns);
+        const backend = new ServerList(ns);
         const scriptRam = 1.75;
         flags.maxTotalRam ||= (backend.totalThreadsAvailable(scriptRam) * scriptRam * 0.9);
         flags.maxThreadsPerJob ||= Math.floor(backend.maxThreadsAvailable(scriptRam) / 4);
