@@ -50,6 +50,7 @@ Would like to move most of these into `net/` or `hacking/`.
     - [x] `/net/crack-servers.js` -> `/net/register-servers.js`  
     - [x] `/net/buy-server.js` -> split out 'retire' function  
     - [x] `/net/retire-server.js` -> rename to `delete-server`
+    - [ ] `/net/server-pool.js` -> replace with `/net/compute-service.js`
 
 - thread management / function delegation / botnet control -> maybe rename to `/botnet/`  
     - [ ] `/hive/thread-pool.js`  
@@ -64,6 +65,7 @@ Would like to move most of these into `net/` or `hacking/`.
     - [x] `/batch/spawn-early-hacking.js`  
 
 - batched hacking (single-function process)
+    - [ ] `/batch/analyze.js` -> replace with `/hacking/planner.js`
     - [ ] `/batch/prep.js`  
     - [ ] `/batch/manage.js`  
     - [ ] `/batch/{hack,grow,weaken}.js`  
@@ -78,3 +80,97 @@ Would like to move most of these into `net/` or `hacking/`.
 - [ ] remove `.js` from import statements
 
 - [x] refactor `server-pool` to have a unified interface for different deployment types
+
+
+
+
+Would like to define netscript port interfaces for loosely-coupled services:
+
+
+Port 1: RAM Service (ComputeService interface)
+Port 2: Thread Service (ComputeService interface)
+Port 5: Stock Service
+
+```
+ComputeService
+    dispatchJobs() a la ThreadPool
+    maxThreadsAvailable() a la ServerPool
+
+StockService
+    getStockInfo
+```
+
+Then some redundant ram costs could be eliminated. For example measuring threads available without including `ns.exec` or `ns.getScriptRam`:
+
+```
+    ServerModel(ns)
+        - get ram info
+        - canRunScripts()
+        - isHackable(player)
+        - getStockInfo()
+
+    HackableServer(ServerModel)
+        - plan hack, etc
+
+    CloudServer(ServerModel, scriptRam)
+        - count thread size
+        - deploy job, etc
+
+```
+then ServerPool could just be an Array subclass, like Batch
+
+
+---
+
+
+#### Class Hierarchy
+
+```
+PortService
+    ServerService
+        ComputeService
+    ThreadPool
+    StockService
+
+ServerModel
+    ScriptableServer
+    HackableServer
+```
+
+---
+
+Would like to make reusable modules that are available as either commands, libraries, or services.
+
+```
+/net/server-model.js: show info about a named server
+    ServerModel
+    ServerList
+
+/net/deploy.js: run a script on any cloud server
+    ScriptableServer extends ServerModel
+    ServerPool extends ServerList
+
+/hacking/planner.js
+    HackableServer extends ServerModel
+
+/botnet/thread-pool.js
+    ThreadPool extends ServerPool ?
+/botnet/worker.js
+    Worker
+
+/service/lib.js or /lib/port-service.js
+    PortService
+    getService()
+
+/service/servers.js
+    import PortService
+    import ServerList
+    await (new PortService(ns, port=1)).serve(ServerList)
+
+/service/compute.js
+    import PortService
+    import ServerPool
+    await (new PortService(ns, port=2)).serve(ServerPool)
+```
+
+(nothing should depend on a Service subclass)
