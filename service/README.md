@@ -5,6 +5,7 @@ Netscript port numbers used in this repository:
 - Port 1: [ServerService](#Server_Service) - Information about servers
 - Port 2: [ComputeService](#Compute_Service) - Run scripts on any server
 - Port 3: [ThreadPool](../hive/) - Run netscript functions on a grid computing system
+- Port 4: [HackPlanner](../hacking/) - Plan hack/grow/weaken operations
 - Port 5: [StockTrader](../stocks/trader.js) - Information about stocks
 
 ---
@@ -37,18 +38,10 @@ Then you can read server info with no RAM cost for the client:
 import { getService } from "/service/lib";
 const serverList = getService(ns, 1);
 const server = serverList.loadServer("foodnstuff");
-while (true) {
-    server.reload();
-    if (server.hackDifficulty > server.minDifficulty) {
-        await ns.weaken(server.hostname);
-    }
-    else if (server.moneyAvailable < server.moneyMax) {
-        await ns.grow(server.hostname);
-    }
-    else {
-        await ns.hack(server.hostname)
-    }
-}
+server.hackDifficulty; // 10
+await ns.hack(server.hostname);
+server.reload();
+server.hackDifficulty; // 12
 ```
 
 The service is also available in the browser console:
@@ -67,7 +60,7 @@ The service is also available in the browser console:
 
 This is a subclass of ServerService, extended with script execution methods.
 
-ComputeService
+ServerPool
 - deploy({script, threads, args, [dependencies]})
 - deployLater({script, threads, args, [dependencies], [startTime]})
 - deployBatch([jobs]) - will run all jobs or none of them
@@ -81,13 +74,29 @@ ComputeService
 Then you can deploy scripts to any available server, with no RAM cost for the client:
 
 ```javascript
-function getService(ns, portNum=2) {
-    const portHandle = ns.getPortHandle(portNum);
-    if (!portHandle.empty()) {
-        return portHandle.peek();
-    }
-}
-const computeService = getService(ns, 2);
+import { getService } from "/service/lib";
+const serverPool = getService(ns, 2);
 const job = {script: "/batch/weaken.js", args: ["foodnstuff"], threads: 100})
-computeService.deploy(job);
+serverPool.deploy(job);
+```
+
+---
+
+### Hack Planning Service
+
+Service for [HackPlanner](../hacking/)
+
+**Usage:** Run the service (7.3 GB daemon):
+
+```bash
+> run /service/hack-planning.js
+```
+
+Then you can plan hacking jobs based on various parameters.
+
+```javascript
+import { getService } from "/service/lib";
+const hackPlanner = getService(ns, 4);
+server = hackPlanner.loadServer("phantasy");
+server.planBatchCycle(server.mostProfitableParamsSync()); // " 7.6% HWGW"
 ```

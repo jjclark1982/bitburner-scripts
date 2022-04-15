@@ -17,13 +17,12 @@ export function autocomplete(data, args) {
 export async function main(ns) {
     const flags = ns.flags(FLAGS);
     const hostname = flags._[0] || 'phantasy';
-    const server = new HackableServer(ns, hostname);
     
-    ns.disableLog("scan");
+    const servers = new HackPlanner(ns);
+    const server = servers.loadServer(hostname);
+
     ns.clearLog();
     ns.tail();
-
-    const servers = new HackPlanner(ns);
 
     if (!(flags.maxTotalRam && flags.maxThreadsPerJob)) {
         const backend = servers;
@@ -50,7 +49,6 @@ export class HackPlanner extends ServerList {
         const plans = [];
         const player = ns.getPlayer();
         for (const server of this.getHackableServers(player)) {
-            console.log("server", server);
             const bestParams = server.mostProfitableParamsSync(params);
             const batchCycle = server.planBatchCycle(bestParams);
             batchCycle.prepTime = server.estimatePrepTime(params);

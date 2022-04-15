@@ -1,9 +1,9 @@
 import { PortService } from "/service/lib";
-import { ServerPool } from "/net/deploy";
+import { HackPlanner } from "/hacking/planner";
 
 const FLAGS = [
     ["help", false],
-    ["port", 2]
+    ["port", 4]
 ]
 
 /** @param {NS} ns **/
@@ -12,11 +12,11 @@ export async function main(ns) {
 
     const flags = ns.flags(FLAGS);
     if (flags.help) {
-        ns.tprint("Provide script deployment services on a netscript port");
+        ns.tprint("Provide hack/grow/weaken planning services on a netscript port");
         return;
     }
 
-    const serverPool = new ServerPool(ns);
+    const hackPlanner = new HackPlanner(ns);
     const service = new PortService(ns, flags.port);
-    await service.serve(serverPool);
+    await service.serve(hackPlanner);
 }

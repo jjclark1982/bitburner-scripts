@@ -17,6 +17,6 @@ export async function main(ns) {
     }
 
     const serverList = new ServerList(ns);
-    const serverService = new PortService(ns, flags.port);
-    await serverService.serve(serverList);
+    const service = new PortService(ns, flags.port);
+    await service.serve(serverList);
 }
