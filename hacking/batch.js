@@ -64,12 +64,9 @@
     }
 
     moneyTaken() {
-        return this.reduce((total, job)=>{
-            if (job.change?.moneyChange < 0) {
-                return total - job.change.moneyChange;
-            }
-            return total;
-        }, 0);
+        return this.reduce((total, job)=>(
+            total + (job.change?.playerMoney || 0)
+        ), 0);
     }
 
     actualMoneyPercent() {

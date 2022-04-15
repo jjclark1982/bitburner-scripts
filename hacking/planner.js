@@ -183,10 +183,10 @@ export class HackableServer extends ServerModel {
         // Construct job
         const job = {
             task: 'hack',
-            threads: threads,
             args: [server.hostname, {threads, stock}],
+            threads: threads,
             duration: duration,
-            change: {moneyMult, moneyChange, securityChange},
+            change: {security: securityChange, moneyMult, money: moneyChange, playerMoney: -moneyChange},
             result: this.copy(),
         };
         return job;
@@ -244,10 +244,10 @@ export class HackableServer extends ServerModel {
         // Construct job
         const job = {
             task: 'grow',
-            threads: threads,
             args: [server.hostname, {threads, stock}],
+            threads: threads,
             duration: duration,
-            change: {moneyMult, moneyChange, securityChange},
+            change: {security: securityChange, moneyMult, money: moneyChange, playerMoney: 0},
             result: this.copy(),
         };
         return job;
@@ -287,10 +287,10 @@ export class HackableServer extends ServerModel {
         // Construct job
         const job = {
             task: 'weaken',
-            threads: threads,
             args: [server.hostname, {threads: threads}],
+            threads: threads,
             duration: duration,
-            change: {moneyMult:1, moneyChange:0, securityChange},
+            change: {security: securityChange, moneyMult: 1, money: 0, playerMoney: 0},
             result: this.copy(),
         };
         return job;
