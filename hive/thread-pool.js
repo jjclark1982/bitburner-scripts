@@ -1,7 +1,7 @@
 import { drawTable } from "/lib/box-drawing";
 import { PortService } from "/service/lib";
-import { ServerPool } from "/net/server-pool";
-import { Batch } from "/hacking/planner"; // TODO: reduce this RAM use
+import { Batch } from "/hacking/batch";
+import { ServerPool } from "/net/server-pool"; // this is the main RAM cost, it could go in a separate process
 
 const FLAGS = [
     ["port", 3],
