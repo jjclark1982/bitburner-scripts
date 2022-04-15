@@ -1,5 +1,5 @@
 import { drawTable } from "/lib/box-drawing";
-import { serverPool } from "/net/server-pool";
+import { serverPool } from "/net/server-pool"; // only used for max ram default value
 
 const FLAGS = [
     ["console", false],

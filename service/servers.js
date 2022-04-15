@@ -18,7 +18,7 @@ Then you can call these methods with no RAM cost:
 
 const FLAGS = [
     ["help", false],
-    ["port", 7]
+    ["port", 1]
 ]
 
 /** @param {NS} ns **/
@@ -44,7 +44,7 @@ export class ServerService {
         this.ns = ns;
     }
 
-    async work(portNum=7) {
+    async work(portNum=1) {
         const {ns} = this;
         const name = this.constructor.name.substr(0,1).toLowerCase() + this.constructor.name.substr(1);
         eval('window')[name] = this;

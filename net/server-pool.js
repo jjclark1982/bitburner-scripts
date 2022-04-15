@@ -308,7 +308,7 @@ export class CloudServer {
             this.availableRam -= (threads * this.scriptRam);
             this.availableThreads -= threads;
         }
-        return {pid, host:this.hostname, script, threads}
+        return {pid, server:this.hostname, script, threads}
     }
 }
 

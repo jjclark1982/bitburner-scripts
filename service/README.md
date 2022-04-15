@@ -2,10 +2,10 @@
 
 Netscript port numbers used in this repository:
 
-- Port 1: [ThreadPool](../hive/) - Run netscript functions on a grid computing system
+- Port 1: [ServerService](#Server_Service) - Information about servers
+- Port 2: [ComputeService](#Compute_Service) - Run scripts on any server
+- Port 3: [ThreadPool](../hive/) - Run netscript functions on a grid computing system
 - Port 5: [StockTrader](../stocks/trader.js) - Information about stocks
-- Port 7: [ServerService](#Server_Service) - Information about servers
-- Port 8: [ComputeService](#Compute_Service) - Run scripts on any server
 
 ---
 
@@ -34,13 +34,13 @@ Server
 Then you can read server info with no RAM cost for the client:
 
 ```javascript
-function getService(ns, portNum=7) {
+function getService(ns, portNum=1) {
     const portHandle = ns.getPortHandle(portNum);
     if (!portHandle.empty()) {
         return portHandle.peek();
     }
 }
-const serverService = getService(ns, 7);
+const serverService = getService(ns, 1);
 const server = serverService.loadServer("foodnstuff");
 if (server.canBeHacked(ns.getPlayer())) {
     while (true) {
@@ -88,13 +88,13 @@ ComputeService
 Then you can deploy scripts to any available server, with no RAM cost for the client:
 
 ```javascript
-function getService(ns, portNum=8) {
+function getService(ns, portNum=2) {
     const portHandle = ns.getPortHandle(portNum);
     if (!portHandle.empty()) {
         return portHandle.peek();
     }
 }
-const computeService = getService(ns, 8);
+const computeService = getService(ns, 2);
 const job = {script: "/batch/weaken.js", args: ["foodnstuff"], threads: 100})
 computeService.deploy(job);
 ```

@@ -1,7 +1,7 @@
 import { getThreadPool } from "/hive/worker";
 
 const FLAGS = [
-    ["port", 1]
+    ["port", 3]
 ];
 
 /** @param {NS} ns **/

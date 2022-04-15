@@ -5,7 +5,7 @@ import { serverPool } from "/net/server-pool";
 const FLAGS = [
     ["help", false],
     ["backend", "thread-pool"],
-    ["port", 1],
+    ["port", 3],
     ["tDelta", 100],
     ["maxTotalRam", 0],        // optional (will be read from backend)
     ["maxThreadsPerJob", 128], // TODO: read this from backend

@@ -3,7 +3,7 @@ import { drawTable } from "/lib/box-drawing";
 import { Batch } from "/hacking/planner";
 
 const FLAGS = [
-    ["port", 1],
+    ["port", 3],
     ["verbose", false],
     ["test", false]
 ];
@@ -264,6 +264,25 @@ export class ThreadPool {
             this.process.onlineExpGained += worker.process.onlineExpGained;
             this.process.onlineMoneyMade += worker.process.onlineMoneyMade;
         }
+    }
+
+    getMaxTotalRam() {
+        const {ns} = this;
+        const serverPool = new ServerPool({ns, scriptRam: 1.75});
+        const threads = this.workers.reduce((total, worker)=>(
+            total + (worker.process?.threads || 0)
+        ), serverPool.totalThreadsAvailable);
+        return threads * 1.75;
+    }
+
+    getMaxThreadsPerJob() {
+        const {ns} = this;
+        const serverPool = new ServerPool({ns, scriptRam: 1.75});
+        let maxThreads = Math.floor(serverPool.maxThreadsAvailable / 4);
+        maxThreads = this.workers.reduce((total, worker)=>(
+            Max(total, worker.process?.threads || 0)
+        ), maxThreads);
+        return maxThreads;
     }
 
     getOnlineMoneyMade() {

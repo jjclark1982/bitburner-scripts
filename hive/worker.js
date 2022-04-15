@@ -1,5 +1,5 @@
 const FLAGS = [
-    ["port", 1],
+    ["port", 3],
     ["id"],
     ["tDelta", 1000]
 ];
@@ -178,7 +178,7 @@ export class Worker {
     }
 }
 
-export async function getThreadPool(ns, portNum) {
+export async function getThreadPool(ns, portNum=3) {
     const port = ns.getPortHandle(portNum);
     let tries = 50;
     while (port.empty() && tries-- > 0) {

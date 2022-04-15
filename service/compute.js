@@ -3,7 +3,7 @@ import { Server, ServerService } from '/service/servers';
 
 const FLAGS = [
     ["help", false],
-    ["port", 8]
+    ["port", 2]
 ]
 
 /** @param {NS} ns **/
