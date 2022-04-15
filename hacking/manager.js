@@ -1,12 +1,10 @@
 import { getThreadPool } from "/hive/worker";
 import { ServerModel, mostProfitableServers } from "/hacking/planner";
-import { serverPool } from "/net/server-pool";
 
 const FLAGS = [
     ["help", false],
-    ["backend", "thread-pool"],
-    ["port", 3],
-    ["tDelta", 100],
+    ["backendPort", 3],        // default port for ThreadPool
+    ["tDelta", 100],           // milliseconds between effects
     ["maxTotalRam", 0],        // optional (will be read from backend)
     ["maxThreadsPerJob", 0],   // optional (will be read from backend)
     ["moneyPercent", 0.05],    // (will be overwritten by optimizer)
@@ -52,23 +50,14 @@ export async function main(ns) {
     }
     delete flags.help;
 
-    let backend;
-    if (flags.backend == "thread-pool") {
-        backend = await getThreadPool(ns, flags.port);
-    }
-    delete flags.backend;
-    delete flags.port;
+    const backend = await getThreadPool(ns, flags.backendPort);
+    delete flags.backendPort;
+
+    flags.maxTotalRam ||= backend.getMaxTotalRam();
+    flags.maxThreadsPerJob ||= backend.getMaxThreadsPerJob();
 
     const targets = flags._;
     delete flags._;
-    if (!(flags.maxTotalRam && flags.maxThreadsPerJob)) {
-        const pool = serverPool(ns, 1.75);
-        const availableRam = pool.totalRam - pool.totalUsedRam;
-        // reserve at most 1 TB of ram for other purposes
-        flags.maxTotalRam ||= Math.max(availableRam*0.9, availableRam-1024);
-        // flags.maxThreadsPerJob ||= Math.floor(backend.medianThreadSize());
-        flags.maxThreadsPerJob ||= Math.max(16, Math.floor(pool.largestThreadsAvailable() / 8));
-    }
 
     const manager = new HackingManager(ns, backend, targets, flags)
     await manager.work();

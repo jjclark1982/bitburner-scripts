@@ -1,12 +1,12 @@
 import { drawTable } from "/lib/box-drawing";
-import { serverPool } from "/net/server-pool"; // only used for max ram default value
+import { ServerService } from "/service/servers"; // only used for max ram default value
 
 const FLAGS = [
     ["console", false],
     ["tDelta", 100],
     ["maxTotalRam", 0],
     ["maxThreadsPerJob", 0],
-    ["reserveRam", false]
+    ["reserveRam", true]
 ];
 
 export function autocomplete(data, args) {
@@ -24,10 +24,10 @@ export async function main(ns) {
     ns.tail();
 
     if (!(flags.maxTotalRam && flags.maxThreadsPerJob)) {
-        const backend = serverPool(ns, 1.75);
-        flags.maxTotalRam ||= (backend.totalThreadsAvailable * backend.scriptRam * 0.9);
-        // flags.maxThreadsPerJob ||= Math.floor(backend.medianThreadSize());
-        flags.maxThreadsPerJob ||= Math.floor(backend.largestThreadsAvailable() / 4);
+        const backend = new ServerService(ns);
+        const scriptRam = 1.75;
+        flags.maxTotalRam ||= (backend.totalThreadsAvailable(scriptRam) * scriptRam * 0.9);
+        flags.maxThreadsPerJob ||= Math.floor(backend.maxThreadsAvailable(scriptRam) / 4);
     }
 
     ns.print(reportMostProfitableServers(ns, flags));
