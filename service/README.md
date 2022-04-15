@@ -2,17 +2,17 @@
 
 Netscript port numbers used in this repository:
 
-- Port 1: [ServerService](#Server_Service) - Information about servers
-- Port 2: [ComputeService](#Compute_Service) - Run scripts on any server
+- Port 1: [ServerList](#ServerList_Service) - Information about servers
+- Port 2: [ServerPool](#ServerPool_Service) - Run scripts on any server
 - Port 3: [ThreadPool](../hive/) - Run netscript functions on a grid computing system
-- Port 4: [HackPlanner](../hacking/) - Plan hack/grow/weaken operations
+- Port 4: [HackPlanner](#Hack_Planning_Service) - Plan hack/grow/weaken operations
 - Port 5: [StockTrader](../stocks/trader.js) - Information about stocks
 
 ---
 
-### Server Service
+### ServerList Service
 
-Defines these data structures:
+[server-list.js](../net/server-model.js) defines these data structures:
 
 ServerList
 - loadServer(hostname) -> Server
@@ -56,9 +56,9 @@ The service is also available in the browser console:
 
 ---
 
-### Compute Service
+### ServerPool Service
 
-This is a subclass of ServerService, extended with script execution methods.
+ServerPool is a subclass of ServerList, extended with script execution methods.
 
 ServerPool
 - deploy({script, threads, args, [dependencies]})
