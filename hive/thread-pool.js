@@ -1,6 +1,7 @@
-import { ServerPool } from "/net/server-pool";
 import { drawTable } from "/lib/box-drawing";
-import { Batch } from "/hacking/planner";
+import { PortService } from "/service/lib";
+import { ServerPool } from "/net/server-pool";
+import { Batch } from "/hacking/planner"; // TODO: reduce this RAM use
 
 const FLAGS = [
     ["port", 3],
@@ -34,9 +35,10 @@ export async function main(ns) {
     ns.clearLog();
 
     const flags = ns.flags(FLAGS);
+    flags.ns = ns;
 
-    const threadPool = new ThreadPool({ns, ...flags});
-    eval("window").db = threadPool;
+    const threadPool = new ThreadPool(flags);
+    eval("window").PortService = PortService;
     
     if (flags.test) {
         setTimeout(async function(){
@@ -53,43 +55,27 @@ export async function main(ns) {
         }, 100)
     }
 
-    await threadPool.work();
+    await threadPool.serve(threadPool);
 }
 
-export class ThreadPool {
-    constructor({ns, port, verbose}) {    
-        this.ns = ns;
+export class ThreadPool extends PortService {
+    constructor({ns, port}) {
+        super(ns, port);
+
         this.process = ns.getRunningScript();
         this.workers = {};
         this.nextWorkerID = 1;
 
-        this.portNum = port;
-        this.port = ns.getPortHandle(this.portNum);
-        this.port.clear();
-        this.port.write(this);
-
-        ns.atExit(this.tearDown.bind(this));
-
         ns.print(`Started ThreadPool on port ${this.portNum}.`);
     }
 
-    async work() {
-        const {ns} = this;
-        this.running = true;
-        while(this.running) {
-            ns.clearLog();
-            ns.print(this.report());
-            await ns.asleep(200);
-        }
-    }
-
-    tearDown() {
+    tearDown = () => {
         // When the pool process exits, signal all the workers and clients to stop.
-        this.running = false;
         for (const worker of Object.values(this.workers)) {
             worker.running = false;
+            // worker.ns.exit();
         }
-        this.port.clear();
+        PortService.tearDown.call(this);
     }
 
     async dispatchJobs(batch) {
