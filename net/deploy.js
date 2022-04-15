@@ -1,5 +1,5 @@
 import { drawTable } from "/lib/box-drawing";
-import { ServerModel, ServerList } from '/net/server-info';
+import { ServerModel, ServerList } from '/net/server-model';
 
 export async function deploy(params={}) {
     const {ns, script, threads, args, allowSplit, requireAll} = params;
@@ -164,7 +164,7 @@ export class ServerPool extends ServerList {
         }
         const columns = [
             {header: "Hostname", field: "hostname", width: 20, align: "left"},
-            {header: "Used RAM", field: ["ramUsed", "maxRam"],  format: [formatRAM], width: 15, itemWidth: 6, align:"center"}
+            {header: "Used RAM    ", field: ["ramUsed", "maxRam"],  format: [formatRAM], width: 17, itemWidth: 6, align:"right"}
         ];
         columns.title = "Servers with Admin Rights";
         const servers = this.getScriptableServers();

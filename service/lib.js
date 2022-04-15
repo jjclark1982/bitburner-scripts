@@ -74,7 +74,7 @@ export class PortService {
         while (this.running) {
             if (typeof(this.object.report) === "function") {
                 ns.clearLog();
-                ns.print(this.report());    
+                ns.print(this.object.report());    
             }
             await ns.asleep(1000);
         }
