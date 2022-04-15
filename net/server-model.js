@@ -25,6 +25,7 @@ export class ServerList {
     constructor(ns) {
         this.ns = ns;
         ns.disableLog("scan");
+        delete this.getAllServers.cache;
     }
 
     [Symbol.iterator]() {

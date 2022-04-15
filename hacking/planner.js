@@ -23,16 +23,18 @@ export async function main(ns) {
     ns.clearLog();
     ns.tail();
 
+    const servers = new HackPlanner(ns);
+
     if (!(flags.maxTotalRam && flags.maxThreadsPerJob)) {
-        const backend = new ServerList(ns);
+        const backend = servers;
         const scriptRam = 1.75;
         flags.maxTotalRam ||= (backend.totalThreadsAvailable(scriptRam) * scriptRam * 0.9);
         flags.maxThreadsPerJob ||= Math.floor(backend.maxThreadsAvailable(scriptRam) / 4);
     }
 
-    ns.print(reportMostProfitableServers(ns, flags));
+    ns.print(servers.reportMostProfitableServers(ns, flags));
 
-    ns.print(reportBatchLengthComparison(ns, server, flags));
+    ns.print(servers.reportBatchLengthComparison(ns, server, flags));
 
     if (flags.console) {
         eval("window").server = server;
@@ -40,85 +42,79 @@ export async function main(ns) {
     }
 }
 
-export function reportMostProfitableServers(ns, params) {
-    const columns = [
-        {header: "Hostname", field: "server.hostname", width: 18, align: "left"},
-        {header: "Parameters", field: "condition", width: 16, align: "left", truncate: true},
-        {header: "Prep Time", field: "prepTime", format: drawTable.time},
-        {header: "RAM Used", field: "totalRamBytes", format: ns.nFormat, formatArgs: ["0.0 b"]},
-        {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
-        // {header: "Max threads/job", field: "maxThreadsPerJob"}
-        // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
-    ];
-    columns.title = `Most Profitable Servers to Hack (${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} total RAM)`;
-    const rows = mostProfitableServers(ns, [], params);
-    eval("window").mostProfitableServers = rows;
-    return drawTable(columns, rows);
-}
+export class HackPlanner extends ServerList {
+    ServerClass = HackableServer;
 
-export function reportBatchLengthComparison(ns, server, params) {
-    server ||= new HackableServer(ns, ns.args[0] || "phantasy");
-    const columns = [
-        {header: "Condition", field: "condition", width: 28, align: "left", truncate: true},
-        // {header: "Duration", field: "duration", format: drawTable.time},
-        {header: "Batches", field: "numBatchesAtOnce"},
-        {header: "Max t", field: "maxThreadsPerJob"},
-        {header: "RAM Used", field: "totalRamBytes", format: ns.nFormat, formatArgs: ["0.0 b"]},
-        {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
-        // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
-    ];
-    columns.title = `Comparison of batches (${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} total RAM, max ${params.maxThreadsPerJob} threads per job)`;
-    const estimates = server.sweepParameters(params);
-    const estimatesByMoneyPct = {}
-    for (const estimate of estimates) {
-        estimate.totalRamBytes = estimate.peakRam * 1e9;
-        estimatesByMoneyPct[estimate.params.moneyPercent] ||= [];
-        estimatesByMoneyPct[estimate.params.moneyPercent].push(estimate);
-    }
-    const bestEstimates = {};
-    for (const moneyPercent of Object.keys(estimatesByMoneyPct)) {
-        const estimates = estimatesByMoneyPct[moneyPercent].sort((a,b)=>(
-            b.moneyPerSec - a.moneyPerSec
+    mostProfitableServers(params) {
+        const {ns} = this;
+        const plans = [];
+        const player = ns.getPlayer();
+        for (const server of this.getHackableServers(player)) {
+            console.log("server", server);
+            const bestParams = server.mostProfitableParamsSync(params);
+            const batchCycle = server.planBatchCycle(bestParams);
+            batchCycle.prepTime = server.estimatePrepTime(params);
+            const ONE_HOUR = 60 * 60 * 1000;
+            const cycleTimeInNextHour = Math.max(1000, ONE_HOUR - batchCycle.prepTime);
+            batchCycle.moneyInNextHour = batchCycle.moneyPerSec * cycleTimeInNextHour;
+            batchCycle.server = server;
+            batchCycle.totalRamBytes = batchCycle.peakRam * 1e9;
+            server.reload();
+            plans.push(batchCycle);
+        }
+        const bestPlans = plans.sort((a,b)=>(
+            b.moneyInNextHour - a.moneyInNextHour
         ));
+        return bestPlans;
+    }
+
+    reportMostProfitableServers(ns, params) {
+        const columns = [
+            {header: "Hostname", field: "server.hostname", width: 18, align: "left"},
+            {header: "Parameters", field: "condition", width: 16, align: "left", truncate: true},
+            {header: "Prep Time", field: "prepTime", format: drawTable.time},
+            {header: "RAM Used", field: "totalRamBytes", format: ns.nFormat, formatArgs: ["0.0 b"]},
+            {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
+            // {header: "Max threads/job", field: "maxThreadsPerJob"}
+            // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
+        ];
+        columns.title = `Most Profitable Servers to Hack (${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} total RAM)`;
+        const rows = this.mostProfitableServers(ns, [], params);
+        eval("window").mostProfitableServers = rows;
+        return drawTable(columns, rows);
+    }
+    
+    reportBatchLengthComparison(ns, server, params) {
+        server = new HackableServer(ns, server);
+        const columns = [
+            {header: "Condition", field: "condition", width: 28, align: "left", truncate: true},
+            // {header: "Duration", field: "duration", format: drawTable.time},
+            {header: "Batches", field: "numBatchesAtOnce"},
+            {header: "Max t", field: "maxThreadsPerJob"},
+            {header: "RAM Used", field: "totalRamBytes", format: ns.nFormat, formatArgs: ["0.0 b"]},
+            {header: "  $ / sec", field: "moneyPerSec", format: ns.nFormat, formatArgs: ["$0.0a"]},
+            // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
+        ];
+        columns.title = `Comparison of batches (${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} total RAM, max ${params.maxThreadsPerJob} threads per job)`;
+        const estimates = server.sweepParameters(params);
+        const estimatesByMoneyPct = {}
         for (const estimate of estimates) {
-            bestEstimates[estimate.condition] = estimate;
-            break;
+            estimate.totalRamBytes = estimate.peakRam * 1e9;
+            estimatesByMoneyPct[estimate.params.moneyPercent] ||= [];
+            estimatesByMoneyPct[estimate.params.moneyPercent].push(estimate);
         }
-    }
-    return drawTable(columns, Object.values(bestEstimates));
-}
-
-export function *getHackableServers(ns, hostnames) {
-    const player = ns.getPlayer();
-    if (!hostnames || hostnames.length == 0) {
-        hostnames = getAllHosts(ns);
-    }
-    for (const hostname of hostnames) {
-        const server = new HackableServer(ns, hostname);
-        if (server.canBeHacked(player)) {
-            yield server;
+        const bestEstimates = {};
+        for (const moneyPercent of Object.keys(estimatesByMoneyPct)) {
+            const estimates = estimatesByMoneyPct[moneyPercent].sort((a,b)=>(
+                b.moneyPerSec - a.moneyPerSec
+            ));
+            for (const estimate of estimates) {
+                bestEstimates[estimate.condition] = estimate;
+                break;
+            }
         }
+        return drawTable(columns, Object.values(bestEstimates));
     }
-}
-
-export function mostProfitableServers(ns, hostnames, params) {
-    const plans = [];
-    for (const server of getHackableServers(ns, hostnames)) {
-        const bestParams = server.mostProfitableParamsSync(params);
-        const batchCycle = server.planBatchCycle(bestParams);
-        batchCycle.prepTime = server.estimatePrepTime(params);
-        const ONE_HOUR = 60 * 60 * 1000;
-        const cycleTimeInNextHour = Math.max(1000, ONE_HOUR - batchCycle.prepTime);
-        batchCycle.moneyInNextHour = batchCycle.moneyPerSec * cycleTimeInNextHour;
-        batchCycle.server = server;
-        batchCycle.totalRamBytes = batchCycle.peakRam * 1e9;
-        server.reload();
-        plans.push(batchCycle);
-    }
-    const bestPlans = plans.sort((a,b)=>(
-        b.moneyInNextHour - a.moneyInNextHour
-    ));
-    return bestPlans;
 }
 
 /**
