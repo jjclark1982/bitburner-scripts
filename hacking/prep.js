@@ -1,5 +1,5 @@
 import { getThreadPool } from "/hive/worker";
-import { ServerModel } from "/hacking/planner";
+import { HackableServer } from "/hacking/planner";
 
 const FLAGS = [
     ["help", false],
@@ -50,7 +50,7 @@ export class PrepManager {
         this.params = params;
 
         this.targets = targets.map((hostname)=>(
-            new ServerModel(ns, hostname)
+            new HackableServer(ns, hostname)
         ));
     }
 

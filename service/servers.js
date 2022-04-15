@@ -161,13 +161,13 @@ export class ServerService {
 }
 
 export class Server {
-    constructor(ns, data) {
+    constructor(ns, server) {
         this.__proto__.ns = ns;
-        if (typeof(data) === 'string') {
-            this.hostname = data;
-            data = undefined;
+        if (typeof(server) === 'string') {
+            this.hostname = server;
+            server = undefined;
         }
-        this.reload(data);
+        this.reload(server);
     }
 
     reload(data) {

@@ -1,5 +1,5 @@
 import { drawTable } from "/lib/box-drawing";
-import { ServerService } from "/service/servers"; // only used for max ram default value
+import { ServerService, Server } from "/service/servers";
 
 const FLAGS = [
     ["console", false],
@@ -17,7 +17,7 @@ export function autocomplete(data, args) {
 export async function main(ns) {
     const flags = ns.flags(FLAGS);
     const hostname = flags._[0] || 'phantasy';
-    const server = new ServerModel(ns, hostname);
+    const server = new HackableServer(ns, hostname);
     
     ns.disableLog("scan");
     ns.clearLog();
@@ -57,7 +57,7 @@ export function reportMostProfitableServers(ns, params) {
 }
 
 export function reportBatchLengthComparison(ns, server, params) {
-    server ||= new ServerModel(ns, ns.args[0] || "phantasy");
+    server ||= new HackableServer(ns, ns.args[0] || "phantasy");
     const columns = [
         {header: "Condition", field: "condition", width: 28, align: "left", truncate: true},
         // {header: "Duration", field: "duration", format: drawTable.time},
@@ -94,7 +94,7 @@ export function *getHackableServers(ns, hostnames) {
         hostnames = getAllHosts(ns);
     }
     for (const hostname of hostnames) {
-        const server = new ServerModel(ns, hostname);
+        const server = new HackableServer(ns, hostname);
         if (server.canBeHacked(player)) {
             yield server;
         }
@@ -122,28 +122,15 @@ export function mostProfitableServers(ns, hostnames, params) {
 }
 
 /**
- * A ServerModel tracks the state of a server through multiple hacking operations.
+ * A HackableServer tracks the state of a server through multiple hacking operations.
  * It has all the fields of a Netscript Server object, plus methods to mutate state.
  */
-export class ServerModel {
-    constructor(ns, server) {
-        this.ns = ns;
-        if (typeof(server) === "string") {
-            this.hostname = server;
-            this.reload();
-        }
-        else {
-            Object.assign(this, server);
-        }
-    }
-
-    canBeHacked(player) {
-        player ||= this.ns.getPlayer()
-        return (
-            this.hasAdminRights &&
-            this.moneyMax > 0 &&
-            this.requiredHackingSkill <= player.hacking
-        )
+export class HackableServer extends Server {
+    reload(data) {
+        data ||= this.ns.getServer(this.hostname);
+        Object.assign(this, data);
+        this.prepDifficulty = this.hackDifficulty;
+        return this;
     }
 
     isPrepared(secMargin=0.75, moneyMargin=0.125) {
@@ -151,16 +138,6 @@ export class ServerModel {
             this.hackDifficulty < this.minDifficulty + secMargin &&
             this.moneyAvailable > this.moneyMax * (1 - moneyMargin)
         )
-    }
-
-    reload() {
-        Object.assign(this, this.ns.getServer(this.hostname));
-        this.prepDifficulty = this.hackDifficulty;
-        return this;
-    }
-
-    copy() {
-        return new ServerModel(this.ns, this);
     }
 
     preppedCopy() {
@@ -526,29 +503,6 @@ export class ServerModel {
             b.moneyPerSec - a.moneyPerSec
         ))[0];
         return bestEstimate.params;
-    }
-
-    getStockInfo(portNum=5) {
-        const {ns} = this;
-        if ("stockInfo" in this) {
-            return this.stockInfo;
-        }
-        let stockInfo = null;
-        if (this.organizationName) {
-            const port = ns.getPortHandle(portNum);
-            if (!port.empty()) {
-                const stockService = port.peek();
-                if (typeof(stockService.getStockInfo) == 'function') {
-                    stockInfo = stockService.getStockInfo(this.organizationName);
-                }
-            }
-        }
-        this.stockInfo = stockInfo;
-        // cache this info for 1 ms
-        setTimeout(()=>{
-            delete this.stockInfo;
-        }, 1);
-        return this.stockInfo;
     }
 }
 

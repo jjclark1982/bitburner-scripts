@@ -122,7 +122,7 @@ Batch: Array[Job], ordered by intended endTime
     minTimeBetweenBatches()
 ```
 ```	
-ServerModel: mutable snapshot of a Netscript Server
+HackableServer: mutable snapshot of a Netscript Server
     planHackJob(moneyPercent) -> Job
     planGrowJob() -> Job
     planWeakenJob() -> Job
@@ -153,9 +153,9 @@ Params: {
 ##### Example: Plan an HWGW batch
 
 ```javascript
-import { ServerModel } from "/hacking/planner";
+import { HackableServer } from "/hacking/planner";
 
-const server = new ServerModel(ns, hostname);
+const server = new HackableServer(ns, hostname);
 const params = {
     tDelta: 100,
     maxTotalRam: 16384,
@@ -174,9 +174,9 @@ const batch = batchCycle.batch;
 ##### Example: Prepare a server using sequential steps in one process
 
 ```javascript
-import { ServerModel } from "/hacking/planner";
+import { HackableServer } from "/hacking/planner";
 
-const server = new ServerModel(ns, hostname);
+const server = new HackableServer(ns, hostname);
 const batch = server.planPrepBatch({
     maxThreadsPerJob: ns.getRunningScript().threads
 });
@@ -191,9 +191,9 @@ for (const job of batch) {
 ##### Example: Run a hacking batch on parallel processes
 
 ```javascript
-import { ServerModel } from "/hacking/planner";
+import { HackableServer } from "/hacking/planner";
 
-const server = new ServerModel(ns, hostname);
+const server = new HackableServer(ns, hostname);
 const params = server.mostProfitableParameters({maxTotalRam: 16384});
 const batch = server.planHackingBatch(params);
 for (const job of batch) {
