@@ -13,7 +13,7 @@ Netscript port numbers used in this repository:
 
 Defines these data structures:
 
-ServerService
+ServerList
 - loadServer(hostname) -> Server
 - getAllServers() -> Map[hostname: Server]
 - getScriptableServers() -> Array[Server]
@@ -23,7 +23,7 @@ Server
 - canRunScripts()
 - canBeHacked(player)
 - availableThreads(scriptRam)
-- getStockInfo
+- getStockInfo()
 
 **Usage:** Run the service (3.8 GB daemon):
 
@@ -34,37 +34,30 @@ Server
 Then you can read server info with no RAM cost for the client:
 
 ```javascript
-function getService(ns, portNum=1) {
-    const portHandle = ns.getPortHandle(portNum);
-    if (!portHandle.empty()) {
-        return portHandle.peek();
+import { getService } from "/service/lib";
+const serverList = getService(ns, 1);
+const server = serverList.loadServer("foodnstuff");
+while (true) {
+    server.reload();
+    if (server.hackDifficulty > server.minDifficulty) {
+        await ns.weaken(server.hostname);
     }
-}
-const serverService = getService(ns, 1);
-const server = serverService.loadServer("foodnstuff");
-if (server.canBeHacked(ns.getPlayer())) {
-    while (true) {
-        server.reload();
-        if (server.hackDifficulty > server.minDifficulty) {
-            await ns.weaken(server.hostname);
-        }
-        else if (server.moneyAvailable < server.moneyMax) {
-            await ns.grow(server.hostname);
-        }
-        else {
-            await ns.hack(server.hostname)
-        }
+    else if (server.moneyAvailable < server.moneyMax) {
+        await ns.grow(server.hostname);
+    }
+    else {
+        await ns.hack(server.hostname)
     }
 }
 ```
 
 The service is also available in the browser console:
 ```javascript
-> serverService.getAllHosts().size
+> serverList.getAllHosts().size
 72
-> serverService.getScriptableServers().length
+> serverList.getScriptableServers().length
 46
-> serverService.getHackableServers({hacking:166}).length
+> serverList.getHackableServers({hacking:166}).length
 13
 ```
 

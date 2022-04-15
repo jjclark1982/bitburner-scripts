@@ -1,20 +1,4 @@
-/*
-Usage: copy this function into a client:
-
-    function getServerService(ns, portNum=7) {
-        const portHandle = ns.getPortHandle(portNum);
-        if (!portHandle.empty()) {
-            return portHandle.peek();
-        }
-    }
-
-Then you can call these methods with no RAM cost:
-
-	const serverService = getServerService(ns);
-	const server = serverService.loadServer("foodnstuff");
-    ns.tprint(server.getAvailableRam());
-
-*/
+import { PortService } from "./lib";
 
 const FLAGS = [
     ["help", false],
@@ -23,8 +7,6 @@ const FLAGS = [
 
 /** @param {NS} ns **/
 export async function main(ns) {
-    ns.disableLog("asleep");
-    ns.disableLog("scan");
     ns.clearLog();
 
     const flags = ns.flags(FLAGS);
@@ -33,39 +15,21 @@ export async function main(ns) {
         return;
     }
 
-    const serverService = new ServerService(ns);
-    await serverService.work(flags.port);
+    const serverList = new ServerList(ns);
+    const serverService = new PortService(ns, flags.port);
+    await serverService.serve(serverList);
 }
 
-export class ServerService {
+export class ServerList {
     ServerClass = ServerModel;
 
     constructor(ns) {
         this.ns = ns;
+        ns.disableLog("scan");
     }
 
-    async work(portNum=1) {
-        const {ns} = this;
-        const name = this.constructor.name.substr(0,1).toLowerCase() + this.constructor.name.substr(1);
-        eval('window')[name] = this;
-        const portHandle = ns.getPortHandle(portNum);
-        portHandle.clear();
-        portHandle.write(this);
-        ns.atExit(()=>{
-            this.running = false;
-            portHandle.clear();
-            delete eval('window')[name];
-        });
-        ns.tprint(`Started ${this.constructor.name} on port ${portNum}`);
-        this.running = true;
-        while (this.running) {
-            if (this.report) {
-                ns.clearLog();
-                ns.print(this.report());    
-            }
-            await ns.asleep(1000);
-        }
-        ns.tprint(`Stopping ${this.constructor.name} on port ${portNum}`);
+    [Symbol.iterator]() {
+        return Object.values(this.getAllServers())[Symbol.iterator]();
     }
 
     loadServer(hostname) {
