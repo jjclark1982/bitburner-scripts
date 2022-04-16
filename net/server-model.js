@@ -25,7 +25,7 @@ export class ServerList {
     constructor(ns) {
         this.ns = ns;
         ns.disableLog("scan");
-        delete this.getAllServers.cache;
+        delete this._cachedServers;
     }
 
     [Symbol.iterator]() {
@@ -37,17 +37,17 @@ export class ServerList {
     }
 
     getAllServers() {
-        if (!this.getAllServers.cache) {
+        if (!this._cachedServers) {
             const allServers = {};
             for (const hostname of this.getAllHostnames()) {
                 allServers[hostname] = this.loadServer(hostname);
             }
-            this.getAllServers.cache = allServers;
+            this._cachedServers = allServers;
             setTimeout(() => {
-                delete this.getAllServers.cache;
+                delete this._cachedServers;
             }, 1);
         }
-        return this.getAllServers.cache;
+        return this._cachedServers;
     }
 
     getAllHostnames() {
