@@ -73,7 +73,7 @@ export class ThreadPool extends PortService {
         // When the pool process exits, signal all the workers and clients to stop.
         for (const worker of Object.values(this.workers)) {
             worker.running = false;
-            // worker.ns.exit();
+            // worker.ns.exit();  // this can be useful for debugging
         }
         PortService.tearDown.call(this);
     }
@@ -138,7 +138,7 @@ export class ThreadPool extends PortService {
         const matchingWorkers = Object.values(this.workers).filter((worker)=>(
             !exclude[worker.id] && 
             worker.running &&
-            worker.nextFreeTime < startTime &&
+            !(worker.nextFreeTime > startTime) &&
             worker.process.threads >= threads &&
             worker.process.threads < threads*2 &&
             capabilities.every((task)=>task in worker.capabilities)
@@ -243,7 +243,7 @@ export class ThreadPool extends PortService {
     removeWorker(workerID) {
         const worker = this.workers[workerID];
         delete this.workers[workerID];
-        if (!this.port.empty()) {
+        if (this.running) {
             worker.process = this.ns.getRunningScript(worker.process.pid);
             this.process.offlineExpGained += worker.process.offlineExpGained;
             this.process.offlineMoneyMade += worker.process.offlineMoneyMade;
@@ -255,7 +255,7 @@ export class ThreadPool extends PortService {
     getMaxTotalRam() {
         const {ns} = this;
         const serverPool = new ServerPool({ns, scriptRam: 1.75});
-        const threads = this.workers.reduce((total, worker)=>(
+        const threads = Object.values(this.workers).reduce((total, worker)=>(
             total + (worker.process?.threads || 0)
         ), serverPool.totalThreadsAvailable);
         return threads * 1.75;
@@ -265,7 +265,7 @@ export class ThreadPool extends PortService {
         const {ns} = this;
         const serverPool = new ServerPool({ns, scriptRam: 1.75});
         let maxThreads = Math.floor(serverPool.maxThreadsAvailable / 4);
-        maxThreads = this.workers.reduce((total, worker)=>(
+        maxThreads = Object.values(this.workers).reduce((total, worker)=>(
             Max(total, worker.process?.threads || 0)
         ), maxThreads);
         return maxThreads;
@@ -304,8 +304,8 @@ export class ThreadPool extends PortService {
             {header: "Drift   ", field: "drift" }
         ];
         let moneyMade = this.getOnlineMoneyMade();
-        const moneyPerSec = ns.nFormat((moneyMade / (ns.getRunningScript().onlineRunningTime / 1000)) || 0, "$0.0 a")
-        moneyMade = ns.nFormat(moneyMade, "$0.0 a");
+        const moneyPerSec = ns.nFormat((moneyMade / (ns.getRunningScript().onlineRunningTime)) || 0, "$0,0.0a")
+        moneyMade = ns.nFormat(moneyMade, "$0,0.0a");
         columns.title = `Thread Pool (Port ${this.portNum}) Money made: ${moneyMade} (${moneyPerSec} / sec)`;
         const rows = Object.values(this.workers).map((worker)=>workerReport(worker, now));
         return drawTable(columns, rows);

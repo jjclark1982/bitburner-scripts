@@ -52,14 +52,14 @@ export class Worker {
         ns.print(`Worker ${this.id} registered with thread pool. Starting work.`);
         // Block until something sets running to false
         this.running = true;
-        while (this.running) {
+        while (this.running || this.currentJob.task) {
             await ns.asleep(1000);
             // Terminate a worker that has not been used in a while.
             if (!this.currentJob.task && this.jobQueue.length == 0 && this.elapsedTime() > 1*60*1000) {
                 this.running = false;
             }
         }
-        console.log(`Worker ${this.id} stopping.`);
+        ns.print(`Worker ${this.id} stopping.`);
     }
 
     tearDown() {
@@ -78,13 +78,17 @@ export class Worker {
     }
 
     addJob(job) {
+        if (!this.running) {
+            return false;
+        }
+
         const {ns} = this;
         const now = Date.now();
 
         // Validate job parameters.
         job.args ||= [];
         if (!job.startTime) {
-            job.startTime = now;
+            job.startTime = this.nextFreeTime + this.tDelta;
         }
         if (job.startTime < Math.max(now, this.nextFreeTime)) {
             const drift = job.startTime - Math.max(now, this.nextFreeTime);
@@ -124,6 +128,11 @@ export class Worker {
         // Take the next job from the queue.
         const job = this.jobQueue.shift();
         this.currentJob = job;
+
+        // Run an 'onBeforeStart' callback if provided.
+        if (typeof(job.onBeforeStart) === 'function') {
+            job.onBeforeStart(job);
+        }
 
         // Record actual start time.
         job.startTimeActual = Date.now();

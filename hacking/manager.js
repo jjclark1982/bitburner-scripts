@@ -144,7 +144,7 @@ export class HackingManager {
         }
 
         // Dispatch the batch
-        const result = await this.backend.dispatchJobs(batch);
+        const result = await this.backend.dispatchJobs(batch, isPrepBatch); // TODO: use isPrepBatch to allow dispatchJobs to shift jobs farther into the future
         if (result) {
             ns.print(`Dispatched batch ${batchID}: ${batch.moneySummary()} ${batch.summary()} batch for ${server.hostname}`);
         }

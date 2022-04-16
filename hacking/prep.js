@@ -68,8 +68,15 @@ export class PrepManager {
 
         const prepBatch = server.planPrepBatch(this.params);
 
-        prepBatch.setStartTime(now);
-        await this.backend.dispatchJobs(prepBatch);
+        // eval("window").prepBatch = prepBatch;
+        // prepBatch.setStartTime(now);
+        for (const job of prepBatch) {
+            let result = await this.backend.dispatchJob(job); // TODO: confirm that this job can be added to an existing queue
+            while (!result) {
+                await ns.asleep(1000);
+                let result = await this.backend.dispatchJob(job);
+            }
+        }
         server.nextStartTime = prepBatch.lastEndTime();
 
         await ns.asleep(prepBatch.lastEndTime() - Date.now());
