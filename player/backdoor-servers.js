@@ -23,7 +23,7 @@ export async function installBackdoors(ns) {
             await ns.sleep(60*1000);
         }
     }
-    ns.tprint("Installed backdoors on all faction servers.");
+    ns.tprint("INFO: Installed backdoors on all faction servers.");
 }
 
 export async function installBackdoorOnServer(ns, server) {

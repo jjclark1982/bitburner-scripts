@@ -71,5 +71,8 @@ export class PrepManager {
         prepBatch.setStartTime(now);
         await this.backend.dispatchJobs(prepBatch);
         server.nextStartTime = prepBatch.lastEndTime();
+
+        await ns.asleep(prepBatch.lastEndTime() - Date.now());
+        ns.tprint(`INFO: ${server.hostname} is prepared for hacking.`);
     }
 }
