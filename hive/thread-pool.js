@@ -59,7 +59,7 @@ export async function main(ns) {
 
 export class ThreadPool extends PortService {
     constructor({ns, port}) {
-        super(ns, port, this);
+        super(ns, port);
 
         this.process = ns.getRunningScript();
         this.workers = {};
@@ -68,13 +68,13 @@ export class ThreadPool extends PortService {
         ns.print(`Started ThreadPool on port ${this.portNum}.`);
     }
 
-    tearDown = () => {
+    tearDown() {
         // When the pool process exits, signal all the workers and clients to stop.
         for (const worker of Object.values(this.workers)) {
             worker.running = false;
             // worker.ns.exit();  // this can be useful for debugging
         }
-        PortService.tearDown.call(this);
+        PortService.prototype.tearDown.call(this);
     }
 
     async dispatchJobs(batch) {

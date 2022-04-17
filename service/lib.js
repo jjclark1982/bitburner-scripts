@@ -67,7 +67,7 @@ export class PortService {
         eval('window')[`port${this.portNum}`] = this.object;
 
         // Unpublish this service when the process ends for any reason.
-        ns.atExit(this.tearDown);
+        ns.atExit(this.tearDown.bind(this));
 
         ns.tprint(`Started ${this.objectClassName} Service on port ${this.portNum}`);
     }
@@ -91,7 +91,7 @@ export class PortService {
         ns.tprint(`Stopped ${this.objectClassName} Service on port ${this.portNum}`);
     }
 
-    tearDown = () => {
+    tearDown() {
         this.running = false;
         if (this.portHandle.peek() === this.object) {
             this.portHandle.read();
