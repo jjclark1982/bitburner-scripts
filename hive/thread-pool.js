@@ -38,7 +38,6 @@ export async function main(ns) {
     flags.ns = ns;
 
     const threadPool = new ThreadPool(flags);
-    eval("window").PortService = PortService;
     
     if (flags.test) {
         setTimeout(async function(){
@@ -55,12 +54,12 @@ export async function main(ns) {
         }, 100)
     }
 
-    await threadPool.serve(threadPool);
+    await threadPool.serve();
 }
 
 export class ThreadPool extends PortService {
     constructor({ns, port}) {
-        super(ns, port);
+        super(ns, port, this);
 
         this.process = ns.getRunningScript();
         this.workers = {};

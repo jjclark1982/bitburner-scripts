@@ -165,12 +165,12 @@ Would like to make reusable modules that are available as either commands, libra
 /service/servers.js
     import PortService
     import ServerList
-    await (new PortService(ns, port=1)).serve(ServerList)
+    await (new PortService(ns, 1, ServerList)).serve()
 
 /service/compute.js
     import PortService
     import ServerPool
-    await (new PortService(ns, port=2)).serve(ServerPool)
+    await (new PortService(ns, 2, ServerPool)).serve()
 ```
 
 (nothing should depend on a Service subclass)

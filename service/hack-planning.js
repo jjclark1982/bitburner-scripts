@@ -17,6 +17,6 @@ export async function main(ns) {
     }
 
     const hackPlanner = new HackPlanner(ns);
-    const service = new PortService(ns, flags.port);
-    await service.serve(hackPlanner);
+    const service = new PortService(ns, flags.port, hackPlanner);
+    await service.serve();
 }

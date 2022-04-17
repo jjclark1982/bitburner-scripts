@@ -33,15 +33,16 @@ export async function waitForService(ns, portNum) {
  * @typedef {Object} PortService - Service that makes an object available to other proecesses through a Netscript port.
  */
 export class PortService {
-    constructor(ns, portNum=1) {
+    constructor(ns, portNum=1, obj) {
         this.ns = ns;
         this.portNum = portNum;
         this.portHandle = ns.getPortHandle(portNum);
+        this.publishObject(obj);
     }
 
-    async serve(obj) {
+    publishObject(obj) {
         const {ns} = this;
-        ns.disableLog("asleep");
+        obj ||= this;
 
         obj._service = this;
         this.object = obj;
@@ -51,7 +52,7 @@ export class PortService {
         // Replace any existing service on the same port.
         if (!this.portHandle.empty()) {
             const otherObj = this.portHandle.read();
-            if (otherObj?._service) {
+            if (otherObj?._service && otherObj._service !== this) {
                 otherObj._service.running = false;
                 // await ns.asleep(1000);
             }
@@ -68,13 +69,21 @@ export class PortService {
         // Unpublish this service when the process ends for any reason.
         ns.atExit(this.tearDown);
 
-        // Block until something sets `this.running` to false.
         ns.tprint(`Started ${this.objectClassName} Service on port ${this.portNum}`);
+    }
+
+    // Block until something sets `this.running` to false.
+    async serve() {
+        const {ns} = this;
+        ns.disableLog("asleep");
         this.running = true;
         while (this.running) {
+            if (typeof(this.object.update) === "function") {
+                this.object.update();
+            }
             if (typeof(this.object.report) === "function") {
                 ns.clearLog();
-                ns.print(this.object.report());    
+                ns.print(this.object.report());
             }
             await ns.asleep(1000);
         }
@@ -104,6 +113,6 @@ export async function main(ns) {
     function ExampleObject(){};
     const exampleObject = new ExampleObject();
 
-    const exampleService = new PortService(ns, flags.port);
-    await exampleService.serve(exampleObject);
+    const exampleService = new PortService(ns, flags.port, exampleObject);
+    await exampleService.serve();
 }

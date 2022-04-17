@@ -17,6 +17,6 @@ export async function main(ns) {
     }
 
     const serverPool = new ServerPool(ns);
-    const service = new PortService(ns, flags.port);
-    await service.serve(serverPool);
+    const service = new PortService(ns, flags.port, serverPool);
+    await service.serve();
 }

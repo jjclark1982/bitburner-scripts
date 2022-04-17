@@ -1,21 +1,43 @@
-import { StockSymbols } from '/stocks/companies';
+import { StockSymbols as CompanyStockSymbols } from '/stocks/companies';
+import { PortService } from "/service/lib";
 
 export async function main(ns) {
     ns.disableLog("asleep");
     ns.disableLog("stock.buy");
     ns.disableLog("stock.sell");
 
-    const stockService = {
-        getStockInfo: (symbol)=>getStockInfo(ns, symbol)
-    };
-    const port = ns.getPortHandle(5);
-    port.clear();
-    port.write(stockService);
-    ns.atExit(()=>port.clear());
+    const stockInfo = new StockInfo(ns);
+    const service = new PortService(ns, 5, stockInfo);
+    await service.serve(stockInfo);
+}
 
-    while (true) {
-        tendStocks(ns);
-        await ns.asleep(1*60*1000);
+class StockInfo {
+    constructor(ns) {
+        this.ns = ns;
+        this.lastUpdateTime = 1;
+    }
+
+    getStockInfo(symbol) {
+        return getStockInfo(this.ns, symbol);
+    }
+
+    getAllStocks() {
+        return getAllStocks(this.ns);
+    }
+
+    getPortfolioValue() {
+        return getPortfolioValue(this.getAllStocks());
+    }
+
+    update() {
+        // run at most once per minute
+        const now = Date.now();
+        if (now < this.lastUpdateTime + 1*60*1000) {
+            return;
+        }
+        this.lastUpdateTime = now;
+
+        tendStocks(this.ns);
     }
 }
 
@@ -41,9 +63,9 @@ function tendStocks(ns) {
 
 export function getStockInfo(ns, symbol) {
     getStockInfo.allSymbols ||= ns.stock.getSymbols();
-    if (symbol in StockSymbols) {
+    if (symbol in CompanyStockSymbols) {
         // look up organization name
-        symbol = StockSymbols[symbol];
+        symbol = CompanyStockSymbols[symbol];
     }
     if (!getStockInfo.allSymbols.includes(symbol)) {
         return null;
