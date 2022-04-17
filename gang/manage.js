@@ -5,7 +5,7 @@ import { buyAugs } from "gang/buy-augs.js";
 export async function main(ns) {
     ns.disableLog("sleep");
 
-    if (!ns.gang.inGang) {
+    if (!ns.gang.inGang()) {
         return;
     }
 
