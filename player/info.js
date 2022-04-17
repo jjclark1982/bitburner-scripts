@@ -1,8 +1,11 @@
+import { getService } from "/service/lib";
+
 /** @param {NS} ns **/
 export async function main(ns) {
     let player = ns.getPlayer();
     player.karma = ns.heart.break();
-    player.stocksValue = getPortfolioValue(ns);
+
+    player.stocksValue = getService(ns, 5)?.getPortfolioValue() || 0;
 
     const factions = player.factions;
     player.factions = {};
@@ -18,8 +21,14 @@ export async function main(ns) {
         `Player`,
         `------`,
         // `  HP:              ${player.hp} / ${player.max_hp}`,
-        `  Net Worth:       ${ns.nFormat(player.money + player.stocksValue, '$0.0a')}`,
-        `  Stocks:          ${ns.nFormat(player.stocksValue, '$0.0a')}`,
+    ];
+    if (player.stocksValue) {
+        dashboard.push(
+            `  Net Worth:       ${ns.nFormat(player.money + player.stocksValue, '$0.0a')}`,
+            `  Stocks:          ${ns.nFormat(player.stocksValue, '$0.0a')}`,    
+        );
+    }
+    dashboard.push(
         `  Cash:            ${ns.nFormat(player.money, '$0.0a')}`,
         // `  Hacking Skill:   ${player.hacking}`,
         // `  Intelligence:    ${player.intelligence}`,
@@ -34,34 +43,6 @@ export async function main(ns) {
         `  In Gang:         ${ns.gang.inGang()}`,
         `  Time Since Aug:  ${ns.tFormat(player.playtimeSinceLastAug)}`,
         ``
-    ].join("\n");
-    ns.print(dashboard);
+    );
+    ns.print(dashboard.join("\n"));
 }
-
-
-export function getAllStocks(ns) {
-    const allStocks = {};
-    for (const symbol of ns.stock.getSymbols()) {
-        const stock = {};
-        const pos = ns.stock.getPosition(symbol);
-        stock.shares = pos[0];
-        stock.sharesAvgPrice = pos[1];
-        stock.sharesShort = pos[2];
-        stock.sharesAvgPriceShort = pos[3];
-        stock.askPrice = ns.stock.getAskPrice(symbol);
-        stock.bidPrice = ns.stock.getBidPrice(symbol);
-        stock.price = (stock.askPrice + stock.bidPrice) / 2;
-        allStocks[symbol] = stock;
-    }
-    return allStocks;
-}
-
-export function getPortfolioValue(ns) {
-    const stocks = getAllStocks(ns);
-    let value = 0;
-    for (const stock of Object.values(stocks)) {
-        value += stock.bidPrice * stock.shares - stock.askPrice * stock.sharesShort;
-    }
-    return value;
-}
-
