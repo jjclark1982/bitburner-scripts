@@ -32,9 +32,9 @@ export async function main(ns) {
         flags.maxThreadsPerJob ||= Math.floor(backend.maxThreadsAvailable(scriptRam) / 4);
     }
 
-    ns.print(servers.reportMostProfitableServers(ns, flags));
+    ns.print(servers.reportMostProfitableServers(flags));
 
-    ns.print(servers.reportBatchLengthComparison(ns, server, flags));
+    ns.print(servers.reportBatchLengthComparison(server, flags));
 
     if (flags.console) {
         eval("window").server = server;
@@ -45,11 +45,17 @@ export async function main(ns) {
 export class HackPlanner extends ServerList {
     ServerClass = HackableServer;
 
-    mostProfitableServers(params) {
+    mostProfitableServers(params, hostnames=[]) {
         const {ns} = this;
         const plans = [];
-        const player = ns.getPlayer();
-        for (const server of this.getHackableServers(player)) {
+        let servers = this;
+        if (hostnames.length > 0) {
+            servers = hostnames.map((hostname) => this.loadServer(hostname));
+        }
+        else {
+            servers = this.getHackableServers(ns.getPlayer());
+        }
+        for (const server of servers) {
             const bestParams = server.mostProfitableParamsSync(params);
             const batchCycle = server.planBatchCycle(bestParams);
             batchCycle.prepTime = server.estimatePrepTime(params);
@@ -67,7 +73,8 @@ export class HackPlanner extends ServerList {
         return bestPlans;
     }
 
-    reportMostProfitableServers(ns, params) {
+    reportMostProfitableServers(params) {
+        const {ns} = this;
         const columns = [
             {header: "Hostname", field: "server.hostname", width: 18, align: "left"},
             {header: "Parameters", field: "condition", width: 16, align: "left", truncate: true},
@@ -78,12 +85,13 @@ export class HackPlanner extends ServerList {
             // {header: "$/sec/GB", field: "moneyPerSecPerGB", format: ns.nFormat, formatArgs: ["$0.00a"]},
         ];
         columns.title = `Most Profitable Servers to Hack (${ns.nFormat(params.maxTotalRam*1e9, "0.0 b")} total RAM)`;
-        const rows = this.mostProfitableServers(ns, [], params);
+        const rows = this.mostProfitableServers(params);
         eval("window").mostProfitableServers = rows;
         return drawTable(columns, rows);
     }
     
-    reportBatchLengthComparison(ns, server, params) {
+    reportBatchLengthComparison(server, params) {
+        const {ns} = this;
         server = new HackableServer(ns, server);
         const columns = [
             {header: "Condition", field: "condition", width: 28, align: "left", truncate: true},
@@ -135,11 +143,11 @@ export class HackableServer extends ServerModel {
         )
     }
 
-    preppedCopy() {
+    preppedCopy(secMargin=0) {
         const server = this.copy();
         server.moneyAvailable = server.moneyMax;
         server.hackDifficulty = server.minDifficulty;
-        server.prepDifficulty = server.minDifficulty;
+        server.prepDifficulty = server.minDifficulty + secMargin;
         return server;
     }
 
@@ -390,7 +398,7 @@ export class HackableServer extends ServerModel {
     /**
      * Calculate metrics of a hacking batch.
      * @param {Object} params - Parameters for jobs to add to the batch. Additional values will be passed to planHackBatch and planPrepBatch.
-     * @param {number} [params.maxTotalRam=4096] - GB of ram to use for multiple batches
+     * @param {number} [params.maxTotalRam=16384] - GB of ram to use for multiple batches
      * @param {number} [params.tDelta=100] - milliseconds between job completions
      * @param {boolean} [params.reserveRam=false] - whether to plan based on peak RAM usage instead of average RAM usage
      * @returns {BatchCycle} Details of the planned batch cycle
@@ -511,7 +519,7 @@ export class HackableServer extends ServerModel {
  * @property {number} numBatchesAtOnce - aka "depth"
  * @property {number} timeBetweenStarts
  * @property {number} peakRam - ram use if all processes reserve ram
- * @property {number} totalRam - ram use 
+ * @property {number} avgRam - ram use with perfect scheduling
  * @property {number} moneyPerSec
  * @property {number} moneyPerSecPerGB
  * @property {number} maxThreadsPerJob
@@ -519,14 +527,17 @@ export class HackableServer extends ServerModel {
 
 /* ----- library functions ----- */
 
-function *range(min, max, step) {
-    let i = min;
-    while (i < max) {
+function *range(start, stop, step) {
+    if (step <= 0 || stop < start) {
+        return;
+    }
+    let i = start;
+    while (i < stop) {
         yield i;
         i += step;
     }
 }
 
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
