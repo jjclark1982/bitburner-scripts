@@ -8,17 +8,25 @@ Collection of scripts for [Bitburner](https://danielyxie.github.io/bitburner/)
 
 [bladeburner/](bladeburner/) - Manage bladeburner actions and skill points.
 
+[botnet/](botnet/) - System for remote control of long-running processes.
+
 [contracts/](contracts/) - Find and solve coding contracts.
 
 [corporation/](corporation/) - 
 
 [gang/](gang/) - Manage gang member activities and equipment.
 
+[hacking/](hacking/) and [batch/](batch/) - Scripts for planning and carrying out hack/grow/weaken operations.
+
 [hacknet/](hacknet/) - Buy hacknet nodes or servers that will pay for themselves in a specified amount of time.
 
 [inspect/](inspect/) - Show info about various objects.
 
+[net/](net/) - Utilities for working with servers and RAM.
+
 [player/](player/) - Singularity actions.
+
+[service/](service/) - System for publishing library code on Netscript ports.
 
 [stanek/](stanek/) - Configure and charge Stanek's Gift.
 
