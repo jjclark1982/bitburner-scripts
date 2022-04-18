@@ -37,7 +37,7 @@ This system consists of loosely-coupled modules:
 
 [ThreadPool](../hive/) is a backend that dispatches jobs to long-lived [Worker](worker.js) processes. It matches job `startTime` with availability on workers.
 
-[ServerPool](../net/server-pool.js) launches processes in available RAM banks.
+[ServerPool](../net/deploy-script.js) launches processes in available RAM banks.
 
 [box-drawing.js](../lib/box-drawing.js) is a library for printing tables of data.
 

@@ -1,7 +1,7 @@
 import { drawTable } from "/lib/box-drawing";
 import { PortService } from "/service/lib";
 import { Batch } from "/hacking/batch";
-import { ServerPool } from "/net/server-pool"; // this is the main RAM cost, it could go in a separate process
+import { ServerPool } from "/net/deploy-script"; // this is the main RAM cost, it could go in a separate process
 
 const FLAGS = [
     ["port", 3],
@@ -166,8 +166,9 @@ export class ThreadPool extends PortService {
         }
 
         // Find a suitable server.
-        const serverPool = new ServerPool({ns, scriptRam: script});
-        const server = serverPool.smallestServerWithThreads(threads);
+        const scriptRam = ns.getScriptRam(script, 'home');
+        const serverPool = new ServerPool(ns, {logLevel: 0});
+        const server = serverPool.getSmallestServersWithThreads(scriptRam, threads)[0];
         if (!server) {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;

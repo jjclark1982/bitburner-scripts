@@ -22,9 +22,10 @@ export function main(ns) {
 export class ServerList {
     ServerClass = ServerModel;
 
-    constructor(ns) {
-        this.ns = ns;
+    constructor(ns, params={}) {
         ns.disableLog("scan");
+        this.ns = ns;
+        Object.assign(this, params);
         delete this._cachedServers;
     }
 

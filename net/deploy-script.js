@@ -58,6 +58,7 @@ export async function main(ns) {
 
 export class ServerPool extends ServerList {
     ServerClass = ScriptableServer;
+    logLevel = 2;
 
     async deploy(job) {
         let {host, server, script, threads=1, args, dependencies, allowSplit, requireAll} = job;
@@ -78,7 +79,7 @@ export class ServerPool extends ServerList {
         if (server) {
             let process = await server.deploy(job);
             if (process.pid) {
-                ns.tprint(`Running on ${server.hostname} with PID ${process.pid}: ${process.threads}x ${script} ${(args||[]).join(' ')}`);
+                if (this.logLevel >= 2) { ns.tprint(`Running on ${server.hostname} with PID ${process.pid}: ${process.threads}x ${script} ${(args||[]).join(' ')}`); }
             }
             else {
                 ns.tprint(`ERROR: Failed to deploy ${threads}x ${script} on ${server.hostname} (${this.ns.nFormat(scriptRam*threads*1e9, "0.0 b")} / ${this.ns.nFormat(server.availableRam() * 1e9, "0 b")} RAM)`);

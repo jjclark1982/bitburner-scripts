@@ -6,7 +6,7 @@
 
 The system is controlled through a `ThreadPool` process which communicates with `Worker` processes through a [Netscript Port](https://bitburner.readthedocs.io/en/latest/netscript/netscriptmisc.html#netscript-ports). The processes can connect to each other after being launched in any order, including reloading from save.
 
-An application can dispatch tasks to the `ThreadPool` and it will launch an appropriate size `Worker` on any available server (using [ServerPool](../net/server-pool.js)), or assign the task to an already running `Worker`.
+An application can dispatch tasks to the `ThreadPool` and it will launch an appropriate size `Worker` on any available server (using [ServerPool](../net/deploy-script.js)), or assign the task to an already running `Worker`.
 
 ![System Diagram](system-diagram.svg)
 
