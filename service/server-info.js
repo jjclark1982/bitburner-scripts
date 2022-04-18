@@ -1,5 +1,5 @@
 import { PortService } from "/service/lib";
-import { ServerPool } from "/net/server-pool";
+import { ServerList } from "/net/list-servers";
 
 const FLAGS = [
     ["help", false],
@@ -12,7 +12,7 @@ export async function main(ns) {
 
     const flags = ns.flags(FLAGS);
     if (flags.help) {
-        ns.tprint("Provide server information on a netscript port")
+        ns.tprint("Provide server information on a netscript port");
         return;
     }
 

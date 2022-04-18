@@ -164,7 +164,7 @@ Would like to make reusable modules that are available as either commands, libra
     PortService
     getService()
 
-/service/servers.js
+/service/server-info.js
     import PortService
     import ServerList
     await (new PortService(ns, 1, ServerList)).serve()

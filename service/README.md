@@ -29,7 +29,7 @@ Server
 **Usage:** Run the service (3.8 GB daemon):
 
 ```bash
-> run /service/servers.js
+> run /service/server-info.js
 ```
 
 Then you can read server info with no RAM cost for the client:
