@@ -7,7 +7,7 @@ const FLAGS = [
     ["id", '']
 ];
 
-const OPERATIONS = [
+const TASKS = [
     'hack',
     'grow',
     'weaken'
@@ -15,23 +15,23 @@ const OPERATIONS = [
 
 export function autocomplete(data, args) {
     data.flags(FLAGS);
-    return [...OPERATIONS, ...data.servers];
+    return [...TASKS, ...data.servers];
 }
 
 /** @param {NS} ns **/
 export async function main(ns) {
-    ns.weaken; // for static RAM calculation
+    ns.grow; // for static RAM calculation
 
     const flags = ns.flags(FLAGS);
-    const operation = flags._.shift();
+    const task = flags._.shift();
     const args = flags._;
     const options = {stock: flags.stock};
 
-    if (flags.help || !OPERATIONS.includes(operation) || args.length < 1) {
+    if (flags.help || !TASKS.includes(task) || args.length < 1) {
         ns.tprint([
-            'Perform a hack/grow/weaken operation on a server.', ' ',
+            'Perform a hack / grow / weaken task on a server.', ' ',
             'Usage:',
-            `> run ${ns.getScriptName()} [ ${OPERATIONS.join(' | ')} ] hostname [ --startTime ms ] [ --repeatPeriod ms ]`, ' ',
+            `> run ${ns.getScriptName()} [ ${TASKS.join(' | ')} ] hostname [ --startTime ms ] [ --repeatPeriod ms ]`, ' ',
             'Example: weaken foodnstuff one time with 10 threads',
             `> run ${ns.getScriptName()} -t 10 weaken foodnstuff`, ' '
         ].join('\n'));
@@ -46,10 +46,10 @@ export async function main(ns) {
             await ns.asleep(startTime - now);
         }
 
-        // Run the operation.
-        if (flags.verbose) { ns.tprint(`  [${formatTimestamp()}] Starting ${operation} ${args.join(' ')} ${JSON.stringify(options)} (${formatTimeDiff(Date.now(), startTime)})`); }
-        await ns[operation](...args, options);
-        if (flags.verbose) { ns.tprint(`  [${formatTimestamp()}] Finished ${operation} ${args.join(' ')}`); }
+        // Run the task.
+        if (flags.verbose) { ns.tprint(`  [${formatTimestamp()}] Starting ${task} ${args.join(' ')} ${JSON.stringify(options)} (${formatTimeDiff(Date.now(), startTime)})`); }
+        await ns[task](...args, options);
+        if (flags.verbose) { ns.tprint(`  [${formatTimestamp()}] Finished ${task} ${args.join(' ')}`); }
 
         // Update startTime if repeat is enabled.
         now = Date.now();
