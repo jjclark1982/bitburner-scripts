@@ -418,7 +418,7 @@ export class HackableServer extends ServerModel {
         params = Object.assign({}, defaults, params);
         const {moneyPercent, maxTotalRam, tDelta, reserveRam} = params;
 
-        const server = this.preppedCopy();
+        const server = this.preppedCopy(Math.max(0, params.hackMargin, params.prepMargin));
         const batch = server.planHackingBatch(params);
 
         const moneyPerBatch = batch.moneyTaken();
