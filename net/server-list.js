@@ -1,3 +1,20 @@
+/*
+
+/net/server-list.js - get info about servers
+
+Usage:
+
+2.2 GB import
+import { ServerList, ServerModel } from "/net/server-list";
+
+3.8 GB daemon (Port 1)
+> run /service/server-info.js
+
+4.3 GB executable
+> run /net/server-list.js
+
+*/
+
 /**
  * Display a simple report when run as an executable.
  *  

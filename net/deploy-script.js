@@ -1,3 +1,21 @@
+/*
+
+/net/deploy-script.js - run a script on any available server
+
+Usage:
+
+4.2 GB import
+import { ServerPool, HackableServer } from "/net/deploy-server";
+
+5.8 GB daemon (Port 2)
+> run /service/compute.js
+
+5.8 GB executable
+> run /net/deploy-server.js [--threads n] script [args...]
+
+*/
+
+
 import { drawTable } from "/lib/box-drawing";
 import { ServerModel, ServerList } from '/net/server-list';
 
@@ -36,7 +54,7 @@ export async function main(ns) {
             '',
             `Exmaple: run ${ns.getScriptName()} --threads 1000 /batch/grow.js ecorp`,
             ' '
-        ]);
+        ].join('\n'));
         return;
     }
 
