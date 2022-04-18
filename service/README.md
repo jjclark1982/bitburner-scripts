@@ -4,7 +4,7 @@ Netscript port numbers used in this repository:
 
 - Port 1: [ServerList](#ServerList_Service) - Information about servers
 - Port 2: [ServerPool](#ServerPool_Service) - Run scripts on any server
-- Port 3: [ThreadPool](../hive/) - Run netscript functions on a grid computing system
+- Port 3: [ThreadPool](../botnet/) - Run netscript functions on a grid computing system
 - Port 4: [HackPlanner](#Hack_Planning_Service) - Plan hack/grow/weaken operations
 - Port 5: [StockTrader](../stocks/trader.js) - Information about stocks
 

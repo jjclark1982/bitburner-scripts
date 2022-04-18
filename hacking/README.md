@@ -35,7 +35,7 @@ This system consists of loosely-coupled modules:
 
 [Hacking Manager](#Hacking_Manager) is a frontend for executing job batches. It matches job `endTime` with availability on target servers.
 
-[ThreadPool](../hive/) is a backend that dispatches jobs to long-lived [Worker](worker.js) processes. It matches job `startTime` with availability on workers.
+[ThreadPool](../botnet/) is a backend that dispatches jobs to long-lived [Worker](worker.js) processes. It matches job `startTime` with availability on workers.
 
 [ServerPool](../net/deploy-script.js) launches processes in available RAM banks.
 
@@ -222,10 +222,10 @@ for (const job of batch) {
 
 ##### Example: Hack the server `phantasy` using up to 5TB of total RAM:
 
-Start the backend, such as [ThreadPool](../hive/):
+Start the backend, such as [ThreadPool](../botnet/):
 
 ```bash
-> run /hive/thread-pool.js --tail
+> run /botnet/thread-pool.js --tail
 ```
 
 Then run hacking manager:

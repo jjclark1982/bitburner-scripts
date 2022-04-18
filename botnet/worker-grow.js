@@ -1,4 +1,4 @@
-import { Worker } from "hive/worker";
+import { Worker } from "/botnet/worker";
 
 /** @param {NS} ns **/
 export async function main(ns) {

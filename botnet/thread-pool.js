@@ -10,10 +10,10 @@ const FLAGS = [
 ];
 
 const SCRIPT_CAPABILITIES = [
-    {script: "/hive/worker-hack.js", capabilities: ['hack'], dependencies: ["/hive/worker.js"]},
-    {script: "/hive/worker-grow.js", capabilities: ['grow'], dependencies: ["/hive/worker.js"]},
-    {script: "/hive/worker-weaken.js", capabilities: ['weaken'], dependencies: ["/hive/worker.js"]},
-    {script: "/hive/worker.js", capabilities: ['hack', 'grow', 'weaken']}
+    {script: "/botnet/worker-hack.js", capabilities: ['hack'], dependencies: ["/botnet/worker.js"]},
+    {script: "/botnet/worker-grow.js", capabilities: ['grow'], dependencies: ["/botnet/worker.js"]},
+    {script: "/botnet/worker-weaken.js", capabilities: ['weaken'], dependencies: ["/botnet/worker.js"]},
+    {script: "/botnet/worker.js", capabilities: ['hack', 'grow', 'weaken']}
 ];
 
 /*

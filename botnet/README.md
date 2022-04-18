@@ -36,7 +36,7 @@ To run multiple jobs at once, call `threadPool.dispatchJobs(batch)`. This will r
 
 Start the thread pool:
 ```
-> run /hive/thread-pool.js --tail
+> run /botnet/thread-pool.js --tail
 ```
 
 Run an application on the pool:

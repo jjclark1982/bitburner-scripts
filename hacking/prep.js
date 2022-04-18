@@ -1,4 +1,4 @@
-import { getThreadPool } from "/hive/worker";
+import { getThreadPool } from "/botnet/worker";
 import { HackableServer } from "/hacking/planner";
 
 const FLAGS = [

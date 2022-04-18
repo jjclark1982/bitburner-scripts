@@ -54,9 +54,10 @@ Would like to move most of these into `net/` or `hacking/`.
     - [x] `/net/deploy.js` -> rename to `/net/deploy-script.js`
     - [x] `/net/server-pool.js` -> merge into `/net/deploy-script.js`
 
-- thread management / function delegation / botnet control -> maybe rename to `/botnet/`  
-    - [ ] `/hive/thread-pool.js`  
-    - [ ] `/hive/worker.js` (class definition)  
+- thread management / function delegation / botnet control
+    - [x] rename to `/botnet/`  
+    - [ ] `/botnet/thread-pool.js`  
+    - [ ] `/botnet/worker.js` (class definition)  
 
 - hack planning  
     - [ ] `/batch/analyze.js` -> merge into `/hacking/planner.js`
@@ -74,7 +75,7 @@ Would like to move most of these into `net/` or `hacking/`.
 
 - remote-controlled hacking (persistent process)
     - [x] `/hive/manage.js` -> move to `/hacking/manager.js`
-    - [ ] `/hive/worker.js` (main function)  
+    - [ ] `/botnet/worker.js` (main function)  
 
 
 - [x] rename all `spawn` scripts to `deploy`
@@ -176,4 +177,16 @@ Would like to make reusable modules that are available as either commands, libra
 ```
 
 (nothing should depend on a Service subclass)
+
+---
+
+Now the whole system architecture looks like
+
+Services
+    ServerPool
+    ThreadPool
+    HackingPlanner
+    StockInfo
+Applications
+    HackingManager
 
