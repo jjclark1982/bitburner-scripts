@@ -1,5 +1,5 @@
 import { PortService } from "/service/lib";
-import { ServerPool } from "/net/deploy";
+import { ServerPool } from "/net/deploy-script";
 
 const FLAGS = [
     ["help", false],
