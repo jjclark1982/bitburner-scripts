@@ -12,7 +12,7 @@ Netscript port numbers used in this repository:
 
 ### ServerList Service
 
-[list-servers.js](../net/list-servers.js) defines these data structures:
+[server-list.js](../net/server-list.js) defines these data structures:
 
 ServerList
 - loadServer(hostname) -> Server

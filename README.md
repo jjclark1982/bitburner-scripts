@@ -50,7 +50,7 @@ Would like to move most of these into `net/` or `hacking/`.
     - [x] `/net/crack-servers.js` -> `/net/register-servers.js`  
     - [x] `/net/buy-server.js` -> split out 'retire' function  
     - [x] `/net/retire-server.js` -> rename to `delete-server`
-    - [x] `/net/server-model.js` -> rename to `/net/list-servers.js`
+    - [x] `/net/server-model.js` -> rename to `/net/list-servers.js` or maybe `/net/server-list.js`
     - [x] `/net/deploy.js` -> rename to `/net/deploy-script.js`
     - [ ] `/net/server-pool.js` -> merge into `/net/deploy-script.js`
 
@@ -144,7 +144,7 @@ ServerModel
 Would like to make reusable modules that are available as either commands, libraries, or services.
 
 ```
-/net/list-servers.js: show info about a named server
+/net/server-list.js: show info about a named server
     ServerModel
     ServerList
 

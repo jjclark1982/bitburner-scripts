@@ -1,5 +1,5 @@
 import { drawTable } from "/lib/box-drawing";
-import { ServerModel, ServerList } from '/net/list-servers';
+import { ServerModel, ServerList } from '/net/server-list';
 
 /**
  * deploy - main API for ServerPool library

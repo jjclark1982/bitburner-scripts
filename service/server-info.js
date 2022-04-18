@@ -1,5 +1,5 @@
 import { PortService } from "/service/lib";
-import { ServerList } from "/net/list-servers";
+import { ServerList } from "/net/server-list";
 
 const FLAGS = [
     ["help", false],

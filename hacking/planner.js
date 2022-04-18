@@ -1,5 +1,5 @@
 import { drawTable } from "/lib/box-drawing";
-import { ServerList, ServerModel } from "/net/list-servers";
+import { ServerList, ServerModel } from "/net/server-list";
 import { Batch } from "hacking/batch";
 
 const FLAGS = [
