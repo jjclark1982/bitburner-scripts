@@ -107,12 +107,15 @@ export class PortService {
  */
 export async function main(ns) {
     const flags = ns.flags([
-        ['port', 1]
+        ['port', 20]
     ]);
 
-    function ExampleObject(){};
-    const exampleObject = new ExampleObject();
+    function NetscriptConsole() {
+        // 25 GB RAM to run this script, but still 0 GB import cost
+        window.ns = ns;
+    }
+    const netscriptConsole = new NetscriptConsole();
 
-    const exampleService = new PortService(ns, flags.port, exampleObject);
-    await exampleService.serve();
+    const service = new PortService(ns, flags.port, netscriptConsole);
+    await service.serve();
 }
