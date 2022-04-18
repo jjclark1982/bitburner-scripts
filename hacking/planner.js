@@ -1,3 +1,18 @@
+/*
+
+/hacking/planner.js
+
+6 GB import
+import {HackPlanner} from "/hacking/planner";
+
+7.3 GB executable
+> run /hacking/planner.js [hostname]
+
+7.3 GB daemon
+> run /service/hack-planning.js
+
+*/
+
 import { drawTable } from "/lib/box-drawing";
 import { ServerList, ServerModel } from "/net/server-list";
 import { Batch } from "hacking/batch";
