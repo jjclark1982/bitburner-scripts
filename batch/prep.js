@@ -1,5 +1,5 @@
 import { planHack, planWeaken, planGrow, BATCH_SCRIPTS } from "batch/analyze.js";
-import { runBatchOnPool, copyToPool } from "batch/pool.js";
+import { runBatchOnPool } from "batch/manage.js";
 
 const FLAGS = [
     ["help", false],
@@ -35,7 +35,6 @@ export async function main(ns) {
     }
 
     for (const target of args._) {
-        await copyToPool({ns}, BATCH_SCRIPTS);
         await runPrep({...args, target});
     }
     await ns.asleep(1*1000);

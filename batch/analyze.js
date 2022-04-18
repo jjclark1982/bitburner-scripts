@@ -1,5 +1,5 @@
 import { drawTable } from "lib/box-drawing.js";
-import { getAllHosts } from "batch/pool.js";
+import { getAllHostnames } from "/net/server-list.js";
 
 export const HACK = "/batch/hack.js";
 export const GROW = "/batch/grow.js";
@@ -24,7 +24,7 @@ export async function main(ns) {
 
 export function mostProfitableTargets(ns) {
 	const player = ns.getPlayer();
-	const mostProfitableServers = getAllHosts({ns}).map((target)=>{
+	const mostProfitableServers = [...getAllHostnames(ns)].map((target)=>{
 		const server = ns.getServer(target);
 		server.profit = getServerProfit(ns, target);
 		server.prepTime = planWeaken({ns, target}).duration;

@@ -1,6 +1,5 @@
 import { mostProfitableTargets, planHack, planWeaken, planGrow, BATCH_SCRIPTS } from "batch/analyze.js";
-import { getServerPool, runBatchOnPool, copyToPool } from "batch/pool.js";
-
+import { ServerPool } from "/net/deploy-script";
 
 /*
 
@@ -55,8 +54,6 @@ export async function main(ns) {
         args.targets = args._;
         delete args._;
     }
-
-    await copyToPool({ns}, BATCH_SCRIPTS);
 
     while (true) {
         const serverPool = getServerPool({ns});
@@ -115,4 +112,85 @@ export async function runHWGW(params) {
 
     const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;
     return threadsUsed;
+}
+
+/* ----- server pool functions ----- */
+
+
+const SCRIPT_RAM = 1.75; // Default thread cost for estimating capacity of pool
+let batchID = 0;         // Global counter used to ensure unique processes
+
+export function getServerPool({ns, scriptRam}) {
+    scriptRam ||= SCRIPT_RAM;
+    const serverPool = new ServerPool(ns, {scriptRam, logLevel: 0});
+    return serverPool;
+}
+
+export async function runOnPoolNow({ns, script, threads, args, verbose}) {
+    // Run the script on one or more hosts, selected based on current availability.
+    const serverPool = getServerPool({ns, scriptRam});
+    const job = {script, threads, args, allowSplit:true};
+    await serverPool.deploy(job);
+}
+
+export function runOnPool(params) {
+    let {ns, startTime, args} = params;
+
+    const serverPool = getServerPool({ns});
+    serverPool.deployLater(params);
+}
+
+export async function runBatchOnPool(params, jobs) {
+    // Run the entire batch, if there is enough RAM.
+    // A job is of the format {script, threads, args, startTime}
+    let {ns, serverPool, safetyFactor=1.1} = params
+
+    batchID++;
+
+    let totalThreads = 0;
+    let earliestStartTime = Infinity;
+    let maxScriptRam = SCRIPT_RAM;
+    for (const job of jobs) {
+        totalThreads += job.threads;
+        if (job.startTime !== undefined && job.startTime < earliestStartTime) {
+            earliestStartTime = job.startTime;
+        }
+        const scriptRam = ns.getScriptRam(job.script, "home");
+        if (scriptRam > maxScriptRam) {
+            maxScriptRam = scriptRam;
+        }
+    }
+
+    // If planned start time was in the past, shift entire batch to future
+    // and update times in-place.
+    let startTimeAdjustment = Date.now() - earliestStartTime;
+    if (startTimeAdjustment > 0) {
+        startTimeAdjustment += 100;
+        ns.print(`Batch ${batchID} adjusting start time by ${startTimeAdjustment}`);
+        for (const job of jobs) {
+            job.startTime += startTimeAdjustment;
+            job.endTime += startTimeAdjustment;
+            if (job.args.includes('--startTime')) {
+                job.args[job.args.indexOf('--startTime')+1] = job.startTime;
+            }
+        }
+    }
+
+    // Abort if the entire batch will not fit in RAM.
+    // (Difficult to be sure because conditions may change before scheduled jobs start.)
+    if (serverPool === undefined) {
+        serverPool = getServerPool({ns, scriptRam:maxScriptRam});
+    }
+    if (totalThreads * safetyFactor > serverPool.totalThreads) {
+        ns.tprint("Batch skipped: not enough RAM in server pool.");
+        return false;
+    }
+
+    // Schedule each job in the batch.
+    for (const [index, job] of jobs.entries()) {
+        // Append batch id and job index to ensure unique process id.
+        job.args.push(`batch-${batchID}.${index+1}`);
+        runOnPool({ns, ...job});
+    }
+    return true;
 }
