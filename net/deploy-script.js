@@ -78,6 +78,12 @@ export class ServerPool extends ServerList {
     ServerClass = ScriptableServer;
     logLevel = 2;
 
+    /**
+     * deploy
+     * @param {Job} job
+     * @param {boolean} job.allowSplit - whether to allow splitting a large job into smaller processes with the same total thread count
+     * @returns {object} process
+     */
     async deploy(job) {
         let {host, server, script, threads=1, args, dependencies, allowSplit, requireAll} = job;
         const {ns} = this;
@@ -99,7 +105,7 @@ export class ServerPool extends ServerList {
             if (process.pid) {
                 if (this.logLevel >= 2) { ns.tprint(`Running on ${server.hostname} with PID ${process.pid}: ${process.threads}x ${script} ${(args||[]).join(' ')}`); }
             }
-            else {
+            else if (threads > 0) {
                 ns.tprint(`ERROR: Failed to deploy ${threads}x ${script} on ${server.hostname} (${this.ns.nFormat(scriptRam*threads*1e9, "0.0 b")} / ${this.ns.nFormat(server.availableRam() * 1e9, "0 b")} RAM)`);
             }
             return process;
@@ -113,14 +119,12 @@ export class ServerPool extends ServerList {
         }
     }
 
-    deployLater(job) {
-        const now = Date.now();
-        job.startTime ||= now;
-        job.process ||= {};
-        setTimeout(this.deploy.bind(this, job), job.startTime - now);
-        return job.process;
-    }
-
+    /**
+     * Convert a large job into a batch of smaller jobs that will fit on this pool.
+     * @param {Job} job
+     * @param {boolean} job.requireAll - whether to cancel if there is not enouh RAM for the entire batch.
+     * @returns {Job[]} batch of jobs
+     */
     splitJob({script, threads, args, startTime, requireAll}) {
         const {ns} = this;
         const scriptRam = ns.getScriptRam(script, 'home');
@@ -150,6 +154,11 @@ export class ServerPool extends ServerList {
         return batch;
     }
 
+    /**
+     * Deploy a list of jobs, if there is enough RAM for all of them.
+     * @param {Job[]} jobs - list of jobs
+     * @returns {object[]} list of processes
+     */
     async deployBatch(jobs=[]) {
         if (!this.running) {
             return;
@@ -177,6 +186,77 @@ export class ServerPool extends ServerList {
             ns.tprint(`INFO: Deployed ${this.ns.nFormat(totalThreads, '0,0')} total threads.`);
         }
         return results;
+    }
+
+    /**
+     * Deploy a job at its specified startTime.
+     * @param {object} job 
+     * @param {number} job.startTime
+     * @returns {object} process
+     */
+    deployLater(job) {
+        const now = Date.now();
+        job.startTime ||= now;
+        job.process ||= {};
+        setTimeout(this.deploy.bind(this, job), job.startTime - now);
+        return job.process;
+    }
+
+    /**
+     * Deploy a list of jobs at their specified startTimes.
+     * TODO: address redundancies between this and deployBatch
+     * @param {Job[]} jobs
+     * @param {number} safetyFactor 
+     * @returns {boolean} success
+     */
+    deployBatchLater(jobs=[], safetyFactor=1.1) {
+        const {ns} = this;
+        this.batchID ||= 0;
+        this.batchID++;
+    
+        let totalThreads = 0;
+        let earliestStartTime = Infinity;
+        let maxScriptRam = 1.6;
+        for (const job of jobs) {
+            totalThreads += job.threads;
+            if (job.startTime !== undefined && job.startTime < earliestStartTime) {
+                earliestStartTime = job.startTime;
+            }
+            const scriptRam = ns.getScriptRam(job.script, 'home');
+            if (scriptRam > maxScriptRam) {
+                maxScriptRam = scriptRam;
+            }
+        }
+    
+        // If planned start time was in the past, shift entire batch to future
+        // and update times in-place.
+        let startTimeAdjustment = Date.now() - earliestStartTime;
+        if (startTimeAdjustment > 0) {
+            startTimeAdjustment += 100;
+            ns.print(`Batch ${this.batchID} adjusting start time by ${startTimeAdjustment}`);
+            for (const job of jobs) {
+                job.startTime += startTimeAdjustment;
+                job.endTime += startTimeAdjustment;
+                if (job.args.includes('--startTime')) {
+                    job.args[job.args.indexOf('--startTime')+1] += startTimeAdjustment;
+                }
+            }
+        }
+    
+        // Abort if the entire batch will not fit in RAM.
+        // (Difficult to be sure because conditions may change before scheduled jobs start.)
+        if (totalThreads * safetyFactor > this.totalThreadsAvailable(maxScriptRam)) {
+            ns.tprint("ERROR: Batch skipped: not enough RAM in server pool.");
+            return false;
+        }
+    
+        // Schedule each job in the batch.
+        for (const [index, job] of jobs.entries()) {
+            // Append batch id and job index to ensure unique process id.
+            job.args.push(`batch-${this.batchID}.${index+1}`);
+            this.deployLater(job);
+        }
+        return true;
     }
 
     report() {
@@ -235,3 +315,17 @@ export class ScriptableServer extends ServerModel {
         return job.process;
     }
 }
+
+/**
+ * Job
+ * @typedef {Object} Job
+ * @property {string} script - the script to run
+ * @property {string[]} [args] - the arguments to the script
+ * @property {number} [threads=1] - number of threads
+ * @property {number} [duration] - duration of this task in milliseconds
+ * @property {number} [startTime] - time to schedule start
+ * @property {number} [endTime] - time to schedule end
+ * @property {string} [host] - hostname to run on (optional)
+ * @property {ScriptableServer} [server] - server to run on (optional)
+ * @property {string[]} [dependencies] - additional scripts to copy to the server
+ */

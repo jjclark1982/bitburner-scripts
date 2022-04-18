@@ -48,7 +48,7 @@ export async function main(ns) {
 
         // Run the task.
         if (flags.verbose) { ns.tprint(`  [${formatTimestamp()}] Starting ${task} ${args.join(' ')} ${JSON.stringify(options)} (${formatTimeDiff(Date.now(), startTime)})`); }
-        await ns[task](...args, options);
+        await ns[task](args[0], options);
         if (flags.verbose) { ns.tprint(`  [${formatTimestamp()}] Finished ${task} ${args.join(' ')}`); }
 
         // Update startTime if repeat is enabled.

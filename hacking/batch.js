@@ -3,6 +3,7 @@
  * @typedef {Object} Job
  * @property {string} task - the netscript function to call
  * @property {string[]} args - the arguments to the function
+ * @property {number} threads - number of threads
  * @property {number} duration - duration of this task in milliseconds
  * @property {number} startTime
  * @property {number} endTime
