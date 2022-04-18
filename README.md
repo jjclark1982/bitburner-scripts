@@ -50,7 +50,9 @@ Would like to move most of these into `net/` or `hacking/`.
     - [x] `/net/crack-servers.js` -> `/net/register-servers.js`  
     - [x] `/net/buy-server.js` -> split out 'retire' function  
     - [x] `/net/retire-server.js` -> rename to `delete-server`
-    - [ ] `/net/server-pool.js` -> replace with `/net/compute-service.js`
+    - [x] `/net/server-model.js` -> rename to `/net/list-servers.js`
+    - [ ] `/net/deploy.js` -> rename to `/net/deploy-script.js`
+    - [ ] `/net/server-pool.js` -> merge into `/net/deploy-script.js`
 
 - thread management / function delegation / botnet control -> maybe rename to `/botnet/`  
     - [ ] `/hive/thread-pool.js`  
@@ -142,7 +144,7 @@ ServerModel
 Would like to make reusable modules that are available as either commands, libraries, or services.
 
 ```
-/net/server-model.js: show info about a named server
+/net/list-servers.js: show info about a named server
     ServerModel
     ServerList
 
@@ -174,3 +176,9 @@ Would like to make reusable modules that are available as either commands, libra
 ```
 
 (nothing should depend on a Service subclass)
+
+
+---
+
+now we have some confusion between `/net/deploy` (transitive) and `/stanek/deploy` / `/share/deploy` (intransitive)
+

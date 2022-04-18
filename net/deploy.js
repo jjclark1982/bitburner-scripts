@@ -1,5 +1,5 @@
 import { drawTable } from "/lib/box-drawing";
-import { ServerModel, ServerList } from '/net/server-model';
+import { ServerModel, ServerList } from '/net/list-servers';
 
 export async function deploy(params={}) {
     const {ns, script, threads, args, allowSplit, requireAll} = params;
