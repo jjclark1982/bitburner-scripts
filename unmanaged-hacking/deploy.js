@@ -1,4 +1,4 @@
-import { deploy } from "net/server-pool.js";
+import { deploy } from "net/deploy-script.js";
 
 const FLAGS = [];
 
@@ -21,5 +21,5 @@ export async function main(ns) {
     const args = [target, "--minSecurity", minSecurity, "--maxMoney", maxMoney];
 
     // ns.run(script, threads, ...args);
-    await deploy({ns, script, threads, args, allowSplit:true});
+    await deploy(ns, {script, threads, args, allowSplit:true});
 }

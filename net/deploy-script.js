@@ -1,10 +1,16 @@
 import { drawTable } from "/lib/box-drawing";
 import { ServerModel, ServerList } from '/net/list-servers';
 
-export async function deploy(params={}) {
-    const {ns, script, threads, args, allowSplit, requireAll} = params;
+/**
+ * deploy - main API for ServerPool library
+ * @param {NS} ns 
+ * @param {object} job - description of the script to run
+ * @returns 
+ */
+export async function deploy(ns, job={}) {
+    const {host, script, threads, args, dependencies, allowSplit, requireAll} = job;
     const serverPool = new ServerPool(ns);
-    return await serverPool.deploy(params);
+    return await serverPool.deploy(job);
 }
 
 const FLAGS = [
@@ -54,15 +60,12 @@ export class ServerPool extends ServerList {
     ServerClass = ScriptableServer;
 
     async deploy(job) {
-        let {server, script, threads=1, args, dependencies, allowSplit, requireAll} = job;
-        if (!this.running) {
-            return;
-        }
+        let {host, server, script, threads=1, args, dependencies, allowSplit, requireAll} = job;
         const {ns} = this;
         const scriptRam = ns.getScriptRam(script, 'home');
 
-        if (typeof(server) === 'string') {
-            server = this.loadServer(server);
+        if (host && !server) {
+            server = this.loadServer(host);
         }
         if (!server) {
             if (threads == 'max') {
@@ -73,14 +76,14 @@ export class ServerPool extends ServerList {
             }
         }
         if (server) {
-            let result = await server.deploy(job);
-            if (result.process?.pid) {
-                ns.tprint(`Running on ${server.hostname} with PID ${result.process.pid}: ${result.process.threads}x ${script} ${(args||[]).join(' ')}`);
+            let process = await server.deploy(job);
+            if (process.pid) {
+                ns.tprint(`Running on ${server.hostname} with PID ${process.pid}: ${process.threads}x ${script} ${(args||[]).join(' ')}`);
             }
             else {
                 ns.tprint(`ERROR: Failed to deploy ${threads}x ${script} on ${server.hostname} (${this.ns.nFormat(scriptRam*threads*1e9, "0.0 b")} / ${this.ns.nFormat(server.availableRam() * 1e9, "0 b")} RAM)`);
             }
-            return result;
+            return process;
         }
         else if (allowSplit) {
             const batch = this.splitJob({script, threads, args, requireAll});
@@ -94,8 +97,9 @@ export class ServerPool extends ServerList {
     deployLater(job) {
         const now = Date.now();
         job.startTime ||= now;
+        job.process ||= {};
         setTimeout(this.deploy.bind(this, job), job.startTime - now);
-        return job;
+        return job.process;
     }
 
     splitJob({script, threads, args, startTime, requireAll}) {
@@ -190,18 +194,25 @@ export class ScriptableServer extends ServerModel {
         const {ns} = this;
         job.args ||= [];
         job.threads ||= 1;
+        const scriptRam = ns.getScriptRam(job.script, 'home');
         if (job.threads == 'max') {
-            const scriptRam = ns.getScriptRam(job.script, 'home');
             job.threads = this.availableThreads(scriptRam);
         }
-
         const {script, threads, args, dependencies} = job;
+
+        job.process ||= {};
+        Object.assign(job.process, {
+            server: this.hostname,
+            filename: script,
+            args: args,
+            threads,
+            ramUsage: scriptRam
+        });
         if (threads > 0) {
             await ns.scp([script, ...(dependencies||[])], 'home', this.hostname);
-            const pid = ns.exec(script, this.hostname, threads, ...args);
-            job.process = {pid, server:this.hostname, script, threads};
+            job.process.pid = ns.exec(script, this.hostname, threads, ...args);
             this.reload();
         }
-        return job;
+        return job.process;
     }
 }
