@@ -245,8 +245,8 @@ The scripts currently used by this system are:
 ###### Frontend:
 ```
 /lib/box-drawing.js
+/lib/batch-model.js
 /net/server-list.js
-/hacking/batch.js         (maybe move to /lib/batch-model.js)
 /hacking/planner.js
 /hacking/manager.js
 /hacking/prep.js          (optional)

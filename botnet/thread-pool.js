@@ -1,6 +1,6 @@
 import { drawTable } from "/lib/box-drawing";
+import { Batch } from "/lib/batch-model";
 import { PortService } from "/service/lib";
-import { Batch } from "/hacking/batch";
 import { ServerPool } from "/net/deploy-script"; // this is the main RAM cost, it could go in a separate process
 
 const FLAGS = [
