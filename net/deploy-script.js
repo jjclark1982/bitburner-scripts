@@ -78,6 +78,19 @@ export class ServerPool extends ServerList {
     ServerClass = ScriptableServer;
     logLevel = 2;
 
+    constructor(ns, params={}) {
+        super(ns, params);
+        Object.assign(this, params);
+        this.pendingJobs = {};
+        ns.atExit(this.tearDown.bind(this));
+    }
+
+    tearDown() {
+        for (const timeout in this.pendingJobs) {
+            clearTimeout(timeout);
+        }
+    }
+
     /**
      * deploy
      * @param {Job} job
@@ -88,6 +101,7 @@ export class ServerPool extends ServerList {
         let {host, server, script, threads=1, args, dependencies, allowSplit, requireAll} = job;
         const {ns} = this;
         const scriptRam = ns.getScriptRam(script, 'home');
+        delete this.pendingJobs[job.timeout];
 
         if (host && !server) {
             server = this.loadServer(host);
@@ -198,7 +212,9 @@ export class ServerPool extends ServerList {
         const now = Date.now();
         job.startTime ||= now;
         job.process ||= {};
-        setTimeout(this.deploy.bind(this, job), job.startTime - now);
+        job.timeout = setTimeout(this.deploy.bind(this, job), job.startTime - now);
+        this.pendingJobs ||= {};
+        this.pendingJobs[job.timeout] = job;
         return job.process;
     }
 

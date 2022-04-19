@@ -92,12 +92,19 @@ export class PortService {
     }
 
     tearDown() {
+        if (typeof(this.object?.tearDown) === "function") {
+            this.object.tearDown();
+        }
         this.running = false;
         if (this.portHandle.peek() === this.object) {
             this.portHandle.read();
         }
-        delete eval('window')[this.objectName];
-        delete eval('window')[`port${this.portNum}`];
+        if (eval('window')[this.objectName] === this.object) {
+            delete eval('window')[this.objectName];
+        }
+        if (eval('window')[`port${this.portNum}`] === this) {
+            delete eval('window')[`port${this.portNum}`];
+        }
     }
 }
 

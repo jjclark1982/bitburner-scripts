@@ -53,8 +53,8 @@ export async function main(ns) {
         delete flags._;
     }
 
+    const serverPool = new ServerPool(ns, {logLevel: 0});
     while (true) {
-        const serverPool = new ServerPool(ns);
         await runMultiHWGW({...flags, serverPool});
         await ns.asleep(getNextBatchDelay());
     }
@@ -82,7 +82,7 @@ export async function runMultiHWGW(params) {
         targets = mostProfitableTargets(ns).map((s)=>s.hostname).slice(0,8);
     }
 
-    serverPool.threadsUsed ||= 0;
+    serverPool.threadsUsed = 0;
     for (const target of targets) {
         if (serverPool.threadsUsed > serverPool.totalThreadsAvailable(SCRIPT_RAM) * 0.9) {
             break;
