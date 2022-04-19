@@ -39,10 +39,6 @@ This system consists of loosely-coupled modules:
 
 [ServerPool](../net/deploy-script.js) launches processes in available RAM banks.
 
-[box-drawing.js](../lib/box-drawing.js) is a library for printing tables of data.
-
-
-
 
 ---
 
@@ -51,6 +47,9 @@ This system consists of loosely-coupled modules:
 ### Hacking Planner
 
 [planner.js](planner.js) is a library for planning batches of `hack`, `grow`, and `weaken` jobs, scheduling them, and optimizing their parameters.
+
+It depends on [server-list.js](../net/server-list.js) for listing hackable servers, [batch.js](batch.js) for calculating schedules, and [box-drawing.js](../lib/box-drawing.js) for displaying tables.
+
 
 #### Planner Command-Line Interface
 
@@ -210,7 +209,9 @@ for (const job of batch) {
 
 ### Hacking Manager
 
-[manager.js](manager.js) is a frontend for executing job batches calculated by [Planner](#Hacking Planner). It matches job `endTime` with availability on target servers. It delegates execution to a backend which can match job `startTime` with availability in RAM banks. The backend must implement the `dispatchJobs(batch)` method, which should return a falsey value if it is not able to run the entire batch, and may adjust the timing of the batch.
+[manager.js](manager.js) is a frontend for executing job batches calculated by [Planner](#Hacking_Planner). It matches job `endTime` with availability on target servers. It delegates execution to a backend that can match job `startTime` with availability in RAM banks.
+
+It depends on [planner.js](#Hacking_Planner) and some backend such as [ThreadPool](../botnet/). The backend must implement the `dispatchJobs(batch)` method, which should return a falsey value if it is not able to run the entire batch, and may adjust the timing of the batch.
 
 #### Manager Command-Line Interface
 
@@ -228,9 +229,8 @@ Start the backend, such as [ThreadPool](../botnet/):
 > run /botnet/thread-pool.js --tail
 ```
 
-Then run hacking manager:
+Then run Hacking Manager:
 
 ```bash
 > run /hacking/manager.js phantasy --tail --maxTotalRam 5000
 ```
-
