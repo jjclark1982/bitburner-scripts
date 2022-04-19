@@ -188,13 +188,15 @@ Would like to make reusable modules that are available as either commands, libra
 
 ---
 
-Now the whole system architecture looks like
+Now the whole system architecture looks like;
 
+```
 Services
     ServerPool
     ThreadPool
     HackingPlanner
     StockInfo
+
 Applications
     HackingManager
-
+```

@@ -48,7 +48,7 @@ This system consists of loosely-coupled modules:
 
 [planner.js](planner.js) is a library for planning batches of `hack`, `grow`, and `weaken` jobs, scheduling them, and optimizing their parameters.
 
-It depends on [server-list.js](../net/server-list.js) for listing hackable servers, [batch.js](batch.js) for calculating schedules, and [box-drawing.js](../lib/box-drawing.js) for displaying tables.
+It depends on [server-list.js](../net/server-list.js) for listing hackable servers, [batch.js](batch.js) for calculating schedules, [box-drawing.js](../lib/box-drawing.js) for displaying tables, and it will make use of stock position information from [stocks/trader.js](../stocks/trader.js) if it is running.
 
 
 #### Planner Command-Line Interface
@@ -233,4 +233,38 @@ Then run Hacking Manager:
 
 ```bash
 > run /hacking/manager.js phantasy --tail --maxTotalRam 5000
+```
+
+
+---
+
+### Dependencies
+
+The scripts currently used by this system are:
+
+###### Frontend:
+```
+/lib/box-drawing.js
+/net/server-list.js
+/hacking/batch.js         (maybe move to /lib/batch-model.js)
+/hacking/planner.js
+/hacking/manager.js
+/hacking/prep.js          (optional)
+/stock/trader.js          (optional)
+```
+
+###### Minimum Backend:
+```
+/net/deploy-script.js
+/hacking/do.js
+```
+
+###### Alternative Backend:
+```
+/service/lib.js           (maybe move this to /lib/port-service.js)
+/botnet/thread-pool.js
+/botnet/worker.js         (maybe make this adaptive so we don't need 4 separate ones)
+/botnet/worker-hack.js
+/botnet/worker-grow.js
+/botnet/worker-weaken.js
 ```
