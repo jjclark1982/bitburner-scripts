@@ -46,7 +46,7 @@ export async function runPrep(params) {
     convertToScripts(batch);
     ns.tprint(`batch: ${batch.longSummary()}`);
 
-    const serverPool = new ServerPool(ns, {logLevel: 4});
-    await serverPool.deployBatch(batch);    
+    const serverPool = new ServerPool(ns, {logLevel: 2, logFunc: ns.print});
+    await serverPool.deployBatch(batch);
     return batch;
 }

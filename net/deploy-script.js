@@ -25,9 +25,9 @@ import { ServerModel, ServerList } from '/net/server-list';
  * @param {object} job - description of the script to run
  * @returns 
  */
-export async function deploy(ns, job={}) {
+export async function deploy(ns, job={}, params={}) {
     const {host, script, threads, args, dependencies, allowSplit, requireAll} = job;
-    const serverPool = new ServerPool(ns);
+    const serverPool = new ServerPool(ns, params);
     return await serverPool.deploy(job);
 }
 
@@ -71,7 +71,7 @@ export async function main(ns) {
         flags.script = ns.args.shift();
         flags.args = ns.args;
     }
-    await deploy(flags);
+    await deploy(ns, flags, {logLevel: 4});
 }
 
 export class ServerPool extends ServerList {
@@ -81,6 +81,7 @@ export class ServerPool extends ServerList {
     constructor(ns, params={}) {
         super(ns, params);
         Object.assign(this, params);
+        this.logFunc ||= ns.tprint;
         this.pendingJobs = {};
         ns.atExit(this.tearDown.bind(this));
     }
@@ -92,19 +93,19 @@ export class ServerPool extends ServerList {
     }
 
     logDebug(...args) {
-        if (this.logLevel > 3) { this.ns.tprint(...args); }
+        if (this.logLevel > 3) { this.ns[this.logFunc](...args); }
     }
 
     logInfo(...args) {
-        if (this.logLevel > 2) { this.ns.tprint("INFO: ", ...args); }
+        if (this.logLevel > 2) { this.ns[this.logFunc]("INFO: ", ...args); }
     }
 
     logWarn(...args) {
-        if (this.logLevel > 1) { this.ns.tprint("WARNING: ", ...args); }
+        if (this.logLevel > 1) { this.ns[this.logFunc]("WARNING: ", ...args); }
     }
 
     logError(...args) {
-        if (this.logLevel > 0) { this.ns.tprint("ERROR: ", ...args); }
+        if (this.logLevel > 0) { this.ns[this.logFunc]("ERROR: ", ...args); }
     }
 
     /**
