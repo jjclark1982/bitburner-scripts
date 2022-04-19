@@ -53,7 +53,7 @@ export async function main(ns) {
         delete flags._;
     }
 
-    const serverPool = new ServerPool(ns, {logLevel: 0});
+    const serverPool = new ServerPool(ns, {logLevel: 2});
     while (true) {
         await runMultiHWGW({...flags, serverPool});
         await ns.asleep(getNextBatchDelay());
@@ -63,6 +63,7 @@ export async function main(ns) {
 const t0_by_target = {};
 const next_start_by_target = {};
 const SCRIPT_RAM = 1.75;
+let batchID = 0;
 
 function getNextBatchDelay() {
     let earliestStart = Infinity;
@@ -96,7 +97,8 @@ export async function runHWGW(params) {
 
     if (t0_by_target[params.target] === undefined) {
         const w0Job = planWeaken(params);
-        serverPool.deployBatchLater([w0Job]);
+        w0Job.args.push(`batch-${batchID++}.1`);
+        await serverPool.deployBatch([w0Job]);
         t0_by_target[params.target] = Date.now() + w0Job.duration;
     }
     const t0 = t0_by_target[params.target];
@@ -108,10 +110,45 @@ export async function runHWGW(params) {
 
     const batch = [hJob, w1Job, gJob, w2Job];
 
-    serverPool.deployBatchLater(batch);
+    for (const [index, job] of batch.entries()) {
+        job.args.push(`batch-${batchID++}.${index+1}`);
+    }
+    adjustSchedule(batch);
+    await serverPool.deployBatch(batch);
     t0_by_target[params.target] = w2Job.endTime + tDelta;
     next_start_by_target[params.target] = w1Job.startTime + 5 * tDelta;
 
     const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;
     return threadsUsed;
+}
+
+function adjustSchedule(jobs=[]) {
+    let earliestStartTime = Infinity;
+    for (const job of jobs) {
+        if (job.startTime !== undefined && job.startTime < earliestStartTime) {
+            earliestStartTime = job.startTime;
+        }
+        else if (job.args?.includes('--startTime') && job.args[job.args.indexOf('--startTime')+1] < earliestStartTime) {
+            earliestStartTime = job.args[job.args.indexOf('--startTime')+1];
+        }
+    }
+
+    // If planned start time was in the past, shift entire batch to future
+    // and update times in-place.
+    let startTimeAdjustment = Date.now() - earliestStartTime;
+    if (startTimeAdjustment > 0) {
+        startTimeAdjustment += 100;
+        ns.print(`Adjusting start time by ${startTimeAdjustment}`);
+        for (const job of jobs) {
+            if ('startTime' in job) {
+                job.startTime += startTimeAdjustment;
+            }
+            if ('endTime' in job) {
+                job.endTime += startTimeAdjustment;
+            }
+            if (job.args?.includes('--startTime')) {
+                job.args[job.args.indexOf('--startTime')+1] += startTimeAdjustment;
+            }
+        }
+    }
 }
