@@ -35,7 +35,7 @@ Server
 Then you can read server info with no RAM cost for the client:
 
 ```javascript
-import { getService } from "/service/lib";
+import { getService } from "/lib/port-service";
 const serverList = getService(ns, 1);
 const server = serverList.loadServer("foodnstuff");
 server.hackDifficulty; // 10
@@ -74,7 +74,7 @@ ServerPool
 Then you can deploy scripts to any available server, with no RAM cost for the client:
 
 ```javascript
-import { getService } from "/service/lib";
+import { getService } from "/lib/port-service";
 const serverPool = getService(ns, 2);
 const job = {script: "/batch/weaken.js", args: ["foodnstuff"], threads: 100})
 serverPool.deploy(job);
@@ -95,7 +95,7 @@ Service for [HackPlanner](../hacking/)
 Then you can plan hacking jobs based on various parameters.
 
 ```javascript
-import { getService } from "/service/lib";
+import { getService } from "/lib/port-service";
 const hackPlanner = getService(ns, 4);
 server = hackPlanner.loadServer("phantasy");
 server.planBatchCycle(server.mostProfitableParamsSync()); // " 7.6% HWGW"

@@ -1,4 +1,4 @@
-import { PortService } from "/service/lib";
+import { PortService } from "/lib/port-service";
 import { ServerList } from "/net/server-list";
 
 const FLAGS = [

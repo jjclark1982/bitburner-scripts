@@ -261,7 +261,7 @@ The scripts currently used by this system are:
 
 ###### Alternative Backend:
 ```
-/service/lib.js           (maybe move this to /lib/port-service.js)
+/lib/port-service.js
 /botnet/thread-pool.js
 /botnet/worker.js         (maybe make this adaptive so we don't need 4 separate ones)
 /botnet/worker-hack.js

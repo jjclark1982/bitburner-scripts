@@ -1,4 +1,4 @@
-import { getService } from "/service/lib";
+import { getService } from "/lib/port-service";
 
 /** @param {NS} ns **/
 export async function main(ns) {

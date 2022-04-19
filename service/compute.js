@@ -1,4 +1,4 @@
-import { PortService } from "/service/lib";
+import { PortService } from "/lib/port-service";
 import { ServerPool } from "/net/deploy-script";
 
 const FLAGS = [

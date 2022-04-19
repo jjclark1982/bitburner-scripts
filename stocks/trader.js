@@ -1,5 +1,5 @@
 import { StockSymbols as CompanyStockSymbols } from '/stocks/companies';
-import { PortService } from "/service/lib";
+import { PortService } from "/lib/port-service";
 
 export async function main(ns) {
     ns.disableLog("asleep");

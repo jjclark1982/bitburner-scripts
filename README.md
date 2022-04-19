@@ -169,7 +169,7 @@ Would like to make reusable modules that are available as either commands, libra
 /botnet/worker.js
     Worker
 
-/service/lib.js or /lib/port-service.js
+/lib/port-service.js
     PortService
     getService()
 
