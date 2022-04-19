@@ -105,31 +105,22 @@ Comparison of batches with at most 16.4 TB RAM, at most 1024 threads per job
 #### Planner API
 
 Planner defines these data structures:
-
-```
-Job: {task, args, threads, startTime, duration, endTime}
-```
-```
-Batch: Array[Job], ordered by intended endTime
-    peakRam()
-    avgRam()
-    activeDuration()
-    totalDuration()
-    setStartTime()
-    setFirstEndTime()
-    maxBatchesAtOnce()
-    minTimeBetweenBatches()
-```
 ```	
 HackableServer: mutable snapshot of a Netscript Server
     planHackJob(moneyPercent) -> Job
     planGrowJob() -> Job
     planWeakenJob() -> Job
-    planPrepBatch() -> Batch
-    planHackingBatch() -> Batch
-    planBatchCycle() -> {batch, params}
-    mostProfitableParameters() -> params
+    planPrepBatch(params) -> Batch
+    planHackingBatch(params) -> Batch
+    planBatchCycle(params) -> {batch, params, period, peakRam, ...}
+    mostProfitableParameters(constraints) -> params
 ```
+```
+HackPlanner:
+    loadServer(hostname) -> HackableServer
+    mostProfitableServers(constraints) -> BatchCycle[]
+```
+(see also `Job` and `Batch` from [batch-model.js](../lib/batch-model.js))
 
 Many methods of these objects take a `params` object with parameters to be passed on to subroutines:
 
@@ -148,8 +139,7 @@ Params: {
 ```
 
 
-
-##### Example: Plan an HWGW batch
+###### Example: Plan an HWGW batch
 
 ```javascript
 import { HackableServer } from "/hacking/planner";
@@ -170,7 +160,7 @@ const batch = batchCycle.batch;
 
 
 
-##### Example: Prepare a server using sequential steps in one process
+###### Example: Prepare a server using sequential steps in one process
 
 ```javascript
 import { HackableServer } from "/hacking/planner";
@@ -187,7 +177,7 @@ for (const job of batch) {
 
 
 
-##### Example: Run a hacking batch on parallel processes
+###### Example: Run a hacking batch on parallel processes
 
 ```javascript
 import { HackableServer } from "/hacking/planner";
@@ -221,7 +211,7 @@ It depends on [planner.js](#Hacking_Planner) and some backend such as [ThreadPoo
 
 
 
-##### Example: Hack the server `phantasy` using up to 5TB of total RAM:
+###### Example: Hack the server `phantasy` using up to 5TB of total RAM:
 
 Start the backend, such as [ThreadPool](../botnet/):
 
@@ -242,7 +232,7 @@ Then run Hacking Manager:
 
 The scripts currently used by this system are:
 
-###### Frontend:
+##### Frontend:
 ```
 /lib/box-drawing.js
 /lib/batch-model.js
@@ -250,16 +240,24 @@ The scripts currently used by this system are:
 /hacking/planner.js
 /hacking/manager.js
 /hacking/prep.js          (optional)
-/stock/trader.js          (optional)
+/stocks/trader.js         (optional)
 ```
 
-###### Minimum Backend:
+##### Minimum Backend:
 ```
 /net/deploy-script.js
 /hacking/do.js
 ```
 
-###### Alternative Backend:
+##### Alternative Backend (single-use scripts):
+```
+/batch/manage.js          (convertToScripts function)
+/batch/hack.js
+/batch/grow.js
+/batch/weaken.js
+```
+
+##### Alternative Backend (remote-controlled workers):
 ```
 /lib/port-service.js
 /botnet/thread-pool.js
