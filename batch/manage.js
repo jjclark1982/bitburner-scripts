@@ -1,5 +1,5 @@
-import { mostProfitableTargets, planHack, planWeaken, planGrow, BATCH_SCRIPTS } from "batch/analyze.js";
 import { ServerPool } from "/net/deploy-script";
+import { HackPlanner, HackableServer } from "/hacking/planner";
 
 /*
 
@@ -53,7 +53,7 @@ export async function main(ns) {
         delete flags._;
     }
 
-    const serverPool = new ServerPool(ns, {logLevel: 2});
+    const serverPool = new ServerPool(ns, {logLevel: 4});
     while (true) {
         await runMultiHWGW({...flags, serverPool});
         await ns.asleep(getNextBatchDelay());
@@ -63,7 +63,6 @@ export async function main(ns) {
 const t0_by_target = {};
 const next_start_by_target = {};
 const SCRIPT_RAM = 1.75;
-let batchID = 0;
 
 function getNextBatchDelay() {
     let earliestStart = Infinity;
@@ -80,7 +79,8 @@ export async function runMultiHWGW(params) {
 
     if (targets === undefined) {
         // continually recalculate most profitable targets
-        targets = mostProfitableTargets(ns).map((s)=>s.hostname).slice(0,8);
+        const hackPlanner = new HackPlanner(ns);
+        targets = hackPlanner.mostProfitableServers(params).map((plan)=>plan.server.hostname).slice(0,8);
     }
 
     serverPool.threadsUsed = 0;
@@ -94,32 +94,51 @@ export async function runMultiHWGW(params) {
 
 export async function runHWGW(params) {
     const {ns, target, tDelta, serverPool} = params;
+    const server = new HackableServer(ns, target);
 
-    if (t0_by_target[params.target] === undefined) {
-        const w0Job = planWeaken(params);
-        w0Job.args.push(`batch-${batchID++}.1`);
-        await serverPool.deployBatch([w0Job]);
-        t0_by_target[params.target] = Date.now() + w0Job.duration;
+    if (t0_by_target[target] === undefined) {
+        const batch = server.planPrepBatch(params);
+        convertToScripts(batch, params);
+        await serverPool.deployBatch(batch);
+        t0_by_target[target] = Date.now() + batch.totalDuration(tDelta);
+        return batch.peakThreads();
     }
-    const t0 = t0_by_target[params.target];
+    const t0 = t0_by_target[target];
 
-    const hJob  = planHack({  ...params, endTime: t0 + 1*tDelta, security:0 });
-    const w1Job = planWeaken({...params, endTime: t0 + 2*tDelta, security:hJob.security+1 });
-    const gJob  = planGrow({  ...params, endTime: t0 + 3*tDelta, security:0, moneyPercent: hJob.moneyMult*0.95});
-    const w2Job = planWeaken({...params, endTime: t0 + 4*tDelta, security:gJob.security+1 });
+    const batch = server.planHackingBatch(params);
+    batch.setFirstEndTime(t0, tDelta);
 
-    const batch = [hJob, w1Job, gJob, w2Job];
-
-    for (const [index, job] of batch.entries()) {
-        job.args.push(`batch-${batchID++}.${index+1}`);
-    }
+    convertToScripts(batch, params);
     adjustSchedule(batch);
     await serverPool.deployBatch(batch);
-    t0_by_target[params.target] = w2Job.endTime + tDelta;
-    next_start_by_target[params.target] = w1Job.startTime + 5 * tDelta;
+    t0_by_target[target] = batch.lastEndTime() + tDelta;
+    next_start_by_target[target] = batch.earliestStartTime() + 5 * tDelta;
 
-    const threadsUsed = hJob.threads + w1Job.threads + gJob.threads + w2Job.threads;
+    const threadsUsed = batch.peakThreads();
     return threadsUsed;
+}
+
+const TASK_TO_SCRIPT = {
+    'hack': '/batch/hack.js',
+    'grow': '/batch/grow.js',
+    'weaken': '/batch/weaken.js'
+};
+let batchID = 0;
+export function convertToScripts(jobs=[], params={}) {
+    for (const [index, job] of jobs.entries()) {
+        job.script = TASK_TO_SCRIPT[job.task];
+        const options = job.args.pop();
+        // if (options.stock) {
+        //     job.args.push('--stock');
+        // }
+        job.args.push(`batch-${batchID++}.${index+1}`);
+		if (params.reserveRam && job.startTime) {
+			job.args.push('--startTime');
+			job.args.push(job.startTime);
+            delete job.startTime;
+		}
+        job.allowSplit = true;
+    }
 }
 
 function adjustSchedule(jobs=[]) {

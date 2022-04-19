@@ -1,5 +1,6 @@
-import { planHack, planWeaken, planGrow, BATCH_SCRIPTS } from "batch/analyze.js";
-import { runBatchOnPool } from "batch/manage.js";
+import { ServerPool } from "/net/deploy-script";
+import { HackPlanner, HackableServer } from "/hacking/planner";
+import { convertToScripts } from "/batch/manage.js";
 
 const FLAGS = [
     ["help", false],
@@ -24,12 +25,9 @@ export async function main(ns) {
     args.ns = ns;
     if (args.help) {
         ns.tprint([
-            "Prepare servers for hacking.",
-            "",
-            `Usage: run ${ns.getScriptName()} [target...]`,
-            "",
-            `Exmaple: run ${ns.getScriptName()} ecorp foodnstuff`,
-            " "
+            "Prepare servers for hacking.", "",
+            `Usage: run ${ns.getScriptName()} [target...]`, "",
+            `Exmaple: run ${ns.getScriptName()} ecorp foodnstuff`, " "
         ].join("\n"));
         return;
     }
@@ -42,21 +40,13 @@ export async function main(ns) {
 
 export async function runPrep(params) {
     const {ns, target, tDelta} = params;
-    const server = ns.getServer(target);
-    const money = Math.max(1,server.moneyAvailable);
-    const moneyMax = Math.max(1,server.moneyMax);
-    const moneyPercent = money / moneyMax;
+    const server = new HackableServer(ns, target);
 
-    const w0Job = planWeaken(params);
-    const t0 = Date.now() + w0Job.duration;
-    const gJob  = planGrow({  ...params, endTime: t0 + 1*tDelta, security:0, moneyPercent: moneyPercent });
-    const w2Job = planWeaken({...params, endTime: t0 + 2*tDelta, security:gJob.security+1 });
-
-    const batch = [w0Job, gJob, w2Job];
-
-    ns.print("batch: ", JSON.stringify(batch, null, 2));
-
-    await runBatchOnPool({ns}, batch);
-
+    const batch = server.planPrepBatch(params);
+    convertToScripts(batch);
+    const serverPool = new ServerPool(ns, {logLevel: 4});
+    await serverPool.deployBatch(batch);
+    
+    ns.print(`batch: ${batch.summary()}`);
     return batch;
 }
