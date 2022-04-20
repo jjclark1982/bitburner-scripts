@@ -251,6 +251,7 @@ The scripts currently used by this system are:
 
 ##### Alternative Backend (single-use scripts):
 ```
+/net/deploy-script.js
 /batch/manage.js          (convertToScripts function)
 /batch/hack.js
 /batch/grow.js
@@ -260,6 +261,7 @@ The scripts currently used by this system are:
 ##### Alternative Backend (remote-controlled workers):
 ```
 /lib/port-service.js
+/net/deploy-script.js
 /botnet/thread-pool.js
 /botnet/worker.js         (maybe make this adaptive so we don't need 4 separate ones)
 /botnet/worker-hack.js
