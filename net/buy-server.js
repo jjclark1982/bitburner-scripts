@@ -1,5 +1,3 @@
-import { deleteServerIfNeeded } from "net/delete-server.js";
-
 export async function main(ns) {
     const fundsFraction = ns.args[0] || 0.8;
     buyServer(ns, fundsFraction);
