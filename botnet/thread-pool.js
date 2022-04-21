@@ -168,7 +168,7 @@ export class ThreadPool extends PortService {
         // Find a suitable server.
         const scriptRam = ns.getScriptRam(script, 'home');
         const serverPool = new ServerPool(ns, {logLevel: 0});
-        const server = serverPool.getSmallestServersWithThreads(scriptRam, threads)[0];
+        const server = serverPool.getSmallestServers({scriptRam, threads})[0];
         if (!server) {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;

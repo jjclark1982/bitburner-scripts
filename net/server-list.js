@@ -99,7 +99,18 @@ export class ServerList {
         ));
     }
 
-    getSmallestServersWithThreads(scriptRam, threads, exclude={}) {
+    /**
+     * List the smallest currently-available servers.
+     * This is useful for finding the best-fitting RAM bank for a process.
+     * @param {object} params 
+     * @param {number} params.threads - minimum number of available threads to require
+     * @param {number} params.scriptRam - RAM cost per thread
+     * @param {object} params.exclude - list of hostnames to exclude
+     * @returns [Array] list of suitable servers with the smallest current capacity first
+     */
+    getSmallestServers(params) {
+        const defaults = {threads: 1, scriptRam: DEFAULT_SCRIPT_RAM, exclude: {}};
+        const {threads, scriptRam, exclude} = Object.assign({}, defaults, params);
         const smallestServers = [...this].filter((server)=>(
             !(server.hostname in exclude) &&
             server.availableThreads(scriptRam) >= threads
@@ -109,10 +120,21 @@ export class ServerList {
         return smallestServers;
     }
 
-    getBiggestServers(scriptRam, exclude={}) {
+    /**
+     * List the biggest servers that are currently available.
+     * This uses a stable sort to help fill large servers first.
+     * @param {object} params 
+     * @param {number} params.threads - minimum number of available threads to require
+     * @param {number} params.scriptRam - RAM cost per thread
+     * @param {object} params.exclude - list of hostnames to exclude
+     * @returns [Array] list of suitable servers with the largest max capacity first
+     */
+     getBiggestServers(params) {
+        const defaults = {threads: 1, scriptRam: DEFAULT_SCRIPT_RAM, exclude: {}};
+        const {threads, scriptRam, exclude} = Object.assign({}, defaults, params);
         const biggestServers = [...this].filter((server)=>(
             !(server.hostname in exclude) &&
-            server.availableThreads(scriptRam) >= 1
+            server.availableThreads(scriptRam) >= threads
         )).sort((a,b)=>(
             b.maxRam - a.maxRam
         ));
@@ -131,13 +153,13 @@ export class ServerList {
         ), 0);
     }
 
-    totalThreadsAvailable(scriptRam=1.75) {
+    totalThreadsAvailable(scriptRam=DEFAULT_SCRIPT_RAM) {
         return this.getScriptableServers().reduce((total, server)=>(
             total + server.availableThreads(scriptRam)
         ), 0);
     }
 
-    maxThreadsAvailable(scriptRam=1.75) {
+    maxThreadsAvailable(scriptRam=DEFAULT_SCRIPT_RAM) {
         return this.getScriptableServers().reduce((total, server)=>(
             Math.max(total, server.availableThreads(scriptRam))
         ), 0);
@@ -188,7 +210,7 @@ export class ServerModel {
         return Math.max(0, this.maxRam - this.ramUsed - reservedRam);
     }
 
-    availableThreads(scriptRam=1.75) {
+    availableThreads(scriptRam=DEFAULT_SCRIPT_RAM) {
         if (!this.canRunScripts()) {
             return 0;
         }
@@ -238,3 +260,5 @@ export function getAllHostnames(ns) {
     }
     return scanned;
 }
+
+const DEFAULT_SCRIPT_RAM = 1.75;

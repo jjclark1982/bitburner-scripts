@@ -125,10 +125,10 @@ export class ServerPool extends ServerList {
         }
         if (!server) {
             if (threads == 'max') {
-                server = this.getBiggestServers(scriptRam)[0];
+                server = this.getBiggestServers({scriptRam})[0];
             }
             else {
-                server = this.getSmallestServersWithThreads(scriptRam, threads)[0];
+                server = this.getSmallestServers({scriptRam, threads})[0];
             }
         }
         if (server) {
@@ -185,9 +185,9 @@ export class ServerPool extends ServerList {
         const usedServers = {};
         let threadsNeeded = Math.min(threads, maxThreads);
         while (threadsNeeded > 0) {
-            let server = this.getSmallestServersWithThreads(scriptRam, threadsNeeded, usedServers)[0];
+            let server = this.getSmallestServers({scriptRam, threads:threadsNeeded, exclude:usedServers})[0];
             if (!server) {
-                server = this.getBiggestServers(scriptRam, usedServers)[0];
+                server = this.getBiggestServers({scriptRam, threads:1, exclude:usedServers})[0];
             }
             if (!server) {
                 break;
