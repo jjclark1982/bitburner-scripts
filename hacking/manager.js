@@ -103,15 +103,9 @@ export class HackingManager {
         const prevServer = server.copy();
         const batchID = this.batchID++;
 
-        // TODO: handle prep batches differently than hack batches.
-        //  - check that prepDifficulty is set correctly.
-        //    if server.hackDifficulty > server.minDifficulty: resync?
-        //    (need some margin in case we are currently in an active window)
-        //    (the last-job callback we currently use is probably ideal)
-        //  - insert a delay after the prep batch?
-        //    (this is best if RAM is maxed out during that batch, which is reasonable)
-        //    server.nextStartTime = prepBatch.lastEndTime() + tDelta
-
+        // Decide whether prep is needed.
+        // TODO: use params to set 'secMargin' input to this function.
+        // TODO: keep track of server "safe" time versus "active" time, to avoid unnecessary prep.
         const isPrepBatch = !server.isPrepared();
 
         // Plan a batch based on target state and parameters
@@ -119,16 +113,16 @@ export class HackingManager {
 
         // Schedule the batch
         if (!server.nextFreeTime) {
-            // TODO: keep track of server "safe" time versus "active" time
             batch.setStartTime(now);
-            server.nextFreeTime = batch.firstEndTime();
+            server.nextFreeTime = now + batch.totalDuration(params.tDelta) - batch.activeDuration(params.tDelta);
         }
         batch.setFirstEndTime(server.nextFreeTime);
+        batch.ensureStartInFuture(now, params.tDelta);
         if (batch.earliestStartTime() < now) {
             ns.tprint("ERROR: batch.earliestStartTime was inconsistent")
         }
 
-        // Add an `onFinish` callback to check on batch results and adjust params
+        // Add an `onFinish` callback to check batch results for desync
         batch[batch.length-1].onFinish = (job)=>{
             if (!this.running) {return;}
             const expectedServer = job.result;
@@ -164,5 +158,27 @@ export class HackingManager {
             server.nextStartTime = batch.earliestStartTime() - params.tDelta + batchCycle.timeBetweenStarts;
         }
         await ns.asleep(server.nextStartTime - Date.now()); // this should be timeBetweenStarts before the following batch's earliest start
+    }
+}
+
+export function convertToScripts(batch=[], params={batchID:0}) {
+    // const TASK_TO_SCRIPT = {
+    //     'hack': '/batch/hack.js',
+    //     'grow': '/batch/grow.js',
+    //     'weaken': '/batch/weaken.js'
+    // };
+    for (const [index, job] of batch.entries()) {
+        job.script = '/hacking/do.js';
+        job.args.unshift(job.task);
+        const options = job.args.pop();
+        if (options.stock) {
+            job.args.push('--stock');
+        }
+		if (params.reserveRam && job.startTime) {
+			job.args.push('--startTime', job.startTime);
+            delete job.startTime;
+		}
+        job.args.push(`batch-${params.batchID}.${index+1}`);
+        job.allowSplit = true; // TODO: test whether this can be disabled by scheduling into future
     }
 }
