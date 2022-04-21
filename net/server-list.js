@@ -84,10 +84,18 @@ export class ServerList {
         ));
     }
 
-    getPlayerOwnedServers() {
-        // includes home, hacknet servers, and purchased servers
+    getHacknetServers() {
         return [...this].filter((server)=>(
-            server.purchasedByPlayer
+            server.hashCapacity
+        ));
+    }
+
+    getPlayerOwnedServers() {
+        // includes purchased servers but not 'home' or hacknet servers
+        return [...this].filter((server)=>(
+            server.purchasedByPlayer &&
+            !(server.hostname == 'home') &&
+            !(server.hashCapacity)
         ));
     }
 
