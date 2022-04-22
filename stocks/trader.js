@@ -89,6 +89,7 @@ class StockTrader {
     }
 
     computeForecast(symbol) {
+        const {ns} = this;
         if (ns.getPlayer().has4SDataTixApi) {
             return this.ns.stock.getForecast(symbol);
         }
@@ -119,6 +120,7 @@ class StockTrader {
     }
 
     computeVolatility(symbol) {
+        const {ns} = this;
         if (ns.getPlayer().has4SDataTixApi) {
             return this.ns.stock.getVolatility(symbol);
         }
