@@ -76,9 +76,10 @@ export class PrepManager {
                 let result = await this.backend.dispatchJob(job);
             }
         }
-        server.nextStartTime = prepBatch.lastEndTime();
-        
-        await ns.asleep(prepBatch.lastEndTime() - Date.now());
+        if (prepBatch.length > 0) {
+            server.nextStartTime = prepBatch.lastEndTime();
+            await ns.asleep(prepBatch.lastEndTime() - Date.now());
+        }
         ns.tprint(`INFO: ${server.hostname} is prepared for hacking.`);
     }
 }

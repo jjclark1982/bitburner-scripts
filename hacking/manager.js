@@ -72,7 +72,7 @@ export class HackingManager {
 
         this.targets = [];
         this.plans = {};
-        const planner = new HackPlanner(params);
+        const planner = new HackPlanner(ns, params);
         for (const plan of planner.mostProfitableServers(targets, params)) {
             this.targets.push(plan.server);
             this.plans[plan.server.hostname] = plan;
