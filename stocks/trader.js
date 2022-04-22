@@ -250,11 +250,10 @@ class StockTrader {
         }
 
         const columns1 = [
-            {header: 'Stock', field: 'symbol', align:'left'},
-            {header: 'Forecast', field: 'forecast', format: formatPct},
-            {header: 'Volatil.', field: 'volatility', format: formatPct},
-            {header: 'Price', field: 'price', width: 7, align:'right', format:formatPrice},
-            {header: 'Held', field: 'netValue', width: 7, align:'right', format:formatPrice},
+            {header: ' Stock', field: 'symbol', width: 7, align:'left'},
+            {header: 'Forecast', field: ['forecast', 'volatility'], format: [formatPct], width: 14, align: 'center'},
+            {header: 'Price ', field: 'price', width: 7, align:'right', format:formatPrice},
+            {header: ' Held ', field: 'netValue', width: 7, align:'right', format:formatPrice},
         ];
         columns1.title = "Stock Portfolio";
         const stockRows = [...this].filter((stock)=>(
@@ -267,7 +266,7 @@ class StockTrader {
         const table1 = drawTable(columns1, stockRows, [portfolioRow]);
 
         const columns2 = [
-            {header: 'Cash', field: 'label', width:27, align:'left'},
+            {header: 'Cash', field: 'label', width:24, align:'left'},
             {header: formatPrice(cashValue), field: 'value', align:'right', width:17, format:formatPrice}
         ];
 
