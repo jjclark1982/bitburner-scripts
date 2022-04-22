@@ -93,19 +93,19 @@ export class ServerPool extends ServerList {
     }
 
     logDebug(...args) {
-        if (this.logLevel > 3) { this.ns[this.logFunc](...args); }
+        if (this.logLevel > 3) { this.logFunc(...args); }
     }
 
     logInfo(...args) {
-        if (this.logLevel > 2) { this.ns[this.logFunc]("INFO: ", ...args); }
+        if (this.logLevel > 2) { this.logFunc("INFO: ", ...args); }
     }
 
     logWarn(...args) {
-        if (this.logLevel > 1) { this.ns[this.logFunc]("WARNING: ", ...args); }
+        if (this.logLevel > 1) { this.logFunc("WARNING: ", ...args); }
     }
 
     logError(...args) {
-        if (this.logLevel > 0) { this.ns[this.logFunc]("ERROR: ", ...args); }
+        if (this.logLevel > 0) { this.logFunc("ERROR: ", ...args); }
     }
 
     /**

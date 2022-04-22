@@ -1,5 +1,5 @@
 import { getThreadPool } from "/botnet/worker";
-import { HackableServer, mostProfitableServers } from "/hacking/planner";
+import { HackableServer, HackPlanner } from "/hacking/planner";
 
 const FLAGS = [
     ["help", false],
@@ -72,7 +72,8 @@ export class HackingManager {
 
         this.targets = [];
         this.plans = {};
-        for (const plan of mostProfitableServers(ns, targets, params)) {
+        const planner = new HackPlanner(params);
+        for (const plan of planner.mostProfitableServers(targets, params)) {
             this.targets.push(plan.server);
             this.plans[plan.server.hostname] = plan;
         }

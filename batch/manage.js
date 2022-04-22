@@ -53,7 +53,7 @@ export async function main(ns) {
         delete flags._;
     }
 
-    const serverPool = new ServerPool(ns, {logLevel: 4});
+    const serverPool = new ServerPool(ns, {logLevel: 4, logFunc: ns.print});
     while (true) {
         await runMultiHWGW({...flags, serverPool});
         await ns.asleep(getNextBatchDelay());
@@ -157,7 +157,7 @@ function adjustSchedule(jobs=[]) {
     let startTimeAdjustment = Date.now() - earliestStartTime;
     if (startTimeAdjustment > 0) {
         startTimeAdjustment += 100;
-        ns.print(`Adjusting start time by ${startTimeAdjustment}`);
+        console.log(`Adjusting start time by ${startTimeAdjustment}`);
         for (const job of jobs) {
             if ('startTime' in job) {
                 job.startTime += startTimeAdjustment;

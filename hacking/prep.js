@@ -6,7 +6,7 @@ const FLAGS = [
     ["backendPort", 3],        // default port for ThreadPool
     ["tDelta", 100],           // milliseconds between effects
     ["maxTotalRam", 0],        // optional (will be read from backend)
-    ["maxThreadsPerJob", 128], // TODO: read this from backend
+    ["maxThreadsPerJob", 0],   // optional (will be read from backend)
     ["reserveRam", true],      // whether to calculate batch RAM requirement based on peak amount
     ["prepMargin", 0.5],       // how much security level to allow between "grow" operations
     ["naiveSplit", false],     // whether to split large jobs based solely on thread count
@@ -67,9 +67,8 @@ export class PrepManager {
         const now = Date.now() + params.tDelta;
 
         const prepBatch = server.planPrepBatch(this.params);
-
-        // eval("window").prepBatch = prepBatch;
-        // prepBatch.setStartTime(now);
+        prepBatch.setStartTime(now);
+        
         for (const job of prepBatch) {
             let result = await this.backend.dispatchJob(job); // TODO: confirm that this job can be added to an existing queue
             while (!result) {
@@ -78,7 +77,7 @@ export class PrepManager {
             }
         }
         server.nextStartTime = prepBatch.lastEndTime();
-
+        
         await ns.asleep(prepBatch.lastEndTime() - Date.now());
         ns.tprint(`INFO: ${server.hostname} is prepared for hacking.`);
     }

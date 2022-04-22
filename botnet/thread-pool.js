@@ -60,6 +60,7 @@ export async function main(ns) {
 export class ThreadPool extends PortService {
     constructor({ns, port}) {
         super(ns, port);
+        this.serverPool = new ServerPool(ns, {logLevel: 0});
 
         this.process = ns.getRunningScript();
         this.workers = {};
@@ -167,8 +168,7 @@ export class ThreadPool extends PortService {
 
         // Find a suitable server.
         const scriptRam = ns.getScriptRam(script, 'home');
-        const serverPool = new ServerPool(ns, {logLevel: 0});
-        const server = serverPool.getSmallestServers({scriptRam, threads})[0];
+        const server = this.serverPool.getSmallestServers({scriptRam, threads})[0];
         if (!server) {
             this.logWarn(`Failed to start worker with ${threads} threads: Not enough RAM on any available server.`);
             return null;
@@ -190,7 +190,7 @@ export class ThreadPool extends PortService {
             running: false
         };
         const args = ["--port", portNum, "--id", workerID];
-        const {pid} = await serverPool.deploy({server, script, threads, args, dependencies});
+        const {pid} = await this.serverPool.deploy({server, script, threads, args, dependencies});
         if (!pid) {
             this.logWarn(`Failed to start worker ${workerID}.`);
             delete this.workers[workerID];
@@ -225,13 +225,12 @@ export class ThreadPool extends PortService {
         this.workers[worker.id] = worker;
     }
 
+    /** Locate the process for a script that wasn't launched by this pool (such as after reload from save) */
     findWorkerProcess(worker) {
-        // Locate the process for a script that wasn't launched by this pool (such as after reload from save)
         const {ns} = this;
         const scriptName = worker.ns.getScriptName();
         const args = worker.ns.args;
-        const serverPool = new ServerPool({ns});
-        for (const server of serverPool) {
+        for (const server of this.serverPool) {
             const process = this.ns.getRunningScript(scriptName, server.hostname, ...args);
             if (process) {
                 return process;
@@ -254,20 +253,20 @@ export class ThreadPool extends PortService {
 
     getMaxTotalRam() {
         const {ns} = this;
-        const serverPool = new ServerPool({ns, scriptRam: 1.75});
+        const scriptRam = 1.75;
         const threads = Object.values(this.workers).reduce((total, worker)=>(
             total + (worker.process?.threads || 0)
-        ), serverPool.totalThreadsAvailable);
-        return threads * 1.75;
+        ), this.serverPool.totalThreadsAvailable(scriptRam));
+        return threads * scriptRam;
     }
 
     getMaxThreadsPerJob() {
         const {ns} = this;
-        const serverPool = new ServerPool({ns, scriptRam: 1.75});
-        let maxThreads = Math.floor(serverPool.maxThreadsAvailable / 4);
-        maxThreads = Object.values(this.workers).reduce((total, worker)=>(
-            Max(total, worker.process?.threads || 0)
-        ), maxThreads);
+        const scriptRam = 1.75;
+        const potentialThreads = Math.floor(this.serverPool.maxThreadsAvailable(scriptRam) / 4);
+        const maxThreads = Object.values(this.workers).reduce((total, worker)=>(
+            Math.max(total, worker.process?.threads || 0)
+        ), potentialThreads);
         return maxThreads;
     }
 
