@@ -22,7 +22,16 @@ import { ServerModel, ServerList } from '/net/server-list';
 /**
  * deploy - main API for ServerPool library
  * @param {NS} ns 
- * @param {object} job - description of the script to run
+ * @param {object} job
+ * @param {string} job.script - filename of script to run
+ * @param {string} [job.host] - host to run on (optional)
+ * @param {*} [job.threads=1] - set to 'max' to use as many threads as possible
+ * @param {string[]} [job.dependencies] - list of other scripts to copy to the host
+ * @param {boolean} [job.allowSplit] - whether to allow splitting a large job into multiple processes
+ * @param {boolean} [job.requireAll] - whether to abort a split job if it cannot be run entirely
+ * @param {object} params
+ * @param {number} [params.logLevel] - 1 for errors, 2 for warnings, 3 for info, 4 for debug
+ * @param {function} [params.logFunc] - function to use for logging (default ns.tprint)
  * @returns 
  */
 export async function deploy(ns, job={}, params={}) {
