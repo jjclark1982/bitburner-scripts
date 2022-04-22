@@ -1,8 +1,0 @@
-export async function main(ns) {
-    if (ns.getPlayer().has4SDataTixApi) {
-        ns.run("/stocks/trader.ns");
-    }
-    else {
-        ns.run("/stocks/naive-trader.js");  
-    }
-}
