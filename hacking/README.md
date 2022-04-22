@@ -48,7 +48,11 @@ This system consists of loosely-coupled modules:
 
 [planner.js](planner.js) is a library for planning batches of `hack`, `grow`, and `weaken` jobs, scheduling them, and optimizing their parameters.
 
-It depends on [server-list.js](../net/server-list.js) for listing hackable servers, [batch.js](batch.js) for calculating schedules, [box-drawing.js](../lib/box-drawing.js) for displaying tables, and it will make use of stock position information from [stocks/trader.js](../stocks/trader.js) if it is running.
+It depends on
+- [server-list.js](../net/server-list.js) for listing hackable servers
+- [batch-model.js](../lib/batch-model.js) for calculating schedules
+- [box-drawing.js](../lib/box-drawing.js) for displaying tables
+- [stocks/trader.js](../stocks/trader.js) (optional) for stock position information
 
 
 #### Planner Command-Line Interface
