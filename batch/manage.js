@@ -13,9 +13,6 @@ for each target:
     schedule a net-positive HWGW batch that will fit in available RAM
     allocate each job to one or more hosts when needed
 
-TODO: include a "maxThreads" limit when planning a batch, maybe use it to dynamically adjust moneyPercent
-TODO: calculate batch stats (init time, RAM/batch, ideal $/batch, total RAM)
-
 */
 
 
@@ -92,53 +89,32 @@ export async function runMultiHWGW(params) {
     }
 }
 
+let batchID = 0;
 export async function runHWGW(params) {
     const {ns, target, tDelta, serverPool} = params;
     const server = new HackableServer(ns, target);
+    batchID++;
 
     if (t0_by_target[target] === undefined) {
         const batch = server.planPrepBatch(params);
-        convertToScripts(batch, params);
-        await serverPool.deployBatch(batch);
-        t0_by_target[target] = Date.now() + batch.totalDuration(tDelta);
+        const scripts = convertToScripts({batchID});
+        await serverPool.deployBatch(scripts);
+        t0_by_target[target] = Date.now() + scripts.totalDuration(tDelta);
         return batch.peakThreads();
     }
     const t0 = t0_by_target[target];
 
     const batch = server.planHackingBatch(params);
     batch.setFirstEndTime(t0, tDelta);
-
-    convertToScripts(batch, params);
     adjustSchedule(batch);
-    await serverPool.deployBatch(batch);
-    t0_by_target[target] = batch.lastEndTime() + tDelta;
-    next_start_by_target[target] = batch.earliestStartTime() + 5 * tDelta;
+
+    const scripts = batch.convertToScripts({batchID});
+    await serverPool.deployBatch(scripts);
+    t0_by_target[target] = scripts.lastEndTime() + tDelta;
+    next_start_by_target[target] = scripts.earliestStartTime() + 5 * tDelta;
 
     const threadsUsed = batch.peakThreads();
     return threadsUsed;
-}
-
-const TASK_TO_SCRIPT = {
-    'hack': '/batch/hack.js',
-    'grow': '/batch/grow.js',
-    'weaken': '/batch/weaken.js'
-};
-let batchID = 0;
-export function convertToScripts(jobs=[], params={}) {
-    for (const [index, job] of jobs.entries()) {
-        job.script = TASK_TO_SCRIPT[job.task];
-        const options = job.args.pop();
-        // if (options.stock) {
-        //     job.args.push('--stock');
-        // }
-        job.args.push(`batch-${batchID++}.${index+1}`);
-		if (params.reserveRam && job.startTime) {
-			job.args.push('--startTime');
-			job.args.push(job.startTime);
-            delete job.startTime;
-		}
-        job.allowSplit = true;
-    }
 }
 
 function adjustSchedule(jobs=[]) {

@@ -161,25 +161,3 @@ export class HackingManager {
         await ns.asleep(server.nextStartTime - Date.now()); // this should be timeBetweenStarts before the following batch's earliest start
     }
 }
-
-export function convertToScripts(batch=[], params={batchID:0}) {
-    // const TASK_TO_SCRIPT = {
-    //     'hack': '/batch/hack.js',
-    //     'grow': '/batch/grow.js',
-    //     'weaken': '/batch/weaken.js'
-    // };
-    for (const [index, job] of batch.entries()) {
-        job.script = '/hacking/do.js';
-        job.args.unshift(job.task);
-        const options = job.args.pop();
-        if (options.stock) {
-            job.args.push('--stock');
-        }
-		if (params.reserveRam && job.startTime) {
-			job.args.push('--startTime', job.startTime);
-            delete job.startTime;
-		}
-        job.args.push(`batch-${params.batchID}.${index+1}`);
-        job.allowSplit = true; // TODO: test whether this can be disabled by scheduling into future
-    }
-}

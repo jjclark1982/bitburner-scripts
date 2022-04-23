@@ -1,6 +1,5 @@
 import { ServerPool } from "/net/deploy-script";
 import { HackPlanner, HackableServer } from "/hacking/planner";
-import { convertToScripts } from "/batch/manage.js";
 
 const FLAGS = [
     ["help", false],
@@ -43,10 +42,10 @@ export async function runPrep(params) {
     const server = new HackableServer(ns, target);
 
     const batch = server.planPrepBatch(params);
-    convertToScripts(batch);
     ns.tprint(`batch: ${batch.longSummary()}`);
+    const scripts = batch.convertToScripts();
 
     const serverPool = new ServerPool(ns, {logLevel: 2, logFunc: ns.print});
-    await serverPool.deployBatch(batch);
-    return batch;
+    await serverPool.deployBatch(scripts);
+    return scripts;
 }
