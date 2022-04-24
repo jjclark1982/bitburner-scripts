@@ -5,7 +5,7 @@
 Usage:
 
 4.2 GB import
-import { ServerPool, HackableServer } from "/net/deploy-server";
+import { ServerPool, ScriptableServer } from "/net/deploy-server";
 
 5.8 GB daemon (Port 2)
 > run /service/compute.js
