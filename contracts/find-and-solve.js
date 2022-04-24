@@ -45,11 +45,11 @@ export function attemptContract(ns, contract) {
             ns.tprint(`${reward} for solving "${contract.type}" on ${contract.host}`);
         }
         else {
-            ns.tprint(`Failed to solve "${contract.type}" on ${contract.host}`);
+            ns.tprint(`ERROR: Failed to solve "${contract.type}" on ${contract.host}`);
         }
     }
     else {
-        ns.tprint(`No solver for "${contract.type}" on ${contract.host}`);
+        ns.tprint(`WARNING: No solver for "${contract.type}" on ${contract.host}`);
     }
 }
 

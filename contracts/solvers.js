@@ -87,6 +87,29 @@ solvers["Array Jumping Game"] = (data) => {
     }
 };
 
+solvers["Array Jumping Game II"] =  (data) => {
+    const n = data.length;
+    let reach = 0;
+    let jumps = 0;
+    let lastJump = -1;
+    while (reach < n - 1) {
+        let jumpedFrom = -1;
+        for (let i = reach; i > lastJump; i--) {
+            if (i + data[i] > reach) {
+                reach = i + data[i];
+                jumpedFrom = i;
+            }
+        }
+        if (jumpedFrom === -1) {
+            jumps = 0;
+            break;
+        }
+        lastJump = jumpedFrom;
+        jumps++;
+    }
+    return jumps;
+};
+
 solvers["Unique Paths in a Grid I"] = (data) => {
     const n = data[0]; // Number of rows
     const m = data[1]; // Number of columns
@@ -253,6 +276,21 @@ solvers["Total Ways to Sum"] = (data) => {
     }
 
     return ways[data];
+};
+
+solvers["Total Ways to Sum II"] = (data) => {
+    // https://www.geeksforgeeks.org/coin-change-dp-7/?ref=lbp
+    const n = data[0];
+    const s = data[1];
+    const ways = [1];
+    ways.length = n + 1;
+    ways.fill(0, 1);
+    for (let i = 0; i < s.length; i++) {
+        for (let j = s[i]; j <= n; j++) {
+            ways[j] += ways[j - s[i]];
+        }
+    }
+    return ways[n];
 };
 
 solvers["Find All Valid Math Expressions"] = (data) => {
