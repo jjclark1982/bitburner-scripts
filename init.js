@@ -53,7 +53,7 @@ export async function main(ns) {
     // await ns.sleep( 5*1000); ns.run("/batch/manage.js", 1, "phantasy", "--moneyPercent", "0.01");
 
     await ns.sleep( 5*1000); ns.run("/hacknet/servers.js"); //, 1, 4, 1);
-    await ns.sleep( 5*1000); ns.run("/stocks/trader.ns");
+    await ns.sleep( 5*1000); ns.run("/stocks/trader.js");
 
     // await ns.sleep(30*1000); ns.run("/batch/manage.js", 1, "--moneyPercent", "0.01");
 }

@@ -5,6 +5,8 @@ Finished buying augmentations. Don't forget:
   - Upgrade home server
   - Spend hacknet hashes on Bladeburner rank and SP
   - Spend hacknet hashes on corporation research and funds
+  - TODO: create a gang if possible
+  - TODO: create a corp if possible
   - Buyback corporation shares
 */
 

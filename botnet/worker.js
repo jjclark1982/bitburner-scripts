@@ -63,6 +63,7 @@ export class Worker {
     }
 
     tearDown() {
+        this.running = false;
         // When this worker exits for any reason, remove it from the pool database.
         if (this.pool) {
             this.pool.removeWorker(this.id);

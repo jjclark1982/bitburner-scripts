@@ -70,6 +70,7 @@ export class ThreadPool extends PortService {
     }
 
     tearDown() {
+        this.running = false;
         // When the pool process exits, signal all the workers and clients to stop.
         for (const worker of Object.values(this.workers)) {
             worker.running = false;
