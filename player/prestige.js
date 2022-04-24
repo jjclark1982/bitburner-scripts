@@ -12,11 +12,17 @@ Finished buying augmentations. Don't forget:
 
 /** @param {NS} ns **/
 export async function main(ns) {
+    ns.tail();
+    await ns.sleep( 0*1000); ns.run("/botnet/stop.js", 1, "--force");
     await ns.sleep( 0*1000); ns.run("/hacknet/spend-hashes.js", 1, "Bladeburner", "Exchange for Corporation Research", "Sell for Corporation Funds", "Sell for Money");
     await ns.sleep( 1*1000); ns.run("/sleeves/buy-augs.js");
     await ns.sleep( 1*1000); ns.run("/sleeves/train.js");
     await ns.sleep( 1*1000); ns.run("/gang/buy-augs.js");
     await ns.sleep( 1*1000); ns.run("/net/upgrade-home-server.js");
     await ns.sleep( 3*1000); ns.run("/corporation/buyback-shares.js");
-    await ns.sleep( 3*1000); ns.installAugmentations(ns.args[0] || "init.js");
+    for (let i = 3; i > 0; i--) {
+        ns.print(`Installing augmentations in ${i}...`);
+        await ns.sleep(1000);
+    }
+    ns.installAugmentations(ns.args[0] || "init.js");
 }
