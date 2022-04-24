@@ -12,7 +12,7 @@ export async function main(ns) {
     await service.serve(stockInfo);
 }
 
-class StockTrader {
+export class StockTrader {
     constructor(ns) {
         this.ns = ns;
         this.lastUpdateTime = 1;
