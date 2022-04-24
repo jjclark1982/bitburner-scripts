@@ -93,7 +93,7 @@ class StockTrader {
         if (ns.getPlayer().has4SDataTixApi) {
             return this.ns.stock.getForecast(symbol);
         }
-        const history = this.priceHistory(symbol);
+        const history = this.priceHistory[symbol];
         if (history.length < 2) {
             return 0.5;
         }
@@ -124,7 +124,7 @@ class StockTrader {
         if (ns.getPlayer().has4SDataTixApi) {
             return this.ns.stock.getVolatility(symbol);
         }
-        const history = this.priceHistory(symbol);
+        const history = this.priceHistory[symbol];
         if (history.length < 2) {
             return 0;
         }
