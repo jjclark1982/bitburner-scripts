@@ -480,10 +480,7 @@ solvers["HammingCodes: Encoded Binary to Integer"] = (_data) => {
     return parseInt(_build.join(""), 2); // parse the integer with redux 2 and we're done!
 };
 
-solvers["Proper 2-Coloring of a Graph"] = (data) => {
-    const N = data[0];
-    const edges = data[1];
-
+solvers["Proper 2-Coloring of a Graph"] = ([N, edges]) => {
     //Helper function to get neighbourhood of a vertex
     function neighbourhood(vertex)[] {
         const adjLeft = edges.filter(([a, _]) => a == vertex).map(([_, b]) => b);
@@ -491,7 +488,6 @@ solvers["Proper 2-Coloring of a Graph"] = (data) => {
         return adjLeft.concat(adjRight);
     }
 
-    //Verify that there is no solution by attempting to create a proper 2-coloring.
     const coloring = Array(N).fill(undefined);
     while (coloring.some((val) => val === undefined)) {
         //Color a vertex in the graph
