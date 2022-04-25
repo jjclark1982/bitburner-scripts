@@ -113,7 +113,6 @@ export class HackingManager {
 
         // Decide whether prep is needed.
         // TODO: use params to set 'secMargin' input to this function.
-        // TODO: keep track of server "safe" time versus "active" time, to avoid unnecessary prep.
         const isPrepBatch = !server.isPrepared();
 
         // Plan a batch based on target state and parameters
@@ -167,7 +166,7 @@ export class HackingManager {
         }
         const actualServer = job.result.copy().reload();
         if (job.task === 'hack' && actualServer.hackDifficulty > job.result.prepDifficulty) {
-            ns.print(`WARNING: Cancelling ${job.task} job: ${actualServer.hackDifficulty} > ${job.result.prepDifficulty}`);
+            ns.print(`WARNING: Cancelling ${job.task} job: ${actualServer.hackDifficulty.toFixed(1)} > ${job.result.prepDifficulty.toFixed(1)} security.`);
             return false;
         }
         return true;

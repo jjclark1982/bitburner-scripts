@@ -243,13 +243,13 @@ export class ThreadPool extends PortService {
     removeWorker(workerID) {
         const worker = this.workers[workerID];
         delete this.workers[workerID];
-        if (this.running) {
-            worker.process = this.ns.getRunningScript(worker.process.pid);
-            this.process.offlineExpGained += worker.process.offlineExpGained;
-            this.process.offlineMoneyMade += worker.process.offlineMoneyMade;
-            this.process.onlineExpGained += worker.process.onlineExpGained;
-            this.process.onlineMoneyMade += worker.process.onlineMoneyMade;
-        }
+        // if (this.running) {
+        //     worker.process = this.ns.getRunningScript(worker.process.pid);
+        //     this.process.offlineExpGained += worker.process.offlineExpGained;
+        //     this.process.offlineMoneyMade += worker.process.offlineMoneyMade;
+        //     this.process.onlineExpGained += worker.process.onlineExpGained;
+        //     this.process.onlineMoneyMade += worker.process.onlineMoneyMade;
+        // }
     }
 
     getMaxTotalRam() {

@@ -65,7 +65,7 @@ export class Worker {
     tearDown() {
         this.running = false;
         // When this worker exits for any reason, remove it from the pool database.
-        if (this.pool) {
+        if (this.pool?.removeWorker) {
             this.pool.removeWorker(this.id);
         }
     }
@@ -117,7 +117,7 @@ export class Worker {
         if (this.currentJob.task) {
             setTimeout(()=>{
                 this.runNextJob(expectedJob);
-            }, 100);
+            }, this.tDelta);
             console.log([
                 `ERROR: Worker ${this.id} tried to start ${this.jobQueue[0]?.task} before finishing ${this.currentJob.task}`,
                 `current end: ${this.currentJob.endTime}, next start: ${this.jobQueue[0].startTime} (${this.jobQueue[0].startTime - this.currentJob.endTime})`,
