@@ -16,7 +16,7 @@ Scheduling these operations for maximum profit per second is a [bounded knapsack
 - maximum RAM used per operation
 - minimum time between effects
 
-The basic strategy is to repeat batches of Hack-Weaken-Grow-Weaken operations in a fixed period (*cf.* Stalefish [1]). This system considers a wider range of strategies, some of which can be better packed into available timeslots or RAM banks.
+The [basic strategy](https://bitburner.readthedocs.io/en/latest/advancedgameplay/hackingalgorithms.html) is to repeat batches of Hack-Weaken-Grow-Weaken operations in a fixed period (*cf.* Stalefish [1]). This system considers a wider range of strategies, some of which can be better packed into available timeslots or RAM banks.
 
 
 

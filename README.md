@@ -71,7 +71,7 @@ Would like to move most of these into `net/` or `hacking/`.
     - [ ] `/batch/analyze.js` -> merge into `/hacking/planner.js`
     - [x] `/hive/planner.js` -> move to `/hacking/planner.js`
 
-- unmanaged hacking -> move to `/unmanaged-hacking/`
+- unmanaged hacking -> move to `/unmanaged-hacking/` or `/self-contained-hacking/`
     - [x] `/batch/early-hacking.js`  
     - [x] `/batch/spawn-early-hacking.js`  
 
