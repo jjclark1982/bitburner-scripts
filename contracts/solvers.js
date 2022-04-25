@@ -409,7 +409,7 @@ solvers["HammingCodes: Integer to encoded Binary"] = (value) => {
         _build.push("x", ..._data.splice(0, Math.pow(2, i) - 1));
     }
     // now the "calculation"... get the paritybits ('x') working
-    for (const index of _build.reduce(function (a: Array<number>, e, i) {
+    for (const index of _build.reduce(function (a, e, i) {
         if (e == "x") a.push(i);
         return a;
     }, [])) {
@@ -419,7 +419,7 @@ solvers["HammingCodes: Integer to encoded Binary"] = (value) => {
         const _tempdata = [..._build]; // only work with a copy of the _build
         while (_tempdata[index] !== undefined) {
         // as long as there are bits on the starting index, do "cut"
-        const _temp: Array<string> = _tempdata.splice(index, _tempcount * 2); // cut stepsize*2 bits, then...
+        const _temp = _tempdata.splice(index, _tempcount * 2); // cut stepsize*2 bits, then...
         _temparray.push(..._temp.splice(0, _tempcount)); // ... cut the result again and keep the first half
         }
         _temparray.splice(0, 1); // remove first bit, which is the parity one
@@ -482,7 +482,7 @@ solvers["HammingCodes: Encoded Binary to Integer"] = (_data) => {
 
 solvers["Proper 2-Coloring of a Graph"] = ([N, edges]) => {
     //Helper function to get neighbourhood of a vertex
-    function neighbourhood(vertex)[] {
+    function neighbourhood(vertex) {
         const adjLeft = edges.filter(([a, _]) => a == vertex).map(([_, b]) => b);
         const adjRight = edges.filter(([_, b]) => b == vertex).map(([a, _]) => a);
         return adjLeft.concat(adjRight);
@@ -493,12 +493,12 @@ solvers["Proper 2-Coloring of a Graph"] = ([N, edges]) => {
         //Color a vertex in the graph
         const initialVertex = coloring.findIndex((val) => val === undefined);
         coloring[initialVertex] = 0;
-        const frontier[] = [initialVertex];
+        const frontier = [initialVertex];
 
         //Propogate the coloring throughout the component containing v greedily
         while (frontier.length > 0) {
             const v = frontier.pop() || 0;
-            const neighbors[] = neighbourhood(v);
+            const neighbors = neighbourhood(v);
 
             //For each vertex u adjacent to v
             for (const id in neighbors) {
