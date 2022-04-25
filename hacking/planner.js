@@ -62,14 +62,14 @@ export class HackPlanner extends ServerList {
 
     mostProfitableServers(params, hostnames=[]) {
         const {ns} = this;
-        const plans = [];
-        let servers = this;
+        let servers;
         if (hostnames.length > 0) {
             servers = hostnames.map((hostname) => this.loadServer(hostname));
         }
         else {
             servers = this.getHackableServers(ns.getPlayer());
         }
+        const plans = [];
         for (const server of servers) {
             const bestParams = server.mostProfitableParamsSync(params);
             const batchCycle = server.planBatchCycle(bestParams);

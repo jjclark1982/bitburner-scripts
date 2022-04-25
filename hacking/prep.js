@@ -66,6 +66,8 @@ export class PrepManager {
         const {ns, params} = this;
         const now = Date.now() + params.tDelta;
 
+        // TODO: investigate infinite loop in this program when very little RAM is available
+
         const prepBatch = server.planPrepBatch(this.params);
         prepBatch.setStartTime(now);
         

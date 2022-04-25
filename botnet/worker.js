@@ -128,11 +128,12 @@ export class Worker {
         
         // Take the next job from the queue.
         const job = this.jobQueue.shift();
-        this.currentJob = job;
 
-        // Run an 'onBeforeStart' callback if provided.
-        if (typeof(job.onBeforeStart) === 'function') {
-            job.onBeforeStart(job);
+        // Run a 'shouldStart' callback if provided.
+        if (typeof(job.shouldStart) === 'function') {
+            if (!job.shouldStart(job)) {
+                return;
+            }
         }
 
         // Record actual start time.
@@ -141,6 +142,7 @@ export class Worker {
         this.ns.print(`Starting job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
 
         // Run the task.
+        this.currentJob = job;
         await this.capabilities[job.task](...(job.args||[]));
 
         // Record actual end time.
@@ -149,9 +151,9 @@ export class Worker {
         this.drift = job.endTimeActual - job.endTime;
         this.ns.print(`Completed job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
 
-        // Run an 'onFinish' callback if provided.
-        if (typeof(job.onFinish) === 'function') {
-            job.onFinish(job);
+        // Run an 'didFinish' callback if provided.
+        if (typeof(job.didFinish) === 'function') {
+            job.didFinish(job);
         }
 
         // Mark this worker as idle.

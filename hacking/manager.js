@@ -74,8 +74,10 @@ export class HackingManager {
         this.plans = {};
         const planner = new HackPlanner(ns, params);
         for (const plan of planner.mostProfitableServers(params, targets)) {
-            this.targets.push(plan.server);
-            this.plans[plan.server.hostname] = plan;
+            const target = plan.server;
+            target.expectedSecurity = [[Date.now(), target.hackDifficulty]];
+            this.targets.push(target);
+            this.plans[target.hostname] = plan;
         }
         ns.atExit(this.tearDown.bind(this));
     }
@@ -93,6 +95,9 @@ export class HackingManager {
             eval("window").target = target;
             await this.hackOneTargetOneTime(target);
             // TODO: re-select optimal target as conditions change
+
+            // ns.clearLog();
+            // ns.print(this.report());
         }
     }
 
@@ -103,6 +108,8 @@ export class HackingManager {
         const now = Date.now() + params.tDelta;
         const prevServer = server.copy();
         const batchID = this.batchID++;
+
+        // TODO: slice target.expectedSecurity to only items after now
 
         // Decide whether prep is needed.
         // TODO: use params to set 'secMargin' input to this function.
@@ -117,36 +124,28 @@ export class HackingManager {
             batch.setStartTime(now);
             server.nextFreeTime = now + batch.totalDuration(params.tDelta) - batch.activeDuration(params.tDelta);
         }
-        batch.setFirstEndTime(server.nextFreeTime);
+        batch.setFirstEndTime(server.nextFreeTime, params.tDelta);
         batch.ensureStartInFuture(now, params.tDelta);
-        if (batch.earliestStartTime() < now) {
-            ns.tprint("ERROR: batch.earliestStartTime was inconsistent")
-        }
+        batch.scheduleForSafeWindows(params.tDelta, server.expectedSecurity)
 
-        // Add an `onFinish` callback to check batch results for desync
-        batch[batch.length-1].onFinish = (job)=>{
-            if (!this.running) {return;}
-            const expectedServer = job.result;
-            const actualServer = job.result.copy().reload();
-            if (actualServer.hackDifficulty > expectedServer.hackDifficulty) {
-                ns.print(`WARNING: desync detected after batch ${batchID}. Reloading server state and adjusting parameters.`);
-                server.reload();
-                const newParams = server.mostProfitableParamsSync(this.params);
-                this.plans[server.hostname] = server.planBatchCycle(newParams);
-                server.reload();
-            }
-            // console.log(`Finished batch ${batchID}. Expected security:`, job.result.hackDifficulty, "Actual:", job.result.copy().reload().hackDifficulty);
+        // Add callbacks to check for desync
+        for (const job of batch) {
+            job.shouldStart = this.shouldStart.bind(this);
         }
+        batch[batch.length-1].didFinish = this.didFinish.bind(this);
 
         // Dispatch the batch
         const result = await this.backend.dispatchJobs(batch, isPrepBatch); // TODO: use isPrepBatch to allow dispatchJobs to shift jobs farther into the future
         if (result) {
             ns.print(`Dispatched batch ${batchID}: ${batch.moneySummary()} ${batch.summary()} batch for ${server.hostname}`);
+            for (const job of batch) {
+                server.expectedSecurity.push([job.endTime, job.result.hackDifficulty]);
+            }
         }
-        // If dispatch failed, rollback state
-        if (!result) {
+        else {
+            // If dispatch failed, rollback state
             ns.print(`Failed to dispatch batch ${batchID}: ${batch.summary()} batch for ${server.hostname}. Skipping this batch.`);
-            Object.assign(server, prevServer);
+            server.reload(prevServer);
             // TODO: check whether params.maxThreadsPerJob still fits in backend
         }
 
@@ -159,5 +158,45 @@ export class HackingManager {
             server.nextStartTime = batch.earliestStartTime() - params.tDelta + batchCycle.timeBetweenStarts;
         }
         await ns.asleep(server.nextStartTime - Date.now()); // this should be timeBetweenStarts before the following batch's earliest start
+    }
+
+    shouldStart(job) {
+        const {ns} = this;
+        if (!this.running) {
+            return (job.task != 'hack');
+        }
+        const actualServer = job.result.copy().reload();
+        if (job.task === 'hack' && actualServer.hackDifficulty > job.result.prepDifficulty) {
+            ns.print(`WARNING: Cancelling ${job.task} job: ${actualServer.hackDifficulty} > ${job.result.prepDifficulty}`);
+            return false;
+        }
+        return true;
+    }
+
+    didFinish(job) {
+        const {ns} = this;
+        const server = this.targets.find((s)=>s.hostname === job.result.hostname);
+        if (!this.running || !server) {
+            return;
+        }
+        const expectedServer = job.result;
+        const actualServer = job.result.copy().reload();
+        if (actualServer.hackDifficulty > expectedServer.hackDifficulty) {
+            ns.print(`WARNING: desync detected after batch ${batchID}. Reloading server state and adjusting parameters.`);
+            server.reload(actualServer);
+            const newParams = server.mostProfitableParamsSync(this.params);
+            this.plans[server.hostname] = server.planBatchCycle(newParams);
+            server.reload();
+            server.expectedSecurity = [[Date.now(), server.hackDifficulty]];
+        }
+        // console.log(`Finished batch ${batchID}. Expected security:`, job.result.hackDifficulty, "Actual:", job.result.copy().reload().hackDifficulty);
+    }
+
+    report() {
+        const server = this.targets[0];
+        return JSON.stringify(server.expectedSecurity, null, 2);
+        // a server should have a list of upcoming event times
+        // filter upcoming events by time >= now
+        // list time 
     }
 }
