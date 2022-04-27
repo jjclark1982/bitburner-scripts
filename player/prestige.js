@@ -12,6 +12,8 @@ Finished buying augmentations. Don't forget:
 
 /** @param {NS} ns **/
 export async function main(ns) {
+    ns.disableLog('sleep');
+    ns.clearLog();
     ns.tail();
     await ns.sleep( 0*1000); ns.run("/botnet/stop.js", 1, "--force");
     await ns.sleep( 0*1000); ns.run("/hacknet/spend-hashes.js", 1, "Bladeburner", "Exchange for Corporation Research", "Sell for Corporation Funds", "Sell for Money");
@@ -20,7 +22,7 @@ export async function main(ns) {
     await ns.sleep( 1*1000); ns.run("/gang/buy-augs.js");
     await ns.sleep( 1*1000); ns.run("/net/upgrade-home-server.js");
     await ns.sleep( 3*1000); ns.run("/corporation/buyback-shares.js");
-    for (let i = 3; i > 0; i--) {
+    for (let i = 3; i >= 0; i--) {
         ns.print(`Installing augmentations in ${i}...`);
         await ns.sleep(1000);
     }
