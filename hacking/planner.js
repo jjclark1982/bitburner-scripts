@@ -151,7 +151,7 @@ export class HackableServer extends ServerModel {
         return this;
     }
 
-    isPrepared(secMargin=0.75, moneyMargin=0.125) {
+    isPrepared(secMargin=0, moneyMargin=0.125) {
         return (
             this.hackDifficulty < this.minDifficulty + secMargin &&
             this.moneyAvailable > this.moneyMax * (1 - moneyMargin)
@@ -174,6 +174,7 @@ export class HackableServer extends ServerModel {
      * @returns {Job}
      */
     planHack(moneyPercent=0.05, maxThreads=Infinity, stock) {
+        maxThreads = Math.max(0, maxThreads) || Infinity;
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
@@ -186,16 +187,21 @@ export class HackableServer extends ServerModel {
 
         // Calculate threads
         moneyPercent = Math.max(0, Math.min(1.0, moneyPercent));
-        const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player) || 0.00001;
-        let threads = Math.ceil(moneyPercent / hackPercentPerThread);
-        if (threads > maxThreads) {
-            // Split threads evenly among jobs
-            const numJobs = Math.ceil(threads / maxThreads);
-            threads = Math.ceil(threads / numJobs);
+        const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player);
+        let threads = moneyPercent / hackPercentPerThread;
+        if (moneyPercent < 1.0) {
+            // round down unless going for 100%
+            threads = Math.floor(threads);
         }
+        if (threads == Infinity) {
+            threads = 0;
+        }
+        // Split threads evenly among jobs
+        const numJobs = Math.ceil(threads / maxThreads) || 1;
+        threads = Math.ceil(threads / numJobs);
 
         // Calculate result
-        const effectivePercent = Math.min(1, threads * hackPercentPerThread);
+        const effectivePercent = Math.min(1.0, threads * hackPercentPerThread);
         const moneyMult = 1 - effectivePercent;
         const moneyChange = this.moneyAvailable * -effectivePercent;
         this.moneyAvailable = this.moneyAvailable * moneyMult;
@@ -223,6 +229,7 @@ export class HackableServer extends ServerModel {
      * @returns {Job}
      */
     planGrow(maxThreads=Infinity, cores=1, stock) {
+        maxThreads = Math.max(0, maxThreads) || Infinity;
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
@@ -233,15 +240,15 @@ export class HackableServer extends ServerModel {
             player
         );
 
-        // Calculate threads using binary search
-        let loThreads = 1;
+        // Establish bounds for threads. The single-thread growth formula will be too high.
+        let loThreads = 0;
         let hiThreads = maxThreads;
-        if (!hiThreads || hiThreads < 1 || hiThreads == Infinity) {
-            // Establish an upper bound based on the single-thread formula which will be too high.
+        if (!(hiThreads >= 1) || hiThreads == Infinity) {
             const growMult = server.moneyMax / Math.min(server.moneyMax, (server.moneyAvailable + 1));
             const growMultPerThread = ns.formulas.hacking.growPercent(server, 1, player, cores);
-            hiThreads = Math.ceil((growMult-1) / (growMultPerThread-1)) + 1;
+            hiThreads = Math.ceil((growMult-1) / (growMultPerThread-1));
         } 
+        // Calculate threads using binary search
         while (hiThreads - loThreads > 1) {
             const midThreads = Math.ceil((loThreads + hiThreads) / 2);
             const serverGrowth = ns.formulas.hacking.growPercent(server, midThreads, player, cores);
@@ -283,13 +290,14 @@ export class HackableServer extends ServerModel {
      * @returns {Job}
      */
     planWeaken(maxThreads=Infinity, cores=1) {
+        maxThreads = Math.max(0, maxThreads) || Infinity;
         const {ns} = this;
         const server = this;
         const player = ns.getPlayer();
     
         // Calculate duration based on last known security level
         const duration = ns.formulas.hacking.weakenTime(
-            {...server, hackDifficulty: this.prepDifficulty},
+            {...server, hackDifficulty: server.prepDifficulty},
             player
         );
 
@@ -322,9 +330,10 @@ export class HackableServer extends ServerModel {
     /** 
      * Construct a batch of 'grow' and 'weaken' jobs that will bring the server
      * to a ready state (maximum money and minimum security).
+     * The batch will be of the form: (WG)* W
      * @param {Object} params
      * @param {number} [params.maxThreadsPerJob=512]
-     * @param {number} [params.prepMargin=0.5] - amount of security above minimum to allow between jobs
+     * @param {number} [params.secMargin=0.5] - amount of security above minimum to allow between jobs
      * @param {boolean} [params.naiveSplit=false] - whether to place all jobs of the same type together
      * @param {boolean} [params.growStock] - whether to manipulate stock performance for 'grow' actions
      * @param {number} [params.cores=1]
@@ -333,38 +342,44 @@ export class HackableServer extends ServerModel {
     planPrepBatch(params) {
         const defaults = {
             maxThreadsPerJob: 512,
-            prepMargin: 0.5,
+            secMargin: 0.5,
             naiveSplit: false,
             growStock: this.getStockInfo()?.netShares >= 0,
-            cores: 1
+            cores: 1,
+            maxSteps: 100
         };
         params = Object.assign({}, defaults, params);
-        const {maxThreadsPerJob, prepMargin, naiveSplit, growStock, cores} = params;
+        const {maxThreadsPerJob, secMargin, naiveSplit, growStock, cores, maxSteps} = params;
 
         const batch = new Batch();
-        while (naiveSplit && this.hackDifficulty > this.minDifficulty + prepMargin) {
+        while (naiveSplit && this.hackDifficulty > this.minDifficulty + secMargin) {
             batch.push(this.planWeaken(maxThreadsPerJob, cores));
         }
         while (this.moneyAvailable < this.moneyMax) {
-            while (!naiveSplit && this.hackDifficulty > this.minDifficulty + prepMargin) {
+            while (!naiveSplit && this.hackDifficulty > this.minDifficulty + secMargin) {
                 batch.push(this.planWeaken(maxThreadsPerJob, cores));
             }
             batch.push(this.planGrow(maxThreadsPerJob, cores, growStock));
+            if (batch.length > maxSteps) {
+                // avoid infinite loop
+                break;
+            }
         }
         while (this.hackDifficulty > this.minDifficulty) {
             batch.push(this.planWeaken(maxThreadsPerJob, cores));
         }
-        this.prepDifficulty = this.hackDifficulty; // This isn't true until some delay has passed. Should that delay be represented in the batch data structure?
+        // this.prepDifficulty = this.hackDifficulty; // This isn't true until some delay has passed. Should that delay be represented in the batch data structure?
         return batch;
     }
 
     /** 
      * Construct a Batch of jobs that will hack a server and then return it to a ready state.
-     * Higher moneyPercent or hackMargin will result in more threads per job.
+     * The batch will be of the form: H (GH)* (WG)* W
+     * Higher moneyPercent or secMargin will result in more threads per job.
      * @param {Object} params - Parameters for jobs to add to the batch. Additional values will be passed to planPrepBatch.
-     * @param {number}
+     * @param {number} [params.moneyPercent]
      * @param {number} [params.maxThreadsPerJob=512]
-     * @param {number} [params.prepMargin=0.5] - amount of security above minimum to allow between jobs
+     * @param {number} [params.secMargin=0.5] - amount of security above minimum to allow between jobs
      * @param {boolean} [params.naiveSplit=false] - whether to place all jobs of the same type together
      * @param {boolean} [params.hackStock] - whether to manipulate stock performance for 'hack' actions
      * @param {boolean} [params.growStock] - whether to manipulate stock performance for 'grow' actions
@@ -375,20 +390,31 @@ export class HackableServer extends ServerModel {
         const defaults = {
             moneyPercent: 0.05,
             maxThreadsPerJob: 512,
-            hackMargin: 0.25,
+            secMargin: 0.5,
             hackStock: this.getStockInfo()?.netShares < 0,
             growStock: this.getStockInfo()?.netShares >= 0,
-            cores: 1
+            cores: 1,
+            maxSteps: 100
         };
         params = Object.assign({}, defaults, params);
-        const {moneyPercent, maxThreadsPerJob, hackMargin, hackStock, growStock, cores} = params;
+        const {moneyPercent, maxThreadsPerJob, secMargin, hackStock, growStock, cores, maxSteps} = params;
 
         const batch = new Batch();
-        batch.push(this.planHack(moneyPercent, maxThreadsPerJob, hackStock))
-        while (this.hackDifficulty < this.minDifficulty + hackMargin) {
-            batch.push(this.planGrow(maxThreadsPerJob, cores, growStock));
-            batch.push(this.planHack(moneyPercent, maxThreadsPerJob, hackStock));
-        }
+        batch.push(this.planHack(moneyPercent, maxThreadsPerJob, hackStock));
+        while (this.hackDifficulty < this.minDifficulty + secMargin) {
+            if (batch[batch.length-1].threads == 0) {
+                // avoid infinite loop
+                break;
+            }
+            const copy = this.copy();
+            const growJob = copy.planGrow(maxThreadsPerJob, cores, growStock);
+            const hackJob = copy.planHack(1-(1/growJob.change.moneyMult), maxThreadsPerJob, hackStock);
+            if (copy.hackDifficulty > copy.minDifficulty + secMargin) {
+                break;
+            }
+            batch.push(growJob, hackJob);
+            this.reload(copy);
+    }
         batch.push(...this.planPrepBatch(params));
         return batch;
     }
@@ -423,17 +449,16 @@ export class HackableServer extends ServerModel {
             moneyPercent: 0.05,
             maxTotalRam: 16384,
             maxThreadsPerJob: 512,
-            hackMargin: 0.25,
-            prepMargin: 0.5,
+            secMargin: 0.5,
             naiveSplit: false,
             cores: 1,
             tDelta: 100,
             reserveRam: false
         };
         params = Object.assign({}, defaults, params);
-        const {moneyPercent, maxTotalRam, tDelta, reserveRam} = params;
+        const {moneyPercent, maxTotalRam, tDelta, reserveRam, secMargin} = params;
 
-        const server = this.preppedCopy(Math.max(0, params.hackMargin, params.prepMargin));
+        const server = this.preppedCopy(secMargin);
         const batch = server.planHackingBatch(params);
 
         const moneyPerBatch = batch.moneyTaken();
@@ -486,14 +511,12 @@ export class HackableServer extends ServerModel {
         };
         params = Object.assign({}, defaults, params);
         const estimates = [];
-        for (const moneyPercent of range(1/40, 1, 1/40)) {
-            for (const hackMargin of [0, 0.25]) {
-                for (const prepMargin of [0, 0.5]) {
-                    for (const naiveSplit of [false]) {
-                        const batchParams = {...params, moneyPercent, hackMargin, prepMargin, naiveSplit};
-                        const batchCycle = this.planBatchCycle(batchParams);
-                        yield batchCycle;
-                    }
+        for (const moneyPercent of range(1/32, 1, 1/32)) {
+            for (const secMargin of [0.0, 0.5, 1.0]) {
+                for (const naiveSplit of [false]) {
+                    const batchParams = {...params, moneyPercent, secMargin, naiveSplit};
+                    const batchCycle = this.planBatchCycle(batchParams);
+                    yield batchCycle;
                 }
             }
         }

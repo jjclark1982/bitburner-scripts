@@ -8,8 +8,7 @@ const FLAGS = [
     ["maxTotalRam", 0],        // optional (will be read from backend)
     ["maxThreadsPerJob", 0],   // optional (will be read from backend)
     ["moneyPercent", 0.05],    // (will be overwritten by optimizer)
-    ["hackMargin", 0.25],      // (will be overwritten by optimizer)
-    ["prepMargin", 0.5],       // (will be overwritten by optimizer)
+    ["secMargin", 0.5],        // (will be overwritten by optimizer)
     ["naiveSplit", false],     // not currently used
     ["reserveRam", true],      // weather to calculate batch RAM requirement based on peak amount
     ["cores", 1],              // not currently used

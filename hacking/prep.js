@@ -8,7 +8,7 @@ const FLAGS = [
     ["maxTotalRam", 0],        // optional (will be read from backend)
     ["maxThreadsPerJob", 0],   // optional (will be read from backend)
     ["reserveRam", true],      // whether to calculate batch RAM requirement based on peak amount
-    ["prepMargin", 0.5],       // how much security level to allow between "grow" operations
+    ["secMargin", 0.5],        // how much security level to allow between "grow" operations
     ["naiveSplit", false],     // whether to split large jobs based solely on thread count
     ["cores", 1],              // not currently used
 ];
@@ -66,7 +66,7 @@ export class PrepManager {
         const {ns, params} = this;
         const now = Date.now() + params.tDelta;
 
-        // TODO: investigate infinite loop in this program when very little RAM is available
+        // TODO: investigate infinite loop in this program when very little RAM is available. it is happening in 'manager.js' too.
 
         const prepBatch = server.planPrepBatch(this.params);
         prepBatch.setStartTime(now);

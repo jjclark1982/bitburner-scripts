@@ -142,8 +142,36 @@ Params: {
 }
 ```
 
+###### Example: Plan a Prep batch
 
-###### Example: Plan an HWGW batch
+```javascript
+> server = new HackableServer("joesguns")
+> server.planPrepBatch({maxThreadsPerJob: 1024})
+[
+    {task: 'weaken', threads:   48, duration: 37275, …},
+    {task: 'grow',   threads: 1024, duration: 29820, …},
+    {task: 'weaken', threads:  122, duration: 37275, …},
+    {task: 'grow',   threads:  435, duration: 29820, …},
+    {task: 'weaken', threads:   66, duration: 37275, …}
+]
+```
+
+
+###### Example: Plan a Hacking batch
+
+```javascript
+> server = new HackableServer("joesguns").preppedCopy()
+> server.planHackingBatch({secMargin: 0})
+[
+    {task: 'hack',   threads: 11, duration:  8799, …},
+    {task: 'weaken', threads: 25, duration: 35197, …},
+    {task: 'grow',   threads: 49, duration: 28157, …},
+    {task: 'weaken', threads: 29, duration: 35197, …}
+]
+```
+
+
+###### Example: Plan an HWGW batch cycle
 
 ```javascript
 import { HackableServer } from "/hacking/planner";
@@ -154,8 +182,7 @@ const params = {
     maxTotalRam: 16384,
     maxThreadsPerJob: 512,
     moneyPercent: 0.05,
-    hackMargin: 0,
-    prepMargin: 0,
+    secMargin: 0,
 };
 const batchCycle = server.planBatchCycle(params);
 console.log(batchCycle.condition); // " 5% HWGW"
