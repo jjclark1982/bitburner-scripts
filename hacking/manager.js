@@ -233,31 +233,111 @@ export class HackingManager {
             <rect x="${convertTimeToX(now-5000)}" width="100%" height="100%" fill="#111"></rect>
         `;
 
+        let secLayer = '';  // TODO: make this a <group>
+        let jobLayer = '';
+
         const TASK_COLORS = {
             "hack": "cyan",
             "grow": "lightgreen",
             "weaken": "yellow"
         };
+        let safeSec = this.allBatches[0][0]?.result?.minDifficulty || 0;
+        let prevSec = this.allBatches[0][0]?.result?.hackDifficulty || 0;
+        let prevEnd = this.allBatches[0][0]?.startTime || this.t0;
         let i = 0;
         for (const batch of this.allBatches) {
             for (const job of batch) {
                 i = (i + 1) % 150;
-                if (job.endTime > now-5000) {
-                    const color = TASK_COLORS[job.task];
-                    template += `
-                        <rect x="${convertTimeToX(job.startTime)}" y="${i*4}" width="${convertTimeToX(job.duration, 0)}" height="2" fill="${color}"/>
-                    `;
+                const startTime = job.startTimeActual || job.startTime;
+                const endTime = job.endTimeActual || job.endTime;
+                const duration = job.durationActual || job.duration;
+                if (endTime < now-6000) {
+                    continue;
                 }
+
+                // shade the background based on secLevel
+                let bgColor = '#111';
+                if (prevSec > safeSec) {
+                    bgColor = '#333';
+                }
+                secLayer += `
+                    <rect x="${convertTimeToX(prevEnd)}" y="0" width="${convertTimeToX(job.endTime - prevEnd, 0)}" height="100%" fill="${bgColor}"/>
+                `;
+                prevSec = job.result.hackDifficulty;
+                prevEnd = job.endTime;
+
+                // draw the job bars
+                let color = TASK_COLORS[job.task];
+                if (job.cancelled) {
+                    color = "red";
+                }
+                if (job.startTimeActual && Math.abs(job.startTimeActual - job.startTime) > 20) {
+                    color = "magenta";
+                }
+                if (job.endTimeActual && Math.abs(job.endTimeActual - job.endTime) > 20) {
+                    color = "magenta";
+                }
+                jobLayer += `
+                    <rect x="${convertTimeToX(startTime)}" y="${i*4}" width="${convertTimeToX(duration, 0)}" height="2" fill="${color}"/>
+                `;
             }
         }
 
+        template += secLayer;
+        template += jobLayer;
+
+        // draw the cursor
         template += `
-            <rect x="0" y="0" width="1" height="100%" fill="white">
+            <rect x="0" y="0" width="1" height="100%" fill="white" />
         `;
 
-        while (this.animationEl.firstChild) {
-            this.animationEl.removeChild(this.animationEl.firstChild);
-        }
-        this.animationEl.appendChild(render(template));
+        template += legend;
+
+        this.animationEl.innerHTML = template;
     }
 }
+
+/*
+
+questions:
+
+is it possible to adjust svg properties without re-instantiating elements?
+    maybe set namespace better?
+
+*/
+
+const legend = `
+<g id="Legend" stroke="none" fill="none" fill-rule="evenodd" transform="scale(.5, .5), translate(-800, 0)">
+    <rect id="Rectangle" stroke="#979797" x="0.5" y="0.5" width="213" height="220" fill="black"></rect>
+    <g id="Group-1" transform="translate(22.000000, 13.000000)">
+        <rect id="Rectangle" fill="cyan" x="0" y="10" width="22" height="22"></rect>
+        <text id="Hack" font-family="Courier New" font-size="36" font-weight="bold" fill="#888">
+            <tspan x="42.5" y="30">Hack</tspan>
+        </text>
+    </g>
+    <g id="Group-2" transform="translate(22.000000, 51.333333)">
+        <rect id="Rectangle-Copy" fill="lightgreen" x="0" y="10" width="22" height="22"></rect>
+        <text id="Grow" font-family="Courier New" font-size="36" font-weight="bold" fill="#888">
+            <tspan x="42.5" y="30">Grow</tspan>
+        </text>
+    </g>
+    <g id="Group-3" transform="translate(22.000000, 89.666667)">
+        <rect id="Rectangle-Copy-2" fill="yellow" x="0" y="10" width="22" height="22"></rect>
+        <text id="Weaken" font-family="Courier New" font-size="36" font-weight="bold" fill="#888">
+            <tspan x="42.5" y="30">Weaken</tspan>
+        </text>
+    </g>
+    <g id="Group-4" transform="translate(22.000000, 128.000000)">
+        <rect id="Rectangle-Copy-3" fill="magenta" x="0" y="10" width="22" height="22"></rect>
+        <text id="Desync" font-family="Courier New" font-size="36" font-weight="bold" fill="#888">
+            <tspan x="42.5" y="30">Desync</tspan>
+        </text>
+    </g>
+    <g id="Group-5" transform="translate(22.000000, 169.000000)">
+        <rect id="Rectangle-Copy-3" fill="#333" x="0" y="10" width="22" height="22"></rect>
+        <text id="Unsafe" font-family="Courier New" font-size="36" font-weight="bold" fill="#888">
+            <tspan x="42.5" y="30">Unsafe</tspan>
+        </text>
+    </g>
+</g>
+`;

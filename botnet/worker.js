@@ -132,6 +132,7 @@ export class Worker {
         // Run a 'shouldStart' callback if provided.
         if (typeof(job.shouldStart) === 'function') {
             if (!job.shouldStart(job)) {
+                job.cancelled = true;
                 return;
             }
         }
