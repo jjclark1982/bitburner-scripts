@@ -1,5 +1,6 @@
 import { getThreadPool } from "/botnet/worker";
 import { HackableServer, HackPlanner } from "/hacking/planner";
+import {logHTML, render} from "/exploit/printHTML";
 
 const FLAGS = [
     ["help", false],
@@ -68,6 +69,8 @@ export class HackingManager {
         this.backend = backend;
         this.params = params;
         this.batchID = 0;
+        this.allBatches = [];
+        this.t0 = Date.now();
 
         this.targets = [];
         this.plans = {};
@@ -89,6 +92,7 @@ export class HackingManager {
         const {ns, targets} = this;
 
         this.running = true;
+        this.startAnimation();
         while (this.running && this.backend.running) {
             const target = this.targets[0];
             eval("window").target = target;
@@ -161,6 +165,7 @@ export class HackingManager {
             server.nextFreeTime = batch.lastEndTime() + params.tDelta + batchCycle.timeBetweenStarts;
             server.nextStartTime = batch.earliestStartTime() - params.tDelta + batchCycle.timeBetweenStarts;
         }
+        this.allBatches.push(batch);
         await ns.asleep(server.nextStartTime - Date.now()); // this should be timeBetweenStarts before the following batch's earliest start
     }
 
@@ -199,11 +204,60 @@ export class HackingManager {
         // console.log(`Finished batch ${batchID}. Expected security:`, job.result.hackDifficulty, "Actual:", job.result.copy().reload().hackDifficulty);
     }
 
-    report() {
-        const server = this.targets[0];
-        return JSON.stringify(server.expectedSecurity, null, 2);
-        // a server should have a list of upcoming event times
-        // filter upcoming events by time >= now
-        // list time 
+    startAnimation() {
+        const {ns} = this;
+        ns.print("Visualization of hacking operations:");
+        this.animationEl = render("<div>");
+        logHTML(ns, this.animationEl);
+        requestAnimationFrame(this.updateAnimation.bind(this));
+    }
+
+    updateAnimation() {
+        if (!this.running) {
+            return;
+        }
+        requestAnimationFrame(this.updateAnimation.bind(this));
+
+        const {ns} = this;
+
+        const now = Date.now();
+        function convertTimeToX(t, t0=now, tWidth=10000, pxWidth=800) {
+            return ((t - t0) * pxWidth / tWidth);
+        }
+
+        let template = `
+        <svg version="1.1" xmlns="http://www.w3.org/2000/svg"
+                width="800" height="600"
+                viewBox="${convertTimeToX(now-5000)} 0 800 600"
+        >
+            <rect x="${convertTimeToX(now-5000)}" width="100%" height="100%" fill="#111"></rect>
+        `;
+
+        const TASK_COLORS = {
+            "hack": "cyan",
+            "grow": "lightgreen",
+            "weaken": "yellow"
+        };
+        let i = 0;
+        for (const batch of this.allBatches) {
+            for (const job of batch) {
+                i = (i + 1) % 150;
+                if (job.endTime > now-5000) {
+                    const color = TASK_COLORS[job.task];
+                    template += `
+                        <rect x="${convertTimeToX(job.startTime)}" y="${i*4}" width="${convertTimeToX(job.duration, 0)}" height="2" fill="${color}"/>
+                    `;
+                }
+            }
+        }
+
+        template += `
+            <rect x="0" y="0" width="1" height="100%" fill="white">
+        `;
+
+        while (this.animationEl.firstChild) {
+            this.animationEl.removeChild(this.animationEl.firstChild);
+        }
+        this.animationEl.appendChild(render(template));
     }
 }
