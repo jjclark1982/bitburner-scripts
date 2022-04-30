@@ -97,6 +97,8 @@ export class HackingManager {
 
             // ns.clearLog();
             // ns.print(this.report());
+
+            // this.report();
         }
     }
 
@@ -111,11 +113,16 @@ export class HackingManager {
         // TODO: slice target.expectedSecurity to only items after now
 
         // Decide whether prep is needed.
-        // TODO: use params to set 'secMargin' input to this function.
         const isPrepBatch = !server.isPrepared();
 
         // Plan a batch based on target state and parameters
         const batch = isPrepBatch ? server.planPrepBatch(params) : server.planHackingBatch(params);
+        if (batch.length == 0) {
+            ns.print("ERROR: batch was empty");
+            await ns.asleep(1000);
+            server.reload();
+            return;
+        }
 
         // Schedule the batch
         if (!server.nextFreeTime) {
@@ -133,20 +140,19 @@ export class HackingManager {
         batch[batch.length-1].didFinish = this.didFinish.bind(this);
 
         // Dispatch the batch
-        const result = await this.backend.dispatchJobs(batch, isPrepBatch); // TODO: use isPrepBatch to allow dispatchJobs to shift jobs farther into the future
-        if (result) {
-            ns.print(`Dispatched batch ${batchID}: ${batch.moneySummary()} ${batch.summary()} batch for ${server.hostname}`);
-            for (const job of batch) {
-                server.expectedSecurity.push([job.endTime, job.result.hackDifficulty]);
-            }
-        }
-        else {
+        const result = await this.backend.dispatchJobs(batch, {allowPartial: isPrepBatch}); // TODO: use isPrepBatch to allow dispatchJobs to shift jobs farther into the future
+        if (!result) {
             // If dispatch failed, rollback state
-            ns.print(`Failed to dispatch batch ${batchID}: ${batch.summary()} batch for ${server.hostname}. Skipping this batch.`);
+            ns.print(`WARNING: Failed to dispatch batch ${batchID}: ${batch.summary()} batch for ${server.hostname}. Skipping this batch.`);
             server.reload(prevServer);
-            // TODO: check whether params.maxThreadsPerJob still fits in backend
+            await ns.asleep(1000);
+            return;
         }
 
+        ns.print(`Dispatched batch ${batchID}: ${batch.moneySummary()} ${batch.summary()} batch for ${server.hostname}`);
+        for (const job of batch) {
+            server.expectedSecurity.push([job.endTime, job.result.hackDifficulty]);
+        }
         // Update the schedule for this target, and block until the schedule is free.
         if (isPrepBatch) {
             server.nextStartTime = batch.lastEndTime() + params.tDelta;
@@ -160,12 +166,15 @@ export class HackingManager {
 
     shouldStart(job) {
         const {ns} = this;
-        if (!this.running) {
-            return (job.task != 'hack');
+        if (job.task != 'hack') {
+            return true;
+        }
+        if (job.task == 'hack' && !this.running) {
+            return false;
         }
         const actualServer = job.result.copy().reload();
-        if (job.task === 'hack' && actualServer.hackDifficulty > job.result.prepDifficulty) {
-            ns.print(`WARNING: Cancelling ${job.task} job: ${actualServer.hackDifficulty.toFixed(1)} > ${job.result.prepDifficulty.toFixed(1)} security.`);
+        if (actualServer.hackDifficulty > job.result.prepDifficulty) {
+            ns.print(`WARNING: Cancelling ${job.task} job: ${actualServer.hackDifficulty.toFixed(2)} > ${job.result.prepDifficulty.toFixed(2)} security.`);
             return false;
         }
         return true;
@@ -180,7 +189,7 @@ export class HackingManager {
         const expectedServer = job.result;
         const actualServer = job.result.copy().reload();
         if (actualServer.hackDifficulty > expectedServer.hackDifficulty) {
-            ns.print(`WARNING: desync detected after batch ${batchID}. Reloading server state and adjusting parameters.`);
+            ns.print(`WARNING: desync detected after batch ${this.batchID}. Reloading server state and adjusting parameters.`);
             server.reload(actualServer);
             const newParams = server.mostProfitableParamsSync(this.params);
             this.plans[server.hostname] = server.planBatchCycle(newParams);

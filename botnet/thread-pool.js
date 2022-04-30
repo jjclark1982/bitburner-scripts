@@ -79,9 +79,9 @@ export class ThreadPool extends PortService {
         PortService.prototype.tearDown.call(this);
     }
 
-    async dispatchJobs(batch) {
+    async dispatchJobs(batch, {allowPartial, allowDelay}) {
         // Get workers (this can take some time due to launching and registering)
-        const workers = await this.getWorkers(batch);
+        const workers = await this.getWorkers(batch, {allowPartial, allowDelay});
         if (!workers) {
             this.ns.tprint(`Failed to allocate workers for batch.`);
             return null;
@@ -93,46 +93,58 @@ export class ThreadPool extends PortService {
         // Dispatch each job
         const results = [];
         for (const job of batch) {
-            const result = await this.dispatchJob(job);
+            const result = await this.dispatchJob(job, {allowDelay});
             results.push(result);
+            if (!result) {
+                // TODO: shift this and following jobs to future
+            }
         }
         return results;
     }
 
-    async dispatchJob(job) {
+    async dispatchJob(job, {allowDelay}) {
         if (job.threads <= 0) {
             return true;
         }
         job.threads ||= 1;
-        const worker = await this.getWorker(job);
+        const worker = await this.getWorker({...job, allowDelay});
         return worker?.addJob(job);
     }
 
-    async getWorkers(specs) {
-        // Get a block of workers matching certain specs.
-        // Returns an array of Worker objects if all specs could be satisfied.
-        // Returns null if any spec could not be satisfied.
+    /**
+     * Get a block of workers matching certain specs.
+     * @param {array} specs 
+     * @param {object} params
+     * @returns {array} Worker objects if all specs could be satisfied, or null.
+     */
+    async getWorkers(specs, {allowPartial, allowDelay}) {
         const workers = {};
         for (const spec of specs) {
             if (spec.threads == 0) {
                 continue;
             }
             const worker = await this.getWorker({...spec, exclude:workers});
-            if (!worker) {
+            if (worker) {
+                workers[worker.id] = worker;
+            }
+            else if (!allowPartial) {
                 return null;
             }
-            workers[worker.id] = worker;
             // TODO: Lock this worker for this job (if the whole batch can be met)
             //     worker.nextFreeTime = startTime-1;
         }
         return workers;
     }
 
+    /**
+     * Get a new or existing worker with the requested specs:
+     * - has at least `threads` threads
+     * - has capability to perform the function `task`,
+     * - is available by `startTime`
+     * @param {object} spec
+     * @returns {Worker}
+     */
     async getWorker({threads, startTime, task, exclude}) {
-        // Get a new or existing worker with the requested specs:
-        // - has at least `threads` threads
-        // - has capability to perform the function `task`,
-        // - is available by `startTime`
         exclude ||= {};
         startTime ||= Date.now();
         const capabilities = task ? [task] : [];
@@ -155,7 +167,7 @@ export class ThreadPool extends PortService {
         }
     }
     
-    // Create a new worker with `threads` threads (ignores number of CPU cores)
+    /** Create a new worker with `threads` threads (ignores number of CPU cores) */
     async spawnWorker(threads, capabilities) {
         const {ns, portNum} = this;
         threads = Math.ceil(threads);
@@ -207,7 +219,7 @@ export class ThreadPool extends PortService {
         return this.workers[workerID];
     }
 
-    // Link this worker and pool to each other
+    /** Link this worker and pool to each other */
     registerWorker(worker) {
         const {ns} = this;
         const launchedWorker = this.workers[worker.id];

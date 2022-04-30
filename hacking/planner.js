@@ -153,8 +153,8 @@ export class HackableServer extends ServerModel {
 
     isPrepared(secMargin=0, moneyMargin=0.125) {
         return (
-            this.hackDifficulty < this.minDifficulty + secMargin &&
-            this.moneyAvailable > this.moneyMax * (1 - moneyMargin)
+            this.hackDifficulty <= this.minDifficulty + secMargin &&
+            this.moneyAvailable >= this.moneyMax * (1 - moneyMargin)
         )
     }
 
@@ -368,7 +368,7 @@ export class HackableServer extends ServerModel {
         while (this.hackDifficulty > this.minDifficulty) {
             batch.push(this.planWeaken(maxThreadsPerJob, cores));
         }
-        // this.prepDifficulty = this.hackDifficulty; // This isn't true until some delay has passed. Should that delay be represented in the batch data structure?
+        this.prepDifficulty = this.hackDifficulty; // This isn't true until some delay has passed. Should that delay be represented in the batch data structure?
         return batch;
     }
 
