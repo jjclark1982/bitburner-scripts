@@ -221,16 +221,16 @@ export class HackingManager {
         const {ns} = this;
 
         const now = Date.now();
-        function convertTimeToX(t, t0=now, tWidth=10000, pxWidth=800) {
+        function convertTimeToX(t, t0=now, tWidth=15000, pxWidth=800) {
             return ((t - t0) * pxWidth / tWidth);
         }
 
         let template = `
         <svg version="1.1" xmlns="http://www.w3.org/2000/svg"
                 width="800" height="600"
-                viewBox="${convertTimeToX(now-5000)} 0 800 600"
+                viewBox="${convertTimeToX(now-10000)} 0 800 600"
         >
-            <rect x="${convertTimeToX(now-5000)}" width="100%" height="100%" fill="#111"></rect>
+            <rect x="${convertTimeToX(now-10000)}" width="100%" height="100%" fill="#111"></rect>
         `;
 
         let secLayer = '';  // TODO: make this a <group>
@@ -241,8 +241,10 @@ export class HackingManager {
             "grow": "lightgreen",
             "weaken": "yellow"
         };
+        const desyncColor = 'magenta';
+
         let safeSec = this.allBatches[0][0]?.result?.minDifficulty || 0;
-        let prevSec = this.allBatches[0][0]?.result?.hackDifficulty || 0;
+        let prevSec = 0; // this.allBatches[0][0]?.result?.hackDifficulty || 0;
         let prevEnd = this.allBatches[0][0]?.startTime || this.t0;
         let i = 0;
         for (const batch of this.allBatches) {
@@ -251,7 +253,7 @@ export class HackingManager {
                 const startTime = job.startTimeActual || job.startTime;
                 const endTime = job.endTimeActual || job.endTime;
                 const duration = job.durationActual || job.duration;
-                if (endTime < now-6000) {
+                if (endTime < now-13000) {
                     continue;
                 }
 
@@ -271,15 +273,19 @@ export class HackingManager {
                 if (job.cancelled) {
                     color = "red";
                 }
-                if (job.startTimeActual && Math.abs(job.startTimeActual - job.startTime) > 20) {
-                    color = "magenta";
-                }
-                if (job.endTimeActual && Math.abs(job.endTimeActual - job.endTime) > 20) {
-                    color = "magenta";
-                }
                 jobLayer += `
-                    <rect x="${convertTimeToX(startTime)}" y="${i*4}" width="${convertTimeToX(duration, 0)}" height="2" fill="${color}"/>
+                    <rect x="${convertTimeToX(job.startTime)}" y="${i*4}" width="${convertTimeToX(job.duration, 0)}" height="2" fill="${color}"/>
                 `;
+                if (job.startTimeActual) {
+                    jobLayer += `
+                        <rect x="${convertTimeToX(Math.min(job.startTime, job.startTimeActual))}" y="${i*4}" width="${convertTimeToX(Math.abs(job.startTime - job.startTimeActual), 0)}" height="1" fill="${desyncColor}"/>
+                    `;
+                }
+                if (job.endTimeActual) {
+                    jobLayer += `
+                        <rect x="${convertTimeToX(Math.min(job.endTime, job.endTimeActual))}" y="${i*4}" width="${convertTimeToX(Math.abs(job.endTime - job.endTimeActual), 0)}" height="1" fill="${desyncColor}"/>
+                    `;
+                }
             }
         }
 
@@ -307,35 +313,41 @@ is it possible to adjust svg properties without re-instantiating elements?
 */
 
 const legend = `
-<g id="Legend" stroke="none" fill="none" fill-rule="evenodd" transform="scale(.5, .5), translate(-800, 0)">
-    <rect id="Rectangle" stroke="#979797" x="0.5" y="0.5" width="213" height="220" fill="black"></rect>
+<g id="Legend" stroke="none" fill="none" fill-rule="evenodd" transform="scale(.5, .5), translate(-1060, 4)">
+    <rect id="Rectangle" stroke="#979797" x="0.5" y="0.5" width="213" height="261" fill="black"></rect>
     <g id="Group-1" transform="translate(22.000000, 13.000000)">
         <rect id="Rectangle" fill="cyan" x="0" y="10" width="22" height="22"></rect>
-        <text id="Hack" font-family="Courier New" font-size="36" font-weight="bold" fill="#888">
+        <text id="Hack" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Hack</tspan>
         </text>
     </g>
     <g id="Group-2" transform="translate(22.000000, 51.333333)">
         <rect id="Rectangle-Copy" fill="lightgreen" x="0" y="10" width="22" height="22"></rect>
-        <text id="Grow" font-family="Courier New" font-size="36" font-weight="bold" fill="#888">
+        <text id="Grow" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Grow</tspan>
         </text>
     </g>
     <g id="Group-3" transform="translate(22.000000, 89.666667)">
         <rect id="Rectangle-Copy-2" fill="yellow" x="0" y="10" width="22" height="22"></rect>
-        <text id="Weaken" font-family="Courier New" font-size="36" font-weight="bold" fill="#888">
+        <text id="Weaken" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Weaken</tspan>
         </text>
     </g>
     <g id="Group-4" transform="translate(22.000000, 128.000000)">
         <rect id="Rectangle-Copy-3" fill="magenta" x="0" y="10" width="22" height="22"></rect>
-        <text id="Desync" font-family="Courier New" font-size="36" font-weight="bold" fill="#888">
+        <text id="Desync" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Desync</tspan>
         </text>
     </g>
     <g id="Group-5" transform="translate(22.000000, 169.000000)">
-        <rect id="Rectangle-Copy-3" fill="#333" x="0" y="10" width="22" height="22"></rect>
-        <text id="Unsafe" font-family="Courier New" font-size="36" font-weight="bold" fill="#888">
+        <rect id="Rectangle-Copy-4" fill="#111" x="0" y="10" width="22" height="22"></rect>
+        <text id="Safe" font-family="Courier New" font-size="36" fill="#888">
+            <tspan x="42.5" y="30">Safe</tspan>
+        </text>
+    </g>
+    <g id="Group-6" transform="translate(22.000000, 210.000000)">
+        <rect id="Rectangle-Copy-5" fill="#333" x="0" y="10" width="22" height="22"></rect>
+        <text id="Unsafe" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Unsafe</tspan>
         </text>
     </g>
