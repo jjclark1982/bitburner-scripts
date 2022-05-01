@@ -207,7 +207,18 @@ export class HackingManager {
     startAnimation() {
         const {ns} = this;
         ns.print("Visualization of hacking operations:");
-        this.animationEl = render("<div>");
+        const legendEl = svgEl('g');
+        legendEl.innerHTML = legendTemplate;
+        this.animationEl = svgEl(
+            "svg",
+            {version: "1.1", width:800, height: 600},
+            [
+                ["g", {id:"secLayer"}],
+                ["g", {id:"jobLayer"}],
+                ["rect", {id:"cursor", x:0, width:1, y:0, height: "100%", fill: "white"}],
+                legendEl
+            ]
+        );
         logHTML(ns, this.animationEl);
         requestAnimationFrame(this.updateAnimation.bind(this));
     }
@@ -225,94 +236,84 @@ export class HackingManager {
             return ((t - t0) * pxWidth / tWidth);
         }
 
-        let template = `
-        <svg version="1.1" xmlns="http://www.w3.org/2000/svg"
-                width="800" height="600"
-                viewBox="${convertTimeToX(now-10000)} 0 800 600"
-        >
-            <rect x="${convertTimeToX(now-10000)}" width="100%" height="100%" fill="#111"></rect>
-        `;
+        this.animationEl.setAttribute("viewBox", `${convertTimeToX(now-10000)} 0 800 600`);
 
-        let secLayer = '';  // TODO: make this a <group>
-        let jobLayer = '';
+        // <rect x="${convertTimeToX(now-10000)}" width="100%" height="100%" fill="#111"></rect>
+
+        let secLayer = this.animationEl.getElementById("secLayer");
+        let jobLayer = this.animationEl.getElementById("jobLayer");
+        while(secLayer.firstChild) {
+            secLayer.removeChild(secLayer.firstChild);
+        }
+        while(jobLayer.firstChild) {
+            jobLayer.removeChild(jobLayer.firstChild);
+        }
 
         const TASK_COLORS = {
             "hack": "cyan",
             "grow": "lightgreen",
-            "weaken": "yellow"
+            "weaken": "yellow",
+            "cancelled": "red",
+            "desync": "magenta"
         };
-        const desyncColor = 'magenta';
 
-        let safeSec = this.allBatches[0][0]?.result?.minDifficulty || 0;
-        let prevSec = 0; // this.allBatches[0][0]?.result?.hackDifficulty || 0;
-        let prevEnd = this.allBatches[0][0]?.startTime || this.t0;
+        const prevJob = (this.allBatches[0] || [])[0];
+        let safeSec = prevJob?.result?.minDifficulty || 0;
+        let prevSec = 0; // prevJob?.result?.hackDifficulty || 0;
+        let prevEnd = prevJob?.startTime || this.t0;
         let i = 0;
         for (const batch of this.allBatches) {
             for (const job of batch) {
                 i = (i + 1) % 150;
-                const startTime = job.startTimeActual || job.startTime;
                 const endTime = job.endTimeActual || job.endTime;
-                const duration = job.durationActual || job.duration;
                 if (endTime < now-13000) {
                     continue;
                 }
 
                 // shade the background based on secLevel
-                let bgColor = '#111';
-                if (prevSec > safeSec) {
-                    bgColor = '#333';
-                }
-                secLayer += `
-                    <rect x="${convertTimeToX(prevEnd)}" y="0" width="${convertTimeToX(job.endTime - prevEnd, 0)}" height="100%" fill="${bgColor}"/>
-                `;
+                secLayer.appendChild(svgEl('rect', {
+                    x: convertTimeToX(prevEnd), width: convertTimeToX(job.endTime - prevEnd, 0),
+                    y: 0, height: "100%",
+                    fill: (prevSec > safeSec) ? '#333' : '#111'
+                }));
                 prevSec = job.result.hackDifficulty;
                 prevEnd = job.endTime;
 
                 // draw the job bars
                 let color = TASK_COLORS[job.task];
                 if (job.cancelled) {
-                    color = "red";
+                    color = TASK_COLORS.cancelled;
                 }
-                jobLayer += `
-                    <rect x="${convertTimeToX(job.startTime)}" y="${i*4}" width="${convertTimeToX(job.duration, 0)}" height="2" fill="${color}"/>
-                `;
+                jobLayer.appendChild(svgEl('rect', {
+                    x: convertTimeToX(job.startTime), width: convertTimeToX(job.duration, 0),
+                    y: i*4, height: 2,
+                    fill: color
+                }));
                 if (job.startTimeActual) {
-                    jobLayer += `
-                        <rect x="${convertTimeToX(Math.min(job.startTime, job.startTimeActual))}" y="${i*4}" width="${convertTimeToX(Math.abs(job.startTime - job.startTimeActual), 0)}" height="1" fill="${desyncColor}"/>
-                    `;
+                    jobLayer.appendChild(svgEl('rect', {
+                        x: convertTimeToX(Math.min(job.startTime, job.startTimeActual)), width: convertTimeToX(Math.abs(job.startTime - job.startTimeActual), 0),
+                        y: i*4, height: 1,
+                        fill: TASK_COLORS.desync
+                    }));
                 }
                 if (job.endTimeActual) {
-                    jobLayer += `
-                        <rect x="${convertTimeToX(Math.min(job.endTime, job.endTimeActual))}" y="${i*4}" width="${convertTimeToX(Math.abs(job.endTime - job.endTimeActual), 0)}" height="1" fill="${desyncColor}"/>
-                    `;
+                    jobLayer.appendChild(svgEl('rect', {
+                        x: convertTimeToX(Math.min(job.endTime, job.endTimeActual)), width: convertTimeToX(Math.abs(job.endTime - job.endTimeActual), 0),
+                        y: i*4, height: 1,
+                        fill: TASK_COLORS.desync
+                    }));
                 }
             }
         }
-
-        template += secLayer;
-        template += jobLayer;
-
-        // draw the cursor
-        template += `
-            <rect x="0" y="0" width="1" height="100%" fill="white" />
-        `;
-
-        template += legend;
-
-        this.animationEl.innerHTML = template;
+        secLayer.appendChild(svgEl('rect', {
+            x: convertTimeToX(prevEnd), width: convertTimeToX(10000, 0),
+            y: 0, height: "100%",
+            fill: (prevSec > safeSec) ? '#333' : '#111'
+        }));
     }
 }
 
-/*
-
-questions:
-
-is it possible to adjust svg properties without re-instantiating elements?
-    maybe set namespace better?
-
-*/
-
-const legend = `
+const legendTemplate = `
 <g id="Legend" stroke="none" fill="none" fill-rule="evenodd" transform="scale(.5, .5), translate(-1060, 4)">
     <rect id="Rectangle" stroke="#979797" x="0.5" y="0.5" width="213" height="261" fill="black"></rect>
     <g id="Group-1" transform="translate(22.000000, 13.000000)">
@@ -353,3 +354,22 @@ const legend = `
     </g>
 </g>
 `;
+
+function svgEl(tag, attributes={}, children=[]) {
+    const doc = eval("document");
+    const ns = 'http://www.w3.org/2000/svg';
+    const el = doc.createElementNS(ns, tag);
+    if (tag.toLowerCase() == 'svg') {
+        attributes['xmlns'] = ns;
+    }
+    for (const [name, val] of Object.entries(attributes)) {
+        el.setAttribute(name, val);
+    }
+    for (let child of children) {
+        if (Array.isArray(child)) {
+            child = svgEl(...child);
+        }
+        el.appendChild(child);
+    }
+    return el;
+}
