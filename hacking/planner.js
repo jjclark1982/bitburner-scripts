@@ -507,12 +507,16 @@ export class HackableServer extends ServerModel {
         const defaults = {
             maxThreadsPerJob: 512,
             maxTotalRam: 16384,
-            tDelta: 100
+            tDelta: 100,
+            secMargin: [0.0, 0.5, 1.0]
         };
         params = Object.assign({}, defaults, params);
+        if (!Array.isArray(params.secMargin)) {
+            params.secMargin = [params.secMargin];
+        }
         const estimates = [];
         for (const moneyPercent of range(1/32, 1, 1/32)) {
-            for (const secMargin of [0.0, 0.5, 1.0]) {
+            for (const secMargin of params.secMargin) {
                 for (const naiveSplit of [false]) {
                     const batchParams = {...params, moneyPercent, secMargin, naiveSplit};
                     const batchCycle = this.planBatchCycle(batchParams);

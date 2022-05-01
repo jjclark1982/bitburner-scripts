@@ -9,7 +9,7 @@ const FLAGS = [
     ["maxTotalRam", 0],        // optional (will be read from backend)
     ["maxThreadsPerJob", 0],   // optional (will be read from backend)
     ["moneyPercent", 0.05],    // (will be overwritten by optimizer)
-    ["secMargin", 0.5],        // (will be overwritten by optimizer)
+    ["secMargin"],             // security margin, eg 0 for HWGW
     ["naiveSplit", false],     // not currently used
     ["reserveRam", true],      // weather to calculate batch RAM requirement based on peak amount
     ["cores", 1],              // not currently used
@@ -55,6 +55,9 @@ export async function main(ns) {
 
     flags.maxTotalRam ||= backend.getMaxTotalRam();
     flags.maxThreadsPerJob ||= backend.getMaxThreadsPerJob();
+    if (typeof(flags.secMargin) !== "undefined") {
+        flags.secMargin = parseInt(flags.secMargin);
+    }
 
     const targets = flags._;
     delete flags._;
@@ -171,7 +174,7 @@ export class HackingManager {
 
     shouldStart(job) {
         const {ns} = this;
-        if (job.task != 'hack') {
+        if (job.task == 'weaken') {
             return true;
         }
         if (job.task == 'hack' && !this.running) {
