@@ -1,6 +1,6 @@
 import { getThreadPool } from "/botnet/worker";
 import { HackableServer, HackPlanner } from "/hacking/planner";
-import {logHTML, render} from "/exploit/printHTML";
+import { renderBatches, logHTML } from "/lib/batch-view";
 
 const FLAGS = [
     ["help", false],
@@ -210,18 +210,7 @@ export class HackingManager {
     startAnimation() {
         const {ns} = this;
         ns.print("Visualization of hacking operations:");
-        const legendEl = svgEl('g');
-        legendEl.innerHTML = legendTemplate;
-        this.animationEl = svgEl(
-            "svg",
-            {version: "1.1", width:800, height: 600},
-            [
-                ["g", {id:"secLayer"}],
-                ["g", {id:"jobLayer"}],
-                ["rect", {id:"cursor", x:0, width:1, y:0, height: "100%", fill: "white"}],
-                legendEl
-            ]
-        );
+        this.animationEl = renderBatches();
         logHTML(ns, this.animationEl);
         requestAnimationFrame(this.updateAnimation.bind(this));
     }
@@ -231,148 +220,7 @@ export class HackingManager {
             return;
         }
         requestAnimationFrame(this.updateAnimation.bind(this));
-
-        const {ns} = this;
-
-        const now = Date.now();
-        function convertTimeToX(t, t0=now, tWidth=15000, pxWidth=800) {
-            return ((t - t0) * pxWidth / tWidth);
-        }
-
-        this.animationEl.setAttribute("viewBox", `${convertTimeToX(now-10000)} 0 800 600`);
-
-        // <rect x="${convertTimeToX(now-10000)}" width="100%" height="100%" fill="#111"></rect>
-
-        let secLayer = this.animationEl.getElementById("secLayer");
-        let jobLayer = this.animationEl.getElementById("jobLayer");
-        while(secLayer.firstChild) {
-            secLayer.removeChild(secLayer.firstChild);
-        }
-        while(jobLayer.firstChild) {
-            jobLayer.removeChild(jobLayer.firstChild);
-        }
-
-        const TASK_COLORS = {
-            "hack": "cyan",
-            "grow": "lightgreen",
-            "weaken": "yellow",
-            "cancelled": "red",
-            "desync": "magenta"
-        };
-
-        const prevJob = (this.allBatches[0] || [])[0];
-        let safeSec = prevJob?.result?.minDifficulty || 0;
-        let prevSec = 0; // prevJob?.result?.hackDifficulty || 0;
-        let prevEnd = prevJob?.startTime || this.t0;
-        let i = 0;
-        for (const batch of this.allBatches) {
-            for (const job of batch) {
-                i = (i + 1) % 150;
-                const endTime = job.endTimeActual || job.endTime;
-                if (endTime < now-13000) {
-                    continue;
-                }
-
-                // shade the background based on secLevel
-                secLayer.appendChild(svgEl('rect', {
-                    x: convertTimeToX(prevEnd), width: convertTimeToX(job.endTime - prevEnd, 0),
-                    y: 0, height: "100%",
-                    fill: (prevSec > safeSec) ? '#333' : '#111'
-                }));
-                prevSec = job.result.hackDifficulty;
-                prevEnd = job.endTime;
-
-                // draw the job bars
-                let color = TASK_COLORS[job.task];
-                if (job.cancelled) {
-                    color = TASK_COLORS.cancelled;
-                }
-                jobLayer.appendChild(svgEl('rect', {
-                    x: convertTimeToX(job.startTime), width: convertTimeToX(job.duration, 0),
-                    y: i*4, height: 2,
-                    fill: color
-                }));
-                if (job.startTimeActual) {
-                    jobLayer.appendChild(svgEl('rect', {
-                        x: convertTimeToX(Math.min(job.startTime, job.startTimeActual)), width: convertTimeToX(Math.abs(job.startTime - job.startTimeActual), 0),
-                        y: i*4, height: 1,
-                        fill: TASK_COLORS.desync
-                    }));
-                }
-                if (job.endTimeActual) {
-                    jobLayer.appendChild(svgEl('rect', {
-                        x: convertTimeToX(Math.min(job.endTime, job.endTimeActual)), width: convertTimeToX(Math.abs(job.endTime - job.endTimeActual), 0),
-                        y: i*4, height: 1,
-                        fill: TASK_COLORS.desync
-                    }));
-                }
-            }
-        }
-        secLayer.appendChild(svgEl('rect', {
-            x: convertTimeToX(prevEnd), width: convertTimeToX(10000, 0),
-            y: 0, height: "100%",
-            fill: (prevSec > safeSec) ? '#333' : '#111'
-        }));
+        this.animationEl = renderBatches(this.animationEl, this.allBatches);
     }
 }
 
-const legendTemplate = `
-<g id="Legend" stroke="none" fill="none" fill-rule="evenodd" transform="scale(.5, .5), translate(-1060, 4)">
-    <rect id="Rectangle" stroke="#979797" x="0.5" y="0.5" width="213" height="269" fill="black"></rect>
-    <g id="Group-1" transform="translate(22, 13)">
-        <rect id="Rectangle" fill="cyan" x="0" y="10" width="22" height="22"></rect>
-        <text id="Hack" font-family="Courier New" font-size="36" fill="#888">
-            <tspan x="42.5" y="30">Hack</tspan>
-        </text>
-    </g>
-    <g id="Group-2" transform="translate(22, 54)">
-        <rect id="Rectangle-Copy" fill="lightgreen" x="0" y="10" width="22" height="22"></rect>
-        <text id="Grow" font-family="Courier New" font-size="36" fill="#888">
-            <tspan x="42.5" y="30">Grow</tspan>
-        </text>
-    </g>
-    <g id="Group-3" transform="translate(22, 95)">
-        <rect id="Rectangle-Copy-2" fill="yellow" x="0" y="10" width="22" height="22"></rect>
-        <text id="Weaken" font-family="Courier New" font-size="36" fill="#888">
-            <tspan x="42.5" y="30">Weaken</tspan>
-        </text>
-    </g>
-    <g id="Group-4" transform="translate(22, 136)">
-        <rect id="Rectangle-Copy-3" fill="magenta" x="0" y="10" width="22" height="22"></rect>
-        <text id="Desync" font-family="Courier New" font-size="36" fill="#888">
-            <tspan x="42.5" y="30">Desync</tspan>
-        </text>
-    </g>
-    <g id="Group-5" transform="translate(22, 177)">
-        <rect id="Rectangle-Copy-4" fill="#111" x="0" y="10" width="22" height="22"></rect>
-        <text id="Safe" font-family="Courier New" font-size="36" fill="#888">
-            <tspan x="42.5" y="30">Safe</tspan>
-        </text>
-    </g>
-    <g id="Group-6" transform="translate(22, 218)">
-        <rect id="Rectangle-Copy-5" fill="#333" x="0" y="10" width="22" height="22"></rect>
-        <text id="Unsafe" font-family="Courier New" font-size="36" fill="#888">
-            <tspan x="42.5" y="30">Unsafe</tspan>
-        </text>
-    </g>
-</g>
-`;
-
-function svgEl(tag, attributes={}, children=[]) {
-    const doc = eval("document");
-    const xmlns = 'http://www.w3.org/2000/svg';
-    const el = doc.createElementNS(xmlns, tag);
-    if (tag.toLowerCase() == 'svg') {
-        attributes['xmlns'] = xmlns;
-    }
-    for (const [name, val] of Object.entries(attributes)) {
-        el.setAttribute(name, val);
-    }
-    for (let child of children) {
-        if (Array.isArray(child)) {
-            child = svgEl(...child);
-        }
-        el.appendChild(child);
-    }
-    return el;
-}
