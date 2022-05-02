@@ -181,8 +181,8 @@ export class HackingManager {
             return false;
         }
         const actualServer = job.result.copy().reload();
-        if (actualServer.hackDifficulty > job.result.prepDifficulty) {
-            ns.print(`WARNING: Cancelling ${job.task} job: ${actualServer.hackDifficulty.toFixed(2)} > ${job.result.prepDifficulty.toFixed(2)} security.`);
+        if (actualServer.hackDifficulty > job.startDifficulty) {
+            ns.print(`WARNING: Cancelling ${job.task} job: ${actualServer.hackDifficulty.toFixed(2)} > ${job.startDifficulty.toFixed(2)} security.`);
             return false;
         }
         return true;

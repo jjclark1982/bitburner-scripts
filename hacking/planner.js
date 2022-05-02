@@ -215,6 +215,7 @@ export class HackableServer extends ServerModel {
             args: [server.hostname, {threads, stock}],
             threads: threads,
             duration: duration,
+            startDifficulty: this.prepDifficulty,
             change: {security: securityChange, moneyMult, money: moneyChange, playerMoney: -moneyChange},
             result: this.copy(),
         };
@@ -277,6 +278,7 @@ export class HackableServer extends ServerModel {
             args: [server.hostname, {threads, stock}],
             threads: threads,
             duration: duration,
+            startDifficulty: this.prepDifficulty,
             change: {security: securityChange, moneyMult, money: moneyChange, playerMoney: 0},
             result: this.copy(),
         };
@@ -321,6 +323,7 @@ export class HackableServer extends ServerModel {
             args: [server.hostname, {threads: threads}],
             threads: threads,
             duration: duration,
+            startDifficulty: this.prepDifficulty,
             change: {security: securityChange, moneyMult: 1, money: 0, playerMoney: 0},
             result: this.copy(),
         };
