@@ -318,38 +318,38 @@ export class HackingManager {
 
 const legendTemplate = `
 <g id="Legend" stroke="none" fill="none" fill-rule="evenodd" transform="scale(.5, .5), translate(-1060, 4)">
-    <rect id="Rectangle" stroke="#979797" x="0.5" y="0.5" width="213" height="261" fill="black"></rect>
-    <g id="Group-1" transform="translate(22.000000, 13.000000)">
+    <rect id="Rectangle" stroke="#979797" x="0.5" y="0.5" width="213" height="269" fill="black"></rect>
+    <g id="Group-1" transform="translate(22, 13)">
         <rect id="Rectangle" fill="cyan" x="0" y="10" width="22" height="22"></rect>
         <text id="Hack" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Hack</tspan>
         </text>
     </g>
-    <g id="Group-2" transform="translate(22.000000, 51.333333)">
+    <g id="Group-2" transform="translate(22, 54)">
         <rect id="Rectangle-Copy" fill="lightgreen" x="0" y="10" width="22" height="22"></rect>
         <text id="Grow" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Grow</tspan>
         </text>
     </g>
-    <g id="Group-3" transform="translate(22.000000, 89.666667)">
+    <g id="Group-3" transform="translate(22, 95)">
         <rect id="Rectangle-Copy-2" fill="yellow" x="0" y="10" width="22" height="22"></rect>
         <text id="Weaken" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Weaken</tspan>
         </text>
     </g>
-    <g id="Group-4" transform="translate(22.000000, 128.000000)">
+    <g id="Group-4" transform="translate(22, 136)">
         <rect id="Rectangle-Copy-3" fill="magenta" x="0" y="10" width="22" height="22"></rect>
         <text id="Desync" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Desync</tspan>
         </text>
     </g>
-    <g id="Group-5" transform="translate(22.000000, 169.000000)">
+    <g id="Group-5" transform="translate(22, 177)">
         <rect id="Rectangle-Copy-4" fill="#111" x="0" y="10" width="22" height="22"></rect>
         <text id="Safe" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Safe</tspan>
         </text>
     </g>
-    <g id="Group-6" transform="translate(22.000000, 210.000000)">
+    <g id="Group-6" transform="translate(22, 218)">
         <rect id="Rectangle-Copy-5" fill="#333" x="0" y="10" width="22" height="22"></rect>
         <text id="Unsafe" font-family="Courier New" font-size="36" fill="#888">
             <tspan x="42.5" y="30">Unsafe</tspan>
@@ -360,10 +360,10 @@ const legendTemplate = `
 
 function svgEl(tag, attributes={}, children=[]) {
     const doc = eval("document");
-    const ns = 'http://www.w3.org/2000/svg';
-    const el = doc.createElementNS(ns, tag);
+    const xmlns = 'http://www.w3.org/2000/svg';
+    const el = doc.createElementNS(xmlns, tag);
     if (tag.toLowerCase() == 'svg') {
-        attributes['xmlns'] = ns;
+        attributes['xmlns'] = xmlns;
     }
     for (const [name, val] of Object.entries(attributes)) {
         el.setAttribute(name, val);
