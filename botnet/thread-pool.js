@@ -1,5 +1,5 @@
 import { drawTable } from "/lib/box-drawing";
-import { Batch } from "/lib/batch-model";
+import { Batch } from "/hacking/batch-model";
 import { PortService } from "/lib/port-service";
 import { ServerPool } from "/net/deploy-script"; // this is the main RAM cost, it could go in a separate process
 

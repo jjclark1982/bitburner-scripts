@@ -50,7 +50,7 @@ This system consists of loosely-coupled modules:
 
 It depends on
 - [server-list.js](../net/server-list.js) for listing hackable servers
-- [batch-model.js](../lib/batch-model.js) for calculating schedules
+- [batch-model.js](../hacking/batch-model.js) for calculating schedules
 - [box-drawing.js](../lib/box-drawing.js) for displaying tables
 - [stocks/trader.js](../stocks/trader.js) (optional) for stock position information
 
@@ -124,7 +124,7 @@ HackPlanner:
     loadServer(hostname) -> HackableServer
     mostProfitableServers(constraints) -> BatchCycle[]
 ```
-(see also `Job` and `Batch` from [batch-model.js](../lib/batch-model.js))
+(see also `Job` and `Batch` from [batch-model.js](../hacking/batch-model.js))
 
 Many methods of these objects take a `params` object with parameters to be passed on to subroutines:
 
@@ -134,8 +134,7 @@ Params: {
     maxTotalRam:      Maximum total GB of ram to use for multiple concurrent batches
     maxThreadsPerJob: Maximum number of threads to use on any single process
     moneyPercent:     Portion of money to take in a hack job (0.0 - 1.0)
-    hackMargin:       Amount of security to allow without weakening after a hack job
-    prepMargin:       Amount of security to allow without weakening after a grow job
+    secMargin:        Amount of security to allow without weakening between jobs
     naiveSplit:       Whether to split large jobs into sequential processes of the same kind.
                       For example: HWWGGGWW (naive) vs HWGWGWGW (default)
     cores:            Number of CPU cores used for a job
@@ -145,29 +144,31 @@ Params: {
 ###### Example: Plan a Prep batch
 
 ```javascript
-> server = new HackableServer("joesguns")
+> let server = new HackableServer("joesguns")
+HackableServer {hostname: 'joesguns', contracts: undefined, cpuCores: 1, ftpPortOpen: false, hasAdminRights: true, …}
+
 > server.planPrepBatch({maxThreadsPerJob: 1024})
-[
-    {task: 'weaken', threads:   48, duration: 37275, …},
-    {task: 'grow',   threads: 1024, duration: 29820, …},
-    {task: 'weaken', threads:  122, duration: 37275, …},
-    {task: 'grow',   threads:  435, duration: 29820, …},
-    {task: 'weaken', threads:   66, duration: 37275, …}
-]
+Batch(5) [{…}, {…}, {…}, {…}, {…}]
+0: {task: 'weaken', threads:   48, duration: 37275.3, …}
+1: {task: 'grow',   threads: 1024, duration: 29820.2, …}
+2: {task: 'weaken', threads:  122, duration: 37275.3, …}
+3: {task: 'grow',   threads:  435, duration: 29820.2, …}
+4: {task: 'weaken', threads:   66, duration: 37275.3, …}
 ```
 
 
 ###### Example: Plan a Hacking batch
 
 ```javascript
-> server = new HackableServer("joesguns").preppedCopy()
+> let server = new HackableServer("joesguns").preppedCopy()
+HackableServer {hostname: 'joesguns', contracts: undefined, cpuCores: 1, ftpPortOpen: false, hasAdminRights: true, …}
+
 > server.planHackingBatch({secMargin: 0})
-[
-    {task: 'hack',   threads: 11, duration:  8799, …},
-    {task: 'weaken', threads: 25, duration: 35197, …},
-    {task: 'grow',   threads: 49, duration: 28157, …},
-    {task: 'weaken', threads: 29, duration: 35197, …}
-]
+Batch(4) [{…}, {…}, {…}, {…}]
+0: {task: 'hack',   threads: 11, duration:  8799.3, …}
+1: {task: 'weaken', threads: 25, duration: 35197.2, …}
+2: {task: 'grow',   threads: 49, duration: 28157.8, …}
+3: {task: 'weaken', threads: 29, duration: 35197.2, …}
 ```
 
 
@@ -222,10 +223,33 @@ for (const job of batch) {
 }
 ```
 
+---
+
+
+### Batch Model
+
+[batch-model.js](batch-model.js) defines the `Batch` class, an array of `Job` specifications with methods for calculating RAM usage and scheduling run times. It is used by various hacking planners and runtimes.
+
+It defines these data structures:
+
+```
+Job: {task, args, threads, startTime, duration, endTime}
+```
+
+```
+Batch: Array[Job], ordered by intended endTime
+    peakRam()
+    avgRam()
+    activeDuration()
+    totalDuration()
+    setStartTime()
+    setFirstEndTime()
+    maxBatchesAtOnce()
+    minTimeBetweenBatches()
+```
 
 
 ---
-
 
 
 ### Hacking Manager
@@ -266,8 +290,8 @@ The scripts currently used by this system are:
 ##### Frontend:
 ```
 /lib/box-drawing.js
-/lib/batch-model.js
 /net/server-list.js
+/hacking/batch-model.js
 /hacking/planner.js
 /hacking/manager.js
 /hacking/prep.js          (optional)

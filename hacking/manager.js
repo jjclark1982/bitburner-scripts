@@ -1,6 +1,6 @@
 import { getThreadPool } from "/botnet/worker";
 import { HackableServer, HackPlanner } from "/hacking/planner";
-import { renderBatches, logHTML } from "/lib/batch-view";
+import { renderBatches, logHTML } from "/hacking/batch-view";
 
 const FLAGS = [
     ["help", false],

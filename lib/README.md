@@ -8,30 +8,6 @@ This folder is for scripts that:
 
 ---
 
-### batch-model.js
-
-[batch-model.js](batch-model.js) defines the `Batch` class, an array of `Job` specifications with methods for calculating RAM usage and scheduling run times. It is used by various hacking planners and runtimes.
-
-It defines these data structures:
-
-```
-Job: {task, args, threads, startTime, duration, endTime}
-```
-
-```
-Batch: Array[Job], ordered by intended endTime
-    peakRam()
-    avgRam()
-    activeDuration()
-    totalDuration()
-    setStartTime()
-    setFirstEndTime()
-    maxBatchesAtOnce()
-    minTimeBetweenBatches()
-```
-
----
-
 ### box-drawing.js
 
 [box-drawing.js](box-drawing.js) is a library for drawing tables with unicode [box-drawing characters](https://en.wikipedia.org/wiki/Box-drawing_character).
