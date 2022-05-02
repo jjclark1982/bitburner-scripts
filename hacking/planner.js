@@ -191,7 +191,7 @@ export class HackableServer extends ServerModel {
         let threads = moneyPercent / hackPercentPerThread;
         if (moneyPercent < 1.0) {
             // round down unless going for 100%
-            threads = Math.floor(threads);
+            threads = Math.max(1, Math.floor(threads));
         }
         if (threads == Infinity) {
             threads = 0;
