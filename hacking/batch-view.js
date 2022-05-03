@@ -1,25 +1,49 @@
+let startTime = Date.now();
+
 export function renderBatches(el, batches=[], now) {
+    const widthPixels = 800;
+    const widthSeconds = 16;
+    const heightPixels = 600;
+
     now ||= Date.now();
 
-    function convertTimeToX(t, t0=now, tWidth=15000, pxWidth=800) {
-        return ((t - t0) * pxWidth / tWidth);
+    /** Convert timestamps to seconds since the graph was started. This resolution works for about 24 hours. */
+    function convertTime(t, t0=startTime) {
+        return ((t - t0) / 1000);
+    }
+
+    function convertSecToPx(t) {
+        return t * widthPixels / widthSeconds;
     }
 
     // Render the main SVG element if needed
     el ||= svgEl(
         "svg",
-        {version: "1.1", width:800, height: 600},
+        // Set the viewBox for 10 seconds of history, 6 seconds of future.
+        {version: "1.1", width:800, height: 600, viewBox: `${convertSecToPx(-10)} 0 ${widthPixels} ${heightPixels}`},
         [
-            // ["rect", {id:"background", x=convertTimeToX(now-10000), width="100%", height="100%", fill=GRAPH_COLORS.safe}],
-            ["g", {id:"secLayer"}],
-            ["g", {id:"jobLayer"}],
+            // ["rect", {id:"background", x:convertSecToPx(-10), width:"100%", height:"100%", fill:GRAPH_COLORS.safe}],
+            ["g", {id:"timeCoordinates"}, [
+                ["g", {id:"secLayer"}],
+                ["g", {id:"jobLayer"}],
+            ]],
             ["rect", {id:"cursor", x:0, width:1, y:0, height: "100%", fill: "white"}],
             renderLegend()
         ]
     );
-    // Set the viewBox for 10 seconds of history, 5 seconds of future.
-    el.setAttribute("viewBox", `${convertTimeToX(now-10000)} 0 800 600`);
 
+    // Update the time coordinates every frame
+    el.getElementById("timeCoordinates").setAttribute('transform',
+        `scale(${widthPixels / widthSeconds} 1) translate(${convertTime(startTime-now, 0)} 0)`
+    );
+    
+    // Only update the main data every 250 ms
+    const lastUpdate = el.getAttribute('data-last-update') || 0;
+    if (now - lastUpdate < 250) {
+        return el;
+    }
+    el.setAttribute('data-last-update', now);
+    
     // Render each job background and foreground
     let secLayer = el.getElementById("secLayer");
     let jobLayer = el.getElementById("jobLayer");
@@ -37,14 +61,14 @@ export function renderBatches(el, batches=[], now) {
     for (const batch of batches) {
         for (const job of batch) {
             i = (i + 1) % 150;
-            if ((job.endTimeActual || job.endTime) < now-15000) {
+            if ((job.endTimeActual || job.endTime) < now-20000) {
                 continue;
             }
 
             // shade the background based on secLevel
             if (job.endTime > prevEnd) {
                 secLayer.appendChild(svgEl('rect', {
-                    x: convertTimeToX(prevEnd), width: convertTimeToX(job.endTime - prevEnd, 0),
+                    x: convertTime(prevEnd), width: convertTime(job.endTime - prevEnd, 0),
                     y: 0, height: "100%",
                     fill: (prevSec > safeSec) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe
                 }));    
@@ -58,21 +82,21 @@ export function renderBatches(el, batches=[], now) {
                 color = GRAPH_COLORS.cancelled;
             }
             jobLayer.appendChild(svgEl('rect', {
-                x: convertTimeToX(job.startTime), width: convertTimeToX(job.duration, 0),
+                x: convertTime(job.startTime), width: convertTime(job.duration, 0),
                 y: i*4, height: 2,
                 fill: color
             }));
             // draw the error bars
             if (job.startTimeActual) {
                 jobLayer.appendChild(svgEl('rect', {
-                    x: convertTimeToX(Math.min(job.startTime, job.startTimeActual)), width: convertTimeToX(Math.abs(job.startTime - job.startTimeActual), 0),
+                    x: convertTime(Math.min(job.startTime, job.startTimeActual)), width: convertTime(Math.abs(job.startTime - job.startTimeActual), 0),
                     y: i*4, height: 1,
                     fill: GRAPH_COLORS.desync
                 }));
             }
             if (job.endTimeActual) {
                 jobLayer.appendChild(svgEl('rect', {
-                    x: convertTimeToX(Math.min(job.endTime, job.endTimeActual)), width: convertTimeToX(Math.abs(job.endTime - job.endTimeActual), 0),
+                    x: convertTime(Math.min(job.endTime, job.endTimeActual)), width: convertTime(Math.abs(job.endTime - job.endTimeActual), 0),
                     y: i*4, height: 1,
                     fill: GRAPH_COLORS.desync
                 }));
@@ -82,7 +106,7 @@ export function renderBatches(el, batches=[], now) {
         i = (i + 1) % 150;
     }
     secLayer.appendChild(svgEl('rect', {
-        x: convertTimeToX(prevEnd), width: convertTimeToX(10000, 0),
+        x: convertTime(prevEnd), width: convertTime(10000, 0),
         y: 0, height: "100%",
         fill: (prevSec > safeSec) ? '#333' : '#111'
     }));
@@ -102,7 +126,7 @@ const GRAPH_COLORS = {
 
 function renderLegend() {
     const legendEl = svgEl('g',
-        {id: "Legend", transform: "translate(-525, 8), scale(.5, .5)"},
+        {id: "Legend", transform: "translate(-480, 10), scale(.5, .5)"},
         [['rect', {x: 1, y: 1, width: 275, height: 310, fill: "black", stroke: "#979797"}]]
     );
     let y = 13;
