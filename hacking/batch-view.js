@@ -1,26 +1,60 @@
 let startTime = Date.now();
+/** Convert timestamps to seconds since the graph was started. This resolution works for about 24 hours. */
+function convertTime(t, t0=startTime) {
+    return ((t - t0) / 1000);
+}
 
+function convertSecToPx(t) {
+    return t * WIDTH_PIXELS / WIDTH_SECONDS;
+}
+
+const GRAPH_COLORS = {
+    "hack": "cyan",
+    "grow": "lightgreen",
+    "weaken": "yellow",
+    "cancelled": "red",
+    "desync": "magenta",
+    "safe": "#111",
+    "unsafe": "#333"
+};
+
+const WIDTH_PIXELS = 800;
+const WIDTH_SECONDS = 16;
+const HEIGHT_PIXELS = 600;
+
+/**
+ * Job
+ * @typedef {Object} Job
+ * @property {string} task - name of the netscript function to call (hack, grow, weaken)
+ * @property {number} duration - duration in milliseconds
+ * @property {number} startTime - timestamp of expected start
+ * @property {number} startTimeActual - timestamp of actual start (optional)
+ * @property {number} endTime - timestamp of expected end
+ * @property {number} endTimeActual - timestamp of actual end (optional)
+ * @property {boolean} cancelled - whether the job has been cancelled (optional)
+ * @property {Object} result - expected server state after the job completes
+ * @property {number} result.hackDifficulty
+ * @property {number} result.minDifficulty
+ */
+
+/**
+ * renderBatches - create an SVG element with a graph of jobs
+ * @param {SVGSVGElement} [el] - SVG element to reuse. Will be created if it does not exist yet.
+ * @param {Job[][]} batches - array of arrays of jobs
+ * @param {number} [now] - current time (optional)
+ * @returns {SVGSVGElement}
+ */
 export function renderBatches(el, batches=[], now) {
-    const widthPixels = 800;
-    const widthSeconds = 16;
-    const heightPixels = 600;
-
     now ||= Date.now();
-
-    /** Convert timestamps to seconds since the graph was started. This resolution works for about 24 hours. */
-    function convertTime(t, t0=startTime) {
-        return ((t - t0) / 1000);
-    }
-
-    function convertSecToPx(t) {
-        return t * widthPixels / widthSeconds;
-    }
 
     // Render the main SVG element if needed
     el ||= svgEl(
         "svg",
-        // Set the viewBox for 10 seconds of history, 6 seconds of future.
-        {version: "1.1", width:800, height: 600, viewBox: `${convertSecToPx(-10)} 0 ${widthPixels} ${heightPixels}`},
+        {
+            version: "1.1", width:WIDTH_PIXELS, height: HEIGHT_PIXELS,
+            // Set the viewBox for 10 seconds of history, 6 seconds of future.
+            viewBox: `${convertSecToPx(-10)} 0 ${WIDTH_PIXELS} ${HEIGHT_PIXELS}`
+        },
         [
             // ["rect", {id:"background", x:convertSecToPx(-10), width:"100%", height:"100%", fill:GRAPH_COLORS.safe}],
             ["g", {id:"timeCoordinates"}, [
@@ -33,49 +67,69 @@ export function renderBatches(el, batches=[], now) {
     );
 
     // Update the time coordinates every frame
-    el.getElementById("timeCoordinates").setAttribute('transform',
-        `scale(${widthPixels / widthSeconds} 1) translate(${convertTime(startTime-now, 0)} 0)`
+    const dataEl = el.getElementById("timeCoordinates");
+    dataEl.setAttribute('transform',
+        `scale(${WIDTH_PIXELS / WIDTH_SECONDS} 1) translate(${convertTime(startTime-now, 0)} 0)`
     );
     
     // Only update the main data every 250 ms
-    const lastUpdate = el.getAttribute('data-last-update') || 0;
+    const lastUpdate = dataEl.getAttribute('data-last-update') || 0;
     if (now - lastUpdate < 250) {
         return el;
     }
-    el.setAttribute('data-last-update', now);
+    dataEl.setAttribute('data-last-update', now);
     
     // Render each job background and foreground
-    let secLayer = el.getElementById("secLayer");
-    let jobLayer = el.getElementById("jobLayer");
-    while(secLayer.firstChild) {
-        secLayer.removeChild(secLayer.firstChild);
+    while(dataEl.firstChild) {
+        dataEl.removeChild(dataEl.firstChild);
     }
-    while(jobLayer.firstChild) {
-        jobLayer.removeChild(jobLayer.firstChild);
-    }
-    const prevJob = (batches[0] || [])[0];
-    let safeSec = prevJob?.result?.minDifficulty || 0;
-    let prevSec = (prevJob?.result?.hackDifficulty - prevJob?.change?.security) || 0;
-    let prevEnd = now - 30000;
-    let i = 0;
+    dataEl.appendChild(renderSecurityLayer(batches, now));
+    dataEl.appendChild(renderJobLayer(batches, now));
+
+    return el;
+}
+
+function renderSecurityLayer(batches=[], now) {
+    const secLayer = svgEl('g', {id:"secLayer"});
+
+    let prevJob;    
     for (const batch of batches) {
         for (const job of batch) {
-            i = (i + 1) % 150;
-            if ((job.endTimeActual || job.endTime) < now-20000) {
+            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*1000)) {
                 continue;
             }
 
             // shade the background based on secLevel
-            if (job.endTime > prevEnd) {
+            if (prevJob && job.endTime > prevJob.endTime) {
                 secLayer.appendChild(svgEl('rect', {
-                    x: convertTime(prevEnd), width: convertTime(job.endTime - prevEnd, 0),
+                    x: convertTime(prevJob.endTime), width: convertTime(job.endTime - prevJob.endTime, 0),
                     y: 0, height: "100%",
-                    fill: (prevSec > safeSec) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe
-                }));    
+                    fill: (prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe
+                }));
             }
-            prevSec = job.result.hackDifficulty;
-            prevEnd = job.endTime;
+            prevJob = job;
+        }
+    }
+    if (prevJob) {
+        secLayer.appendChild(svgEl('rect', {
+            x: convertTime(prevJob.endTime), width: convertTime(10000, 0),
+            y: 0, height: "100%",
+            fill: (prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe
+        }));
+    }
+    return secLayer
+}
 
+function renderJobLayer(batches=[], now) {
+    const jobLayer = svgEl('g', {id:"jobLayer"});
+
+    let i = 0;
+    for (const batch of batches) {
+        for (const job of batch) {
+            i = (i + 1) % 150;
+            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*1000)) {
+                continue;
+            }
             // draw the job bars
             let color = GRAPH_COLORS[job.task];
             if (job.cancelled) {
@@ -88,41 +142,26 @@ export function renderBatches(el, batches=[], now) {
             }));
             // draw the error bars
             if (job.startTimeActual) {
+                const [t1, t2] = [job.startTime, job.startTimeActual].sort((a,b)=>a-b);
                 jobLayer.appendChild(svgEl('rect', {
-                    x: convertTime(Math.min(job.startTime, job.startTimeActual)), width: convertTime(Math.abs(job.startTime - job.startTimeActual), 0),
+                    x: convertTime(t1), width: convertTime(t2-t1, 0),
                     y: i*4, height: 1,
                     fill: GRAPH_COLORS.desync
                 }));
             }
             if (job.endTimeActual) {
+                const [t1, t2] = [job.endTime, job.endTimeActual].sort((a,b)=>a-b);
                 jobLayer.appendChild(svgEl('rect', {
-                    x: convertTime(Math.min(job.endTime, job.endTimeActual)), width: convertTime(Math.abs(job.endTime - job.endTimeActual), 0),
+                    x: convertTime(t1), width: convertTime(t2-t1, 0),
                     y: i*4, height: 1,
                     fill: GRAPH_COLORS.desync
                 }));
             }
         }
-        // space between batches
-        i = (i + 1) % 150;
+        i++;
     }
-    secLayer.appendChild(svgEl('rect', {
-        x: convertTime(prevEnd), width: convertTime(10000, 0),
-        y: 0, height: "100%",
-        fill: (prevSec > safeSec) ? '#333' : '#111'
-    }));
-
-    return el;
+    return jobLayer;
 }
-
-const GRAPH_COLORS = {
-    "hack": "cyan",
-    "grow": "lightgreen",
-    "weaken": "yellow",
-    "cancelled": "red",
-    "desync": "magenta",
-    "safe": "#111",
-    "unsafe": "#333"
-};
 
 function renderLegend() {
     const legendEl = svgEl('g',
@@ -142,18 +181,24 @@ function renderLegend() {
     return legendEl;
 }
 
-function svgEl(tag, attributes={}, children=[]) {
+/* ---------- library functions ---------- */
+
+/** Create an SVG Element that can be displayed in the DOM. */
+function svgEl(tagName, attributes={}, children=[]) {
     const doc = eval("document");
     const xmlns = 'http://www.w3.org/2000/svg';
-    const el = doc.createElementNS(xmlns, tag);
-    if (tag.toLowerCase() == 'svg') {
-        // support export
+    const el = doc.createElementNS(xmlns, tagName);
+    // support exporting outerHTML
+    if (tagName.toLowerCase() == 'svg') {
         attributes['xmlns'] = xmlns;
     }
+    // set all attributes
     for (const [name, val] of Object.entries(attributes)) {
         el.setAttribute(name, val);
     }
+    // append all children
     for (let child of children) {
+        // recursively construct child elements
         if (Array.isArray(child)) {
             child = svgEl(...child);
         }
