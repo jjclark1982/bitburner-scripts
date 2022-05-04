@@ -117,7 +117,7 @@ function renderSecurityLayer(batches=[], now) {
             fill: (prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe
         }));
     }
-    return secLayer
+    return secLayer;
 }
 
 function renderJobLayer(batches=[], now) {
@@ -126,7 +126,7 @@ function renderJobLayer(batches=[], now) {
     let i = 0;
     for (const batch of batches) {
         for (const job of batch) {
-            i = (i + 1) % 150;
+            i = (i + 1) % (HEIGHT_PIXELS / 4);
             if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*1000)) {
                 continue;
             }
@@ -158,6 +158,7 @@ function renderJobLayer(batches=[], now) {
                 }));
             }
         }
+        // space between batches
         i++;
     }
     return jobLayer;

@@ -18,6 +18,8 @@ Scheduling these operations for maximum profit per second is a [bounded knapsack
 
 The [basic strategy](https://bitburner.readthedocs.io/en/latest/advancedgameplay/hackingalgorithms.html) is to repeat batches of Hack-Weaken-Grow-Weaken operations in a fixed period (*cf.* Stalefish [1]). This system considers a wider range of strategies, some of which can be better packed into available timeslots or RAM banks.
 
+![HWGW](doc/HWGW.svg)
+
 
 
 1. Fish S. (2022), Periodic Batching, *J. Bitb. Disc.*
@@ -289,7 +291,8 @@ The scripts currently used by this system are:
 
 ##### Frontend:
 ```
-/lib/box-drawing.js
+/lib/box-drawing.js       (optional but hard-coded)
+/hacking/batch-view.js    (optional but hard-coded)
 /net/server-list.js
 /hacking/batch-model.js
 /hacking/planner.js
@@ -298,19 +301,10 @@ The scripts currently used by this system are:
 /stocks/trader.js         (optional)
 ```
 
-##### Minimum Backend:
+##### Minimum Backend (single-use scripts):
 ```
 /net/deploy-script.js
 /hacking/do.js
-```
-
-##### Alternative Backend (single-use scripts):
-```
-/net/deploy-script.js
-/batch/manage.js          (convertToScripts function)
-/batch/hack.js
-/batch/grow.js
-/batch/weaken.js
 ```
 
 ##### Alternative Backend (remote-controlled workers):
@@ -323,3 +317,4 @@ The scripts currently used by this system are:
 /botnet/worker-grow.js
 /botnet/worker-weaken.js
 ```
+
