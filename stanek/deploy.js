@@ -24,5 +24,5 @@ export async function main(ns) {
     const script = "/stanek/charge-x-y.js";
     const args = xy;
 
-    await deploy(ns, {host, script, args, reservedRam, threads:'max'});
+    await deploy(ns, {host, script, args, reservedRam, threads:'max'}, {logLevel: 4});
 }

@@ -15,5 +15,5 @@ export async function main(ns) {
     const reservedRam = ns.args[1];
     const script = "/share/share.js";
 
-    await deploy(ns, {host, script, reservedRam, threads:'max'});
+    await deploy(ns, {host, script, reservedRam, threads:'max'}, {logLevel: 4});
 }
