@@ -146,31 +146,33 @@ Params: {
 ###### Example: Plan a Prep batch
 
 ```javascript
-> let server = new HackableServer("joesguns")
+> server = new HackableServer("joesguns")
 HackableServer {hostname: 'joesguns', contracts: undefined, cpuCores: 1, ftpPortOpen: false, hasAdminRights: true, …}
 
 > server.planPrepBatch({maxThreadsPerJob: 1024})
-Batch(5) [{…}, {…}, {…}, {…}, {…}]
-0: {task: 'weaken', threads:   48, duration: 37275.3, …}
-1: {task: 'grow',   threads: 1024, duration: 29820.2, …}
-2: {task: 'weaken', threads:  122, duration: 37275.3, …}
-3: {task: 'grow',   threads:  435, duration: 29820.2, …}
-4: {task: 'weaken', threads:   66, duration: 37275.3, …}
+[
+	{task: 'weaken', threads:   48, duration: 37275.3, …},
+	{task: 'grow',   threads: 1024, duration: 29820.2, …},
+	{task: 'weaken', threads:  122, duration: 37275.3, …},
+	{task: 'grow',   threads:  435, duration: 29820.2, …},
+	{task: 'weaken', threads:   66, duration: 37275.3, …}
+]
 ```
 
 
 ###### Example: Plan a Hacking batch
 
 ```javascript
-> let server = new HackableServer("joesguns").preppedCopy()
+> server = new HackableServer("joesguns").preppedCopy()
 HackableServer {hostname: 'joesguns', contracts: undefined, cpuCores: 1, ftpPortOpen: false, hasAdminRights: true, …}
 
 > server.planHackingBatch({secMargin: 0})
-Batch(4) [{…}, {…}, {…}, {…}]
-0: {task: 'hack',   threads: 11, duration:  8799.3, …}
-1: {task: 'weaken', threads: 25, duration: 35197.2, …}
-2: {task: 'grow',   threads: 49, duration: 28157.8, …}
-3: {task: 'weaken', threads: 29, duration: 35197.2, …}
+[
+	{task: 'hack',   threads: 11, duration:  8799.3, …},
+	{task: 'weaken', threads: 25, duration: 35197.2, …},
+	{task: 'grow',   threads: 49, duration: 28157.8, …},
+	{task: 'weaken', threads: 29, duration: 35197.2, …}
+]
 ```
 
 

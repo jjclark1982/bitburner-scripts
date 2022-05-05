@@ -7,6 +7,7 @@
  * @property {number} duration - duration of this task in milliseconds
  * @property {number} startTime
  * @property {number} endTime
+ * @property {number} startDifficulty - server security level that duration is based on
  * @property {Object} change - expected changes of this operation
  */
 
@@ -203,8 +204,8 @@
                 if (sec > startDifficulty) {
                     continue;
                 }
-                if (t > startTime) {
-                    console.log(`shifted startTime by ${(t + tDelta/2 - startTime).toFixed(1)} ms to a safe window`, expectedSecurity[findEventIndex(startTime, expectedSecurity)], [t,sec]);
+                if (t + tDelta/2 > startTime) {
+                    // console.log(`shifted startTime by ${(t + tDelta/2 - startTime).toFixed(1)} ms to a safe window`, expectedSecurity[findEventIndex(startTime, expectedSecurity)], [t,sec]);
                     return t + tDelta/2; // this could be taken from the following t, but we assume a consistent tDelta
                 }
                 break;
@@ -246,8 +247,8 @@
         for (const [index, originalJob] of this.entries()) {
             const job = {...originalJob};
             job.script = '/hacking/do.js'; // multi-purpose hack/grow/weaken script
-            job.args = [job.task];
-            const options = originalJob.args[2] || {};
+            job.args = [job.task, originalJob.args[0]];
+            const options = originalJob.args[1] || {};
             if (options.stock) {
                 job.args.push('--stock');
             }

@@ -133,6 +133,9 @@ export class Worker {
         if (typeof(job.shouldStart) === 'function') {
             if (!job.shouldStart(job)) {
                 job.cancelled = true;
+                if (this.jobQueue.length == 0) {
+                    this.nextFreeTime = Date.now();
+                }
                 return;
             }
         }
@@ -152,15 +155,15 @@ export class Worker {
         this.drift = job.endTimeActual - job.endTime;
         this.ns.print(`Completed job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
 
-        // Run an 'didFinish' callback if provided.
-        if (typeof(job.didFinish) === 'function') {
-            job.didFinish(job);
-        }
-
         // Mark this worker as idle.
         this.currentJob = {
             startTime: Date.now()
         };
+
+        // Run an 'didFinish' callback if provided.
+        if (typeof(job.didFinish) === 'function') {
+            job.didFinish(job);
+        }
     }
 
     elapsedTime(now) {

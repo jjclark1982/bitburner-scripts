@@ -85,6 +85,8 @@ export class HackingManager {
             this.plans[target.hostname] = plan;
         }
         ns.atExit(this.tearDown.bind(this));
+
+        eval("window").hackManager = this;
     }
 
     tearDown() {
@@ -98,7 +100,6 @@ export class HackingManager {
         this.startAnimation();
         while (this.running && this.backend.running) {
             const target = this.targets[0];
-            eval("window").target = target;
             await this.hackOneTargetOneTime(target);
             // TODO: re-select optimal target as conditions change
 
@@ -165,7 +166,7 @@ export class HackingManager {
             server.nextStartTime = batch.lastEndTime() + params.tDelta;
         }
         else {
-            server.nextFreeTime = batch.lastEndTime() + params.tDelta + batchCycle.timeBetweenStarts;
+            server.nextFreeTime = batch.lastEndTime() + params.tDelta; // * 2
             server.nextStartTime = batch.earliestStartTime() - params.tDelta + batchCycle.timeBetweenStarts;
         }
         this.allBatches.push(batch);
@@ -182,6 +183,12 @@ export class HackingManager {
         }
         const actualServer = job.result.copy().reload();
         if (actualServer.hackDifficulty > job.startDifficulty) {
+            // if (job.task == 'grow') {
+            //     ns.print(`INFO: Reducing threads for ${job.task} job: ${actualServer.hackDifficulty.toFixed(2)} > ${job.startDifficulty.toFixed(2)} security.`);
+            //     job.threads /= 2;
+            //     job.args[1].threads = job.threads;
+            //     return true;
+            // }
             ns.print(`WARNING: Cancelling ${job.task} job: ${actualServer.hackDifficulty.toFixed(2)} > ${job.startDifficulty.toFixed(2)} security.`);
             return false;
         }

@@ -79,7 +79,7 @@ export class ThreadPool extends PortService {
         PortService.prototype.tearDown.call(this);
     }
 
-    async dispatchJobs(batch, {allowPartial, allowDelay}) {
+    async dispatchJobs(batch, {allowPartial, allowDelay}={}) {
         // Get workers (this can take some time due to launching and registering)
         const workers = await this.getWorkers(batch, {allowPartial, allowDelay});
         if (!workers) {
@@ -88,7 +88,7 @@ export class ThreadPool extends PortService {
         }
         // Update batch schedule after getting workers
         if (typeof(batch.ensureStartInFuture === 'function')) {
-            batch.ensureStartInFuture(Date.now() + 100);
+            batch.ensureStartInFuture(Date.now());
         }
         // Dispatch each job
         const results = [];
@@ -102,7 +102,7 @@ export class ThreadPool extends PortService {
         return results;
     }
 
-    async dispatchJob(job, {allowDelay}) {
+    async dispatchJob(job, {allowDelay}={}) {
         if (job.threads <= 0) {
             return true;
         }
@@ -253,8 +253,7 @@ export class ThreadPool extends PortService {
     }
 
     removeWorker(workerID) {
-        const worker = this.workers[workerID];
-        delete this.workers[workerID];
+        // const worker = this.workers[workerID];
         // if (this.running) {
         //     worker.process = this.ns.getRunningScript(worker.process.pid);
         //     this.process.offlineExpGained += worker.process.offlineExpGained;
@@ -262,6 +261,7 @@ export class ThreadPool extends PortService {
         //     this.process.onlineExpGained += worker.process.onlineExpGained;
         //     this.process.onlineMoneyMade += worker.process.onlineMoneyMade;
         // }
+        delete this.workers[workerID];
     }
 
     getMaxTotalRam() {
