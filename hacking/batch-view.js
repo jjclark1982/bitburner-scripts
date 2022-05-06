@@ -1,6 +1,6 @@
-let startTime = Date.now();
+let initTime = Date.now();
 /** Convert timestamps to seconds since the graph was started. This resolution works for about 24 hours. */
-function convertTime(t, t0=startTime) {
+function convertTime(t, t0=initTime) {
     return ((t - t0) / 1000);
 }
 
@@ -59,11 +59,11 @@ export function renderBatches(el, batches=[], serverSnapshots=[], now) {
             viewBox: `${convertSecToPx(-10)} 0 ${WIDTH_PIXELS} ${HEIGHT_PIXELS}`
         },
         [
-            // ["defs", {}, [
-            //     ["clipPath", {id:"hide-future"}, [
-            //         ["rect", {x: convertTime(now-30000), width: 30, y:0, height: 50}]
-            //     ]]
-            // ]],
+            ["defs", {}, [
+                ["clipPath", {id:`hide-future-${initTime}`, clipPathUnits: "userSpaceOnUse"}, [
+                    ["rect", {id:"hide-future-rect", x:convertTime(now-60000), width:convertTime(60000,0), y:0, height: 50}]
+                ]]
+            ]],
             // ["rect", {id:"background", x:convertSecToPx(-10), width:"100%", height:"100%", fill:GRAPH_COLORS.safe}],
             ["g", {id:"timeCoordinates"}, [
                 ["g", {id:"safetyLayer"}],
@@ -81,8 +81,9 @@ export function renderBatches(el, batches=[], serverSnapshots=[], now) {
     // Update the time coordinates every frame
     const dataEl = el.getElementById("timeCoordinates");
     dataEl.setAttribute('transform',
-        `scale(${WIDTH_PIXELS / WIDTH_SECONDS} 1) translate(${convertTime(startTime-now, 0)} 0)`
+        `scale(${WIDTH_PIXELS / WIDTH_SECONDS} 1) translate(${convertTime(initTime-now, 0)} 0)`
     );
+    el.getElementById("hide-future-rect").setAttribute('x', convertTime(now-60000));
     
     // Only update the main data every 250 ms
     const lastUpdate = dataEl.getAttribute('data-last-update') || 0;
@@ -99,7 +100,6 @@ export function renderBatches(el, batches=[], serverSnapshots=[], now) {
     while(dataEl.firstChild) {
         dataEl.removeChild(dataEl.firstChild);
     }
-    dataEl.appendChild(svgEl("rect", {x:-2000, width: 4000, y:0, height: 0}));
     dataEl.appendChild(renderSafetyLayer(batches, now));
     dataEl.appendChild(renderJobLayer(batches, now));
     dataEl.appendChild(renderSecurityLayer(eventSnapshots, serverSnapshots, now));
@@ -124,7 +124,7 @@ function renderSecurityLayer(eventSnapshots=[], serverSnapshots=[], now) {
             transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`,
             fill: "dark"+GRAPH_COLORS.security,
             // "fill-opacity": 0.5,
-            // "clip-path": "url(#hide-future)"
+            "clip-path": `url(#hide-future-${initTime})`
         }, [
             renderObservedPath("hackDifficulty", serverSnapshots, minSec, now)
         ]
@@ -136,8 +136,7 @@ function renderSecurityLayer(eventSnapshots=[], serverSnapshots=[], now) {
             transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`,
             stroke: GRAPH_COLORS.security,
             fill: "none",
-            "stroke-width": 2,
-            "vector-effect": "non-scaling-stroke"
+            "stroke-width": 2
         }, [
             renderProjectedPath("hackDifficulty", eventSnapshots, now)
         ]
@@ -155,7 +154,7 @@ function renderSecurityLayer(eventSnapshots=[], serverSnapshots=[], now) {
     return secLayer;
 }
 
-function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minValue=0, now) {
+function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minValue=0, now, stopNow) {
     const pathData = [];
     let prevServer;
     let prevTime;
@@ -180,12 +179,11 @@ function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minVa
     if (prevServer) {
         // vertical line to previous level
         // horizontal line to current time
-        pathData.push(`V ${prevServer[property]}`, `H ${convertTime(now)}`);
+        pathData.push(`V ${prevServer[property]}`, `H ${convertTime(now + (stopNow ? 0 :60000))}`);
     }
     pathData.push(`V ${minValue} Z`);
     return svgEl('path', {
-        d: pathData.join(' '),
-        "vector-effect": "non-scaling-stroke"
+        d: pathData.join(' ')
     });
 }
 
@@ -238,9 +236,9 @@ function renderMoneyLayer(eventSnapshots=[], serverSnapshots=[], now) {
             transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney)})`,
             fill: "dark"+GRAPH_COLORS.money,
             // "fill-opacity": 0.5,
-            // "clip-path": "url(#hide-future)"
+            // "clip-path": `url(#hide-future-${initTime})`
         }, [
-            renderObservedPath("moneyAvailable", serverSnapshots, minMoney, now)
+            renderObservedPath("moneyAvailable", serverSnapshots, minMoney, now, true)
         ]
     );
     moneyLayer.append(observedLayer);
@@ -251,8 +249,7 @@ function renderMoneyLayer(eventSnapshots=[], serverSnapshots=[], now) {
             transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney)})`,
             stroke: GRAPH_COLORS.money,
             fill: "none",
-            "stroke-width": 2,
-            "vector-effect": "non-scaling-stroke"
+            "stroke-width": 2
         }, [
             renderProjectedPath("moneyAvailable", eventSnapshots, now)
         ]
