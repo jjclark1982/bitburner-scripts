@@ -90,189 +90,175 @@ export function renderBatches(el, batches=[], serverSnapshots=[], now) {
         return el;
     }
     dataEl.setAttribute('data-last-update', now);
+
+    const eventSnapshots = batches.flat().map((job)=>(
+        [job.endTime, job.result]
+    ));
     
     // Render each job background and foreground
     while(dataEl.firstChild) {
         dataEl.removeChild(dataEl.firstChild);
     }
+    dataEl.appendChild(svgEl("rect", {x:-2000, width: 4000, y:0, height: 0}));
     dataEl.appendChild(renderSafetyLayer(batches, now));
     dataEl.appendChild(renderJobLayer(batches, now));
-    dataEl.appendChild(renderSecurityLayer(batches, serverSnapshots, now));
-    dataEl.appendChild(renderMoneyLayer(batches, serverSnapshots, now));
+    dataEl.appendChild(renderSecurityLayer(eventSnapshots, serverSnapshots, now));
+    dataEl.appendChild(renderMoneyLayer(eventSnapshots, serverSnapshots, now));
 
     return el;
 }
 
-function renderSecurityLayer(batches=[], serverSnapshots=[], now) {
-    const secLayer = svgEl('g', {
-        id: "secLayer",
-        transform: `translate(0 ${HEIGHT_PIXELS - 2*FOOTER_PIXELS})`
-        //, "clip-path": "url(#hide-future)"
-    });
-
+function renderSecurityLayer(eventSnapshots=[], serverSnapshots=[], now) {
     let minSec = 0;
     let maxSec = 1;
-    for (const [t, server] of serverSnapshots) {
-        minSec = Math.min(minSec, server.hackDifficulty);
-        maxSec = Math.max(maxSec, server.hackDifficulty);
-    }
-    for (const batch of batches) {
-        for (const job of batch) {
-            minSec = Math.min(minSec, job.result.hackDifficulty);
-            maxSec = Math.max(maxSec, job.result.hackDifficulty);
+    for (const snapshots of [eventSnapshots, serverSnapshots]) {
+        for (const [time, server] of snapshots) {
+            minSec = Math.min(minSec, server.hackDifficulty);
+            maxSec = Math.max(maxSec, server.hackDifficulty);
         }
     }
-    maxSec *= 1.1;
 
-    function convertDifficulty(sec) {
-        return FOOTER_PIXELS * (1 - ((sec - minSec) / (maxSec - minSec)));
-    }
+    const observedLayer = svgEl(
+        "g", {
+            id: "observedSec",
+            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`,
+            fill: "dark"+GRAPH_COLORS.security,
+            // "fill-opacity": 0.5,
+            // "clip-path": "url(#hide-future)"
+        }, [
+            renderObservedPath("hackDifficulty", serverSnapshots, minSec, now)
+        ]
+    );
 
-    let prevServer;
-    let prevTime;
-    for (const [time, server] of serverSnapshots) {
-        if (time < now-(WIDTH_SECONDS*2*1000)) {
-            continue;
-        }
-
-        // fill area under actual security
-        if (prevServer) {
-            secLayer.appendChild(svgEl('rect', {
-                x: convertTime(prevTime),
-                width: convertTime(time, prevTime),
-                y: convertDifficulty(prevServer.hackDifficulty),
-                height: convertDifficulty(0) - convertDifficulty(prevServer.hackDifficulty),
-                fill: "dark"+GRAPH_COLORS.security
-            }));
-        }
-        prevServer = server;
-        prevTime = time;
-    }
-    // TODO: fill in area between last snapshot and "now" cursor, using a smooth clip-path
-
-    let prevJob;
-    for (const batch of batches) {
-        for (const job of batch) {
-            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*2*1000)) {
-                continue;
-            }
-            // draw line for projected security
-            if (prevJob && job.endTime > prevJob.endTime) {
-                secLayer.appendChild(svgEl('line', {
-                    x1: convertTime(prevJob.endTime),
-                    x2: convertTime(job.endTime),
-                    y1: convertDifficulty(prevJob.result.hackDifficulty),
-                    y2: convertDifficulty(prevJob.result.hackDifficulty),
-                    stroke: GRAPH_COLORS.security,
-                    "stroke-width": 2,
-                    "vector-effect": "non-scaling-stroke"
-                }));
-                secLayer.appendChild(svgEl('line', {
-                    x1: convertTime(job.endTime),
-                    x2: convertTime(job.endTime),
-                    y1: convertDifficulty(prevJob.result.hackDifficulty),
-                    y2: convertDifficulty(job.result.hackDifficulty),
-                    stroke: GRAPH_COLORS.security,
-                    "stroke-width": 2,
-                    "vector-effect": "non-scaling-stroke"
-                }));
-            }
-            prevJob = job;
-        }
-    }
-    if (prevJob) {
-        secLayer.appendChild(svgEl('line', {
-            x1: convertTime(prevJob.endTime),
-            x2: convertTime(prevJob.endTime + 30000),
-            y1: convertDifficulty(prevJob.result.hackDifficulty),
-            y2: convertDifficulty(prevJob.result.hackDifficulty),
+    const projectedLayer = svgEl(
+        "g", {
+            id: "projectedSec",
+            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`,
             stroke: GRAPH_COLORS.security,
+            fill: "none",
             "stroke-width": 2,
             "vector-effect": "non-scaling-stroke"
-        }));
-    }
+        }, [
+            renderProjectedPath("hackDifficulty", eventSnapshots, now)
+        ]
+    );
+
+    const secLayer = svgEl("g", {
+            id: "secLayer",
+            transform: `translate(0 ${HEIGHT_PIXELS - 2*FOOTER_PIXELS})`
+        }, [
+            observedLayer,
+            projectedLayer
+        ]
+    );
+
     return secLayer;
 }
 
-function renderMoneyLayer(batches=[], serverSnapshots=[], now) {
-    const moneyLayer = svgEl('g', {
-        id:"moneyLayer",
-        transform: `translate(0 ${HEIGHT_PIXELS - FOOTER_PIXELS})`
-    });
-    if (batches.length == 0 && serverSnapshots.length == 0) {
-        return moneyLayer;
-    }
-
-    const minMoney = 0;
-    const maxMoney = batches[0][0].result.moneyMax * 1.1;
-
-    function convertMoney(sec) {
-        return FOOTER_PIXELS * (1 - ((sec - minMoney) / (maxMoney - minMoney)));
-    }
-
+function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minValue=0, now) {
+    const pathData = [];
     let prevServer;
     let prevTime;
     for (const [time, server] of serverSnapshots) {
         if (time < now-(WIDTH_SECONDS*2*1000)) {
             continue;
         }
-
         // fill area under actual security
+        if (!prevServer) {
+            // start at bottom left
+            pathData.push(`M ${convertTime(time)},${minValue}`);
+        }
         if (prevServer) {
-            moneyLayer.appendChild(svgEl('rect', {
-                x: convertTime(prevTime),
-                width: convertTime(time, prevTime),
-                y: convertMoney(prevServer.moneyAvailable),
-                height: convertMoney(0) - convertMoney(prevServer.moneyAvailable),
-                fill: "dark"+GRAPH_COLORS.money
-            }));
+            // vertical line to previous level
+            // horizontal line to current time
+            pathData.push(`V ${prevServer[property]}`, `H ${convertTime(time)}`);
         }
         prevServer = server;
         prevTime = time;
     }
-
-    let prevJob;
-    for (const batch of batches) {
-        for (const job of batch) {
-            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*2*1000)) {
-                continue;
-            }
-
-            // draw a line from (prevTime, prevSec) to (job.time, job.sec)
-            if (prevJob && job.endTime > prevJob.endTime) {
-                moneyLayer.appendChild(svgEl('line', {
-                    x1: convertTime(prevJob.endTime),
-                    x2: convertTime(job.endTime),
-                    y1: convertMoney(prevJob.result.moneyAvailable),
-                    y2: convertMoney(prevJob.result.moneyAvailable),
-                    stroke: GRAPH_COLORS.money,
-                    "stroke-width": 2,
-                    "vector-effect": "non-scaling-stroke"
-                }));
-                moneyLayer.appendChild(svgEl('line', {
-                    x1: convertTime(job.endTime),
-                    x2: convertTime(job.endTime),
-                    y1: convertMoney(prevJob.result.moneyAvailable),
-                    y2: convertMoney(job.result.moneyAvailable),
-                    stroke: GRAPH_COLORS.money,
-                    "stroke-width": 2,
-                    "vector-effect": "non-scaling-stroke"
-                }));
-            }
-            prevJob = job;
-        }
+    // fill in area between last snapshot and "now" cursor
+    if (prevServer) {
+        // vertical line to previous level
+        // horizontal line to current time
+        pathData.push(`V ${prevServer[property]}`, `H ${convertTime(now)}`);
     }
-    if (prevJob) {
-        moneyLayer.appendChild(svgEl('line', {
-            x1: convertTime(prevJob.endTime),
-            x2: convertTime(prevJob.endTime + 30000),
-            y1: convertMoney(prevJob.result.moneyAvailable),
-            y2: convertMoney(prevJob.result.moneyAvailable),
+    pathData.push(`V ${minValue} Z`);
+    return svgEl('path', {
+        d: pathData.join(' '),
+        "vector-effect": "non-scaling-stroke"
+    });
+}
+
+function renderProjectedPath(property="hackDifficulty", eventSnapshots=[], now) {
+    const pathData = [];
+    let prevTime;
+    let prevServer;
+    for (const [time, server] of eventSnapshots) {
+        if (time < now-(WIDTH_SECONDS*2*1000)) {
+            continue;
+        }
+        if (!prevServer) {
+            // start line at first projected time and value
+            pathData.push(`M ${convertTime(time).toFixed(3)},${server[property]}`);
+        }
+        if (prevServer && time > prevTime) {
+            // vertical line to previous value
+            // horizontal line from previous time to current time
+            pathData.push(`V ${prevServer[property]}`, `H ${convertTime(time).toFixed(3)}`);
+        }
+        prevTime = time;
+        prevServer = server;
+    }
+    if (prevServer) {
+        // vertical line to previous value
+        // horizontal line from previous time to future
+        pathData.push(`V ${prevServer[property]}`, `H ${convertTime(now + 60000).toFixed(3)}`);
+    }
+    return svgEl('path', {
+        d: pathData.join(' '),
+        "vector-effect": "non-scaling-stroke"
+    });
+}
+
+function renderMoneyLayer(eventSnapshots=[], serverSnapshots=[], now) {
+    const moneyLayer = svgEl("g", {
+        id: "moneyLayer",
+        transform: `translate(0 ${HEIGHT_PIXELS - FOOTER_PIXELS})`
+    });
+
+    if (serverSnapshots.length == 0) {
+        return moneyLayer;
+    }
+    let minMoney = 0;
+    let maxMoney = serverSnapshots[0][1].moneyMax * 1.1;
+
+    const observedLayer = svgEl(
+        "g", {
+            id: "observedMoney",
+            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney)})`,
+            fill: "dark"+GRAPH_COLORS.money,
+            // "fill-opacity": 0.5,
+            // "clip-path": "url(#hide-future)"
+        }, [
+            renderObservedPath("moneyAvailable", serverSnapshots, minMoney, now)
+        ]
+    );
+    moneyLayer.append(observedLayer);
+
+    const projectedLayer = svgEl(
+        "g", {
+            id: "projectedMoney",
+            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney)})`,
             stroke: GRAPH_COLORS.money,
+            fill: "none",
             "stroke-width": 2,
             "vector-effect": "non-scaling-stroke"
-        }));
-    }
+        }, [
+            renderProjectedPath("moneyAvailable", eventSnapshots, now)
+        ]
+    );
+    moneyLayer.append(projectedLayer);
+
     return moneyLayer;
 }
 
