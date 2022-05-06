@@ -154,7 +154,7 @@ function renderSecurityLayer(eventSnapshots=[], serverSnapshots=[], now) {
     return secLayer;
 }
 
-function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minValue=0, now, stopNow) {
+function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minValue=0, now, scale=1) {
     const pathData = [];
     let prevServer;
     let prevTime;
@@ -165,12 +165,12 @@ function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minVa
         // fill area under actual security
         if (!prevServer) {
             // start at bottom left
-            pathData.push(`M ${convertTime(time)},${minValue}`);
+            pathData.push(`M ${convertTime(time).toFixed(3)},${(minValue*scale).toFixed(2)}`);
         }
         if (prevServer) {
             // vertical line to previous level
             // horizontal line to current time
-            pathData.push(`V ${prevServer[property]}`, `H ${convertTime(time)}`);
+            pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(time).toFixed(3)}`);
         }
         prevServer = server;
         prevTime = time;
@@ -179,7 +179,7 @@ function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minVa
     if (prevServer) {
         // vertical line to previous level
         // horizontal line to current time
-        pathData.push(`V ${prevServer[property]}`, `H ${convertTime(now + (stopNow ? 0 :60000))}`);
+        pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(now + 60000).toFixed(3)}`);
     }
     pathData.push(`V ${minValue} Z`);
     return svgEl('path', {
@@ -187,7 +187,7 @@ function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minVa
     });
 }
 
-function renderProjectedPath(property="hackDifficulty", eventSnapshots=[], now) {
+function renderProjectedPath(property="hackDifficulty", eventSnapshots=[], now, scale=1) {
     const pathData = [];
     let prevTime;
     let prevServer;
@@ -197,12 +197,12 @@ function renderProjectedPath(property="hackDifficulty", eventSnapshots=[], now) 
         }
         if (!prevServer) {
             // start line at first projected time and value
-            pathData.push(`M ${convertTime(time).toFixed(3)},${server[property]}`);
+            pathData.push(`M ${convertTime(time).toFixed(3)},${(server[property]*scale).toFixed(2)}`);
         }
         if (prevServer && time > prevTime) {
             // vertical line to previous value
             // horizontal line from previous time to current time
-            pathData.push(`V ${prevServer[property]}`, `H ${convertTime(time).toFixed(3)}`);
+            pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(time).toFixed(3)}`);
         }
         prevTime = time;
         prevServer = server;
@@ -210,7 +210,7 @@ function renderProjectedPath(property="hackDifficulty", eventSnapshots=[], now) 
     if (prevServer) {
         // vertical line to previous value
         // horizontal line from previous time to future
-        pathData.push(`V ${prevServer[property]}`, `H ${convertTime(now + 60000).toFixed(3)}`);
+        pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(now + 60000).toFixed(3)}`);
     }
     return svgEl('path', {
         d: pathData.join(' '),
@@ -228,17 +228,19 @@ function renderMoneyLayer(eventSnapshots=[], serverSnapshots=[], now) {
         return moneyLayer;
     }
     let minMoney = 0;
-    let maxMoney = serverSnapshots[0][1].moneyMax * 1.1;
+    let maxMoney = serverSnapshots[0][1].moneyMax;
+    const scale = 1/maxMoney;
+    maxMoney *= 1.1
 
     const observedLayer = svgEl(
         "g", {
             id: "observedMoney",
-            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney)})`,
+            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney) / scale})`,
             fill: "dark"+GRAPH_COLORS.money,
             // "fill-opacity": 0.5,
-            // "clip-path": `url(#hide-future-${initTime})`
+            "clip-path": `url(#hide-future-${initTime})`
         }, [
-            renderObservedPath("moneyAvailable", serverSnapshots, minMoney, now, true)
+            renderObservedPath("moneyAvailable", serverSnapshots, minMoney, now, scale)
         ]
     );
     moneyLayer.append(observedLayer);
@@ -246,12 +248,12 @@ function renderMoneyLayer(eventSnapshots=[], serverSnapshots=[], now) {
     const projectedLayer = svgEl(
         "g", {
             id: "projectedMoney",
-            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney)})`,
+            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney) / scale})`,
             stroke: GRAPH_COLORS.money,
             fill: "none",
             "stroke-width": 2
         }, [
-            renderProjectedPath("moneyAvailable", eventSnapshots, now)
+            renderProjectedPath("moneyAvailable", eventSnapshots, now, scale)
         ]
     );
     moneyLayer.append(projectedLayer);
