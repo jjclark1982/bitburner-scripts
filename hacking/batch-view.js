@@ -15,12 +15,15 @@ const GRAPH_COLORS = {
     "cancelled": "red",
     "desync": "magenta",
     "safe": "#111",
-    "unsafe": "#333"
+    "unsafe": "#333",
+    "security": "red",
+    "money": "blue"
 };
 
 const WIDTH_PIXELS = 800;
 const WIDTH_SECONDS = 16;
 const HEIGHT_PIXELS = 600;
+const FOOTER_PIXELS = 50;
 
 /**
  * Job
@@ -44,7 +47,7 @@ const HEIGHT_PIXELS = 600;
  * @param {number} [now] - current time (optional)
  * @returns {SVGSVGElement}
  */
-export function renderBatches(el, batches=[], now) {
+export function renderBatches(el, batches=[], serverSnapshots=[], now) {
     now ||= Date.now();
 
     // Render the main SVG element if needed
@@ -56,11 +59,20 @@ export function renderBatches(el, batches=[], now) {
             viewBox: `${convertSecToPx(-10)} 0 ${WIDTH_PIXELS} ${HEIGHT_PIXELS}`
         },
         [
+            // ["defs", {}, [
+            //     ["clipPath", {id:"hide-future"}, [
+            //         ["rect", {x: convertTime(now-30000), width: 30, y:0, height: 50}]
+            //     ]]
+            // ]],
             // ["rect", {id:"background", x:convertSecToPx(-10), width:"100%", height:"100%", fill:GRAPH_COLORS.safe}],
             ["g", {id:"timeCoordinates"}, [
-                ["g", {id:"secLayer"}],
+                ["g", {id:"safetyLayer"}],
                 ["g", {id:"jobLayer"}],
+                ["g", {id:"secLayer"}],
+                ["g", {id:"moneyLayer"}]
             ]],
+            // ["rect", {id:"divider-1", x:convertSecToPx(-10), width:"100%", y:HEIGHT_PIXELS-FOOTER_PIXELS, height:1, fill: "white"}],
+            // ["rect", {id:"divider-2", x:convertSecToPx(-10), width:"100%", y:HEIGHT_PIXELS-2*FOOTER_PIXELS, height:1, fill: "white"}],
             ["rect", {id:"cursor", x:0, width:1, y:0, height: "100%", fill: "white"}],
             renderLegend()
         ]
@@ -83,25 +95,200 @@ export function renderBatches(el, batches=[], now) {
     while(dataEl.firstChild) {
         dataEl.removeChild(dataEl.firstChild);
     }
-    dataEl.appendChild(renderSecurityLayer(batches, now));
+    dataEl.appendChild(renderSafetyLayer(batches, now));
     dataEl.appendChild(renderJobLayer(batches, now));
+    dataEl.appendChild(renderSecurityLayer(batches, serverSnapshots, now));
+    dataEl.appendChild(renderMoneyLayer(batches, serverSnapshots, now));
 
     return el;
 }
 
-function renderSecurityLayer(batches=[], now) {
-    const secLayer = svgEl('g', {id:"secLayer"});
+function renderSecurityLayer(batches=[], serverSnapshots=[], now) {
+    const secLayer = svgEl('g', {
+        id: "secLayer",
+        transform: `translate(0 ${HEIGHT_PIXELS - 2*FOOTER_PIXELS})`
+        //, "clip-path": "url(#hide-future)"
+    });
+
+    let minSec = 0;
+    let maxSec = 1;
+    for (const [t, server] of serverSnapshots) {
+        minSec = Math.min(minSec, server.hackDifficulty);
+        maxSec = Math.max(maxSec, server.hackDifficulty);
+    }
+    for (const batch of batches) {
+        for (const job of batch) {
+            minSec = Math.min(minSec, job.result.hackDifficulty);
+            maxSec = Math.max(maxSec, job.result.hackDifficulty);
+        }
+    }
+    maxSec *= 1.1;
+
+    function convertDifficulty(sec) {
+        return FOOTER_PIXELS * (1 - ((sec - minSec) / (maxSec - minSec)));
+    }
+
+    let prevServer;
+    let prevTime;
+    for (const [time, server] of serverSnapshots) {
+        if (time < now-(WIDTH_SECONDS*2*1000)) {
+            continue;
+        }
+
+        // fill area under actual security
+        if (prevServer) {
+            secLayer.appendChild(svgEl('rect', {
+                x: convertTime(prevTime),
+                width: convertTime(time, prevTime),
+                y: convertDifficulty(prevServer.hackDifficulty),
+                height: convertDifficulty(0) - convertDifficulty(prevServer.hackDifficulty),
+                fill: "dark"+GRAPH_COLORS.security
+            }));
+        }
+        prevServer = server;
+        prevTime = time;
+    }
+    // TODO: fill in area between last snapshot and "now" cursor, using a smooth clip-path
+
+    let prevJob;
+    for (const batch of batches) {
+        for (const job of batch) {
+            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*2*1000)) {
+                continue;
+            }
+            // draw line for projected security
+            if (prevJob && job.endTime > prevJob.endTime) {
+                secLayer.appendChild(svgEl('line', {
+                    x1: convertTime(prevJob.endTime),
+                    x2: convertTime(job.endTime),
+                    y1: convertDifficulty(prevJob.result.hackDifficulty),
+                    y2: convertDifficulty(prevJob.result.hackDifficulty),
+                    stroke: GRAPH_COLORS.security,
+                    "stroke-width": 2,
+                    "vector-effect": "non-scaling-stroke"
+                }));
+                secLayer.appendChild(svgEl('line', {
+                    x1: convertTime(job.endTime),
+                    x2: convertTime(job.endTime),
+                    y1: convertDifficulty(prevJob.result.hackDifficulty),
+                    y2: convertDifficulty(job.result.hackDifficulty),
+                    stroke: GRAPH_COLORS.security,
+                    "stroke-width": 2,
+                    "vector-effect": "non-scaling-stroke"
+                }));
+            }
+            prevJob = job;
+        }
+    }
+    if (prevJob) {
+        secLayer.appendChild(svgEl('line', {
+            x1: convertTime(prevJob.endTime),
+            x2: convertTime(prevJob.endTime + 30000),
+            y1: convertDifficulty(prevJob.result.hackDifficulty),
+            y2: convertDifficulty(prevJob.result.hackDifficulty),
+            stroke: GRAPH_COLORS.security,
+            "stroke-width": 2,
+            "vector-effect": "non-scaling-stroke"
+        }));
+    }
+    return secLayer;
+}
+
+function renderMoneyLayer(batches=[], serverSnapshots=[], now) {
+    const moneyLayer = svgEl('g', {
+        id:"moneyLayer",
+        transform: `translate(0 ${HEIGHT_PIXELS - FOOTER_PIXELS})`
+    });
+    if (batches.length == 0 && serverSnapshots.length == 0) {
+        return moneyLayer;
+    }
+
+    const minMoney = 0;
+    const maxMoney = batches[0][0].result.moneyMax * 1.1;
+
+    function convertMoney(sec) {
+        return FOOTER_PIXELS * (1 - ((sec - minMoney) / (maxMoney - minMoney)));
+    }
+
+    let prevServer;
+    let prevTime;
+    for (const [time, server] of serverSnapshots) {
+        if (time < now-(WIDTH_SECONDS*2*1000)) {
+            continue;
+        }
+
+        // fill area under actual security
+        if (prevServer) {
+            moneyLayer.appendChild(svgEl('rect', {
+                x: convertTime(prevTime),
+                width: convertTime(time, prevTime),
+                y: convertMoney(prevServer.moneyAvailable),
+                height: convertMoney(0) - convertMoney(prevServer.moneyAvailable),
+                fill: "dark"+GRAPH_COLORS.money
+            }));
+        }
+        prevServer = server;
+        prevTime = time;
+    }
+
+    let prevJob;
+    for (const batch of batches) {
+        for (const job of batch) {
+            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*2*1000)) {
+                continue;
+            }
+
+            // draw a line from (prevTime, prevSec) to (job.time, job.sec)
+            if (prevJob && job.endTime > prevJob.endTime) {
+                moneyLayer.appendChild(svgEl('line', {
+                    x1: convertTime(prevJob.endTime),
+                    x2: convertTime(job.endTime),
+                    y1: convertMoney(prevJob.result.moneyAvailable),
+                    y2: convertMoney(prevJob.result.moneyAvailable),
+                    stroke: GRAPH_COLORS.money,
+                    "stroke-width": 2,
+                    "vector-effect": "non-scaling-stroke"
+                }));
+                moneyLayer.appendChild(svgEl('line', {
+                    x1: convertTime(job.endTime),
+                    x2: convertTime(job.endTime),
+                    y1: convertMoney(prevJob.result.moneyAvailable),
+                    y2: convertMoney(job.result.moneyAvailable),
+                    stroke: GRAPH_COLORS.money,
+                    "stroke-width": 2,
+                    "vector-effect": "non-scaling-stroke"
+                }));
+            }
+            prevJob = job;
+        }
+    }
+    if (prevJob) {
+        moneyLayer.appendChild(svgEl('line', {
+            x1: convertTime(prevJob.endTime),
+            x2: convertTime(prevJob.endTime + 30000),
+            y1: convertMoney(prevJob.result.moneyAvailable),
+            y2: convertMoney(prevJob.result.moneyAvailable),
+            stroke: GRAPH_COLORS.money,
+            "stroke-width": 2,
+            "vector-effect": "non-scaling-stroke"
+        }));
+    }
+    return moneyLayer;
+}
+
+function renderSafetyLayer(batches=[], now) {
+    const safetyLayer = svgEl('g', {id:"safetyLayer"});
 
     let prevJob;    
     for (const batch of batches) {
         for (const job of batch) {
-            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*1000)) {
+            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*2*1000)) {
                 continue;
             }
 
             // shade the background based on secLevel
             if (prevJob && job.endTime > prevJob.endTime) {
-                secLayer.appendChild(svgEl('rect', {
+                safetyLayer.appendChild(svgEl('rect', {
                     x: convertTime(prevJob.endTime), width: convertTime(job.endTime - prevJob.endTime, 0),
                     y: 0, height: "100%",
                     fill: (prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe
@@ -111,13 +298,13 @@ function renderSecurityLayer(batches=[], now) {
         }
     }
     if (prevJob) {
-        secLayer.appendChild(svgEl('rect', {
+        safetyLayer.appendChild(svgEl('rect', {
             x: convertTime(prevJob.endTime), width: convertTime(10000, 0),
             y: 0, height: "100%",
             fill: (prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe
         }));
     }
-    return secLayer;
+    return safetyLayer;
 }
 
 function renderJobLayer(batches=[], now) {
@@ -126,8 +313,8 @@ function renderJobLayer(batches=[], now) {
     let i = 0;
     for (const batch of batches) {
         for (const job of batch) {
-            i = (i + 1) % (HEIGHT_PIXELS / 4);
-            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*1000)) {
+            i = (i + 1) % ((HEIGHT_PIXELS - FOOTER_PIXELS*2) / 4);
+            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*2*1000)) {
                 continue;
             }
             // draw the job bars
@@ -167,7 +354,7 @@ function renderJobLayer(batches=[], now) {
 function renderLegend() {
     const legendEl = svgEl('g',
         {id: "Legend", transform: "translate(-480, 10), scale(.5, .5)"},
-        [['rect', {x: 1, y: 1, width: 275, height: 310, fill: "black", stroke: "#979797"}]]
+        [['rect', {x: 1, y: 1, width: 275, height: 392, fill: "black", stroke: "#979797"}]]
     );
     let y = 13;
     for (const [label, color] of Object.entries(GRAPH_COLORS)) {

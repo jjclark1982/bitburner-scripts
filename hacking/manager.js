@@ -73,6 +73,7 @@ export class HackingManager {
         this.params = params;
         this.batchID = 0;
         this.allBatches = [];
+        this.serverSnapshots = [];
         this.t0 = Date.now();
 
         this.targets = [];
@@ -144,6 +145,7 @@ export class HackingManager {
         // Add callbacks to check for desync
         for (const job of batch) {
             job.shouldStart = this.shouldStart.bind(this);
+            job.didFinish = this.didFinish.bind(this);
         }
         batch[batch.length-1].didFinish = this.didFinish.bind(this);
 
@@ -167,7 +169,7 @@ export class HackingManager {
         }
         else {
             server.nextFreeTime = batch.lastEndTime() + params.tDelta; // * 2
-            server.nextStartTime = batch.earliestStartTime() - params.tDelta + batchCycle.timeBetweenStarts;
+            server.nextStartTime = batch.earliestStartTime() - params.tDelta + batchCycle.timeBetweenStarts; // TODO: update timeBetweenStarts based on current RAM
         }
         this.allBatches.push(batch);
         await ns.asleep(server.nextStartTime - Date.now()); // this should be timeBetweenStarts before the following batch's earliest start
@@ -175,13 +177,14 @@ export class HackingManager {
 
     shouldStart(job) {
         const {ns} = this;
+        const actualServer = job.result.copy().reload();
+        this.serverSnapshots.push([Date.now(), actualServer]);
         if (job.task == 'weaken') {
             return true;
         }
         if (job.task == 'hack' && !this.running) {
             return false;
         }
-        const actualServer = job.result.copy().reload();
         if (actualServer.hackDifficulty > job.startDifficulty) {
             // if (job.task == 'grow') {
             //     ns.print(`INFO: Reducing threads for ${job.task} job: ${actualServer.hackDifficulty.toFixed(2)} > ${job.startDifficulty.toFixed(2)} security.`);
@@ -203,9 +206,12 @@ export class HackingManager {
         }
         const expectedServer = job.result;
         const actualServer = job.result.copy().reload();
+        job.resultActual = actualServer;
+        this.serverSnapshots.push([Date.now(), actualServer]);
         if (actualServer.hackDifficulty > expectedServer.hackDifficulty) {
             ns.print(`WARNING: desync detected after batch ${this.batchID}. Reloading server state and adjusting parameters.`);
             server.reload(actualServer);
+            // TODO: move this slow calculation to before/after a prep cycle in the main loop
             const newParams = server.mostProfitableParamsSync(this.params);
             this.plans[server.hostname] = server.planBatchCycle(newParams);
             server.reload();
@@ -227,7 +233,7 @@ export class HackingManager {
             return;
         }
         requestAnimationFrame(this.updateAnimation.bind(this));
-        this.animationEl = renderBatches(this.animationEl, this.allBatches);
+        this.animationEl = renderBatches(this.animationEl, this.allBatches, this.serverSnapshots);
     }
 }
 
