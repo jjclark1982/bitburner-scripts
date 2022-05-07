@@ -38,6 +38,9 @@ const FOOTER_PIXELS = 50;
  * @property {Object} result - expected server state after the job completes
  * @property {number} result.hackDifficulty
  * @property {number} result.minDifficulty
+ * @property {number} resultActual - return value of the netscript function, eg moneyDrained (optional)
+ * @property {Object} change
+ * @property {number} change.playerMoney - expected amount of money drained
  */
 
 /**
@@ -103,7 +106,8 @@ export function renderBatches(el, batches=[], serverSnapshots=[], now) {
     dataEl.appendChild(renderSafetyLayer(batches, now));
     dataEl.appendChild(renderJobLayer(batches, now));
     dataEl.appendChild(renderSecurityLayer(eventSnapshots, serverSnapshots, now));
-    dataEl.appendChild(renderMoneyLayer(eventSnapshots, serverSnapshots, now));
+    // dataEl.appendChild(renderMoneyLayer(eventSnapshots, serverSnapshots, now));
+    dataEl.appendChild(renderProfitLayer(batches, now));
 
     return el;
 }
@@ -136,7 +140,8 @@ function renderSecurityLayer(eventSnapshots=[], serverSnapshots=[], now) {
             transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`,
             stroke: GRAPH_COLORS.security,
             fill: "none",
-            "stroke-width": 2
+            "stroke-width": 2,
+            "stroke-linejoin":"bevel"
         }, [
             renderProjectedPath("hackDifficulty", eventSnapshots, now)
         ]
@@ -218,6 +223,94 @@ function renderProjectedPath(property="hackDifficulty", eventSnapshots=[], now, 
     });
 }
 
+function renderProfitPath(batches=[], now, scale=1) {
+    // would like to graph money per second over time
+    // const moneyTaken = [];
+    const totalMoneyTaken = [];
+    let runningTotal = 0;
+    for (const batch of batches) {
+        for (const job of batch) {
+            if (job.task == 'hack' && job.endTimeActual) {
+                // moneyTaken.push([job.endTimeActual, job.resultActual]);
+                runningTotal += job.resultActual;
+                totalMoneyTaken.push([job.endTimeActual, runningTotal]);
+            }
+            else if (job.task == 'hack' && !job.cancelled) {
+                runningTotal += job.change.playerMoney;
+                totalMoneyTaken.push([job.endTime, runningTotal]);
+            }
+        }
+    }
+    totalMoneyTaken.push([now + 30000, runningTotal]);
+    // money taken in the last X seconds could be counted with a sliding window.
+    // but the recorded events are not evenly spaced.
+    const movingAverage = [];
+    let maxProfit = 0;
+    let j = 0;
+    for (let i = 0; i < totalMoneyTaken.length; i++) {
+        const [time, money] = totalMoneyTaken[i];
+        while (totalMoneyTaken[j][0] <= time - 2000) {
+            j++;
+        }
+        const profit = totalMoneyTaken[i][1] - totalMoneyTaken[j][1];
+        movingAverage.push([time, profit]);
+        maxProfit = Math.max(maxProfit, profit);
+    }
+    eval("window").profitData = [totalMoneyTaken, runningTotal, movingAverage];
+    const pathData = ["M 0,0"];
+    let prevTime;
+    let prevProfit;
+    for (const [time, profit] of movingAverage) {
+        // pathData.push(`L ${convertTime(time).toFixed(3)},${(scale * profit/maxProfit).toFixed(3)}`);
+        if (prevProfit) {
+            pathData.push(`C ${convertTime((prevTime*3 + time)/4).toFixed(3)},${(scale * prevProfit/maxProfit).toFixed(3)} ${convertTime((prevTime + 3*time)/4).toFixed(3)},${(scale * profit/maxProfit).toFixed(3)} ${convertTime(time).toFixed(3)},${(scale * profit/maxProfit).toFixed(3)}`)
+        }
+        prevTime = time;
+        prevProfit = profit;
+    }
+    pathData.push(`H ${convertTime(now+60000).toFixed(3)} V 0 Z`);
+    return svgEl('path', {
+        d: pathData.join(' '),
+        "vector-effect": "non-scaling-stroke"
+    });
+}
+
+function renderProfitLayer(batches=[], now) {
+    const profitPath = renderProfitPath(batches, now);
+    const observedProfit = svgEl(
+        "g", {
+            id: "observedProfit",
+            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS})`,
+            fill: "dark"+GRAPH_COLORS.money,
+            "clip-path": `url(#hide-future-${initTime})`
+        }, [
+            profitPath
+        ]
+    );
+    const projectedProfit = svgEl(
+        "g", {
+            id: "projectedProfit",
+            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS})`,
+            fill: "none",
+            stroke: GRAPH_COLORS.money,
+            "stroke-width": 2,
+            "stroke-linejoin":"round"
+        }, [
+            profitPath.cloneNode()
+        ]
+    );
+    const profitLayer = svgEl(
+        "g", {
+            id: "profitLayer",
+            transform: `translate(0 ${HEIGHT_PIXELS - FOOTER_PIXELS})`
+        }, [
+            observedProfit,
+            projectedProfit
+        ]
+    );
+    return profitLayer;
+}
+
 function renderMoneyLayer(eventSnapshots=[], serverSnapshots=[], now) {
     const moneyLayer = svgEl("g", {
         id: "moneyLayer",
@@ -251,7 +344,8 @@ function renderMoneyLayer(eventSnapshots=[], serverSnapshots=[], now) {
             transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney) / scale})`,
             stroke: GRAPH_COLORS.money,
             fill: "none",
-            "stroke-width": 2
+            "stroke-width": 2,
+            "stroke-linejoin":"bevel"
         }, [
             renderProjectedPath("moneyAvailable", eventSnapshots, now, scale)
         ]

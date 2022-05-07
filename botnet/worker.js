@@ -147,7 +147,7 @@ export class Worker {
 
         // Run the task.
         this.currentJob = job;
-        await this.capabilities[job.task](...(job.args||[]));
+        job.resultActual = await this.capabilities[job.task](...(job.args||[]));
 
         // Record actual end time.
         job.endTimeActual = Date.now();

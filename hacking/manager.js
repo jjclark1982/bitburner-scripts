@@ -206,7 +206,6 @@ export class HackingManager {
         }
         const expectedServer = job.result;
         const actualServer = job.result.copy().reload();
-        job.resultActual = actualServer;
         this.serverSnapshots.push([Date.now(), actualServer]);
         if (actualServer.hackDifficulty > expectedServer.hackDifficulty) {
             ns.print(`WARNING: desync detected after batch ${this.batchID}. Reloading server state and adjusting parameters.`);
