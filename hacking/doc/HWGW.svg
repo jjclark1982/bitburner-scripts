@@ -1,6 +1,6 @@
-<svg version="1.1" width="1200" height="600" data-last-update="0"
-	xmlns="http://www.w3.org/2000/svg" viewBox="-933.3333333333334 0 1200 600">
-	<g id="secLayer">
+<svg version="1.1" width="1200" height="400" data-last-update="0"
+	xmlns="http://www.w3.org/2000/svg" viewBox="-933.3333333333334 200 1200 400">
+	<g id="secLayer" transform="translate(0,200)">
 		<rect x="-1600" width="555.0604166666667" y="0" height="100%" fill="#111"></rect>
 		<rect x="-1044.9395833333333" width="10.666666666666666" y="0" height="100%" fill="#111"></rect>
 		<rect x="-1034.2729166666666" width="10.7752734375" y="0" height="100%" fill="#333"></rect>
@@ -329,9 +329,9 @@
 		<rect x="-29.28497395833333" width="683.9866975879999" y="596" height="2" fill="yellow"></rect>
 		<rect x="-29.28497395833333" width="1.6049739583333333" y="596" height="1" fill="magenta"></rect>
 	</g>
-	<rect id="cursor" x="0" width="1" y="0" height="100%" fill="white"></rect>
-	<g id="Legend" transform="translate(-525, 8), scale(.5, .5)">
-		<rect x="1" y="1" width="275" height="310" fill="black" stroke="#979797"></rect>
+	<rect id="cursor" x="0" width="1" y="0" height="100%" fill="white" transform="translate(0,200)"></rect>
+	<g id="Legend" transform="translate(120, 208), scale(.5, .5)">
+		<rect x="1" y="1" width="275" height="269" fill="black" stroke="#979797"></rect>
 		<g transform="translate(22, 13)">
 			<rect x="0" y="10" width="22" height="22" fill="cyan"></rect>
 			<text font-family="Courier New" font-size="36" fill="#888">
@@ -350,29 +350,33 @@
 				<tspan x="42.5" y="30">Weaken</tspan>
 			</text>
 		</g>
+		<!--
 		<g transform="translate(22, 136)">
 			<rect x="0" y="10" width="22" height="22" fill="red"></rect>
 			<text font-family="Courier New" font-size="36" fill="#888">
 				<tspan x="42.5" y="30">Cancelled</tspan>
 			</text>
 		</g>
-		<g transform="translate(22, 177)">
-			<rect x="0" y="10" width="22" height="22" fill="magenta"></rect>
-			<text font-family="Courier New" font-size="36" fill="#888">
-				<tspan x="42.5" y="30">Desync</tspan>
-			</text>
-		</g>
-		<g transform="translate(22, 218)">
-			<rect x="0" y="10" width="22" height="22" fill="#111"></rect>
-			<text font-family="Courier New" font-size="36" fill="#888">
-				<tspan x="42.5" y="30">Safe</tspan>
-			</text>
-		</g>
-		<g transform="translate(22, 259)">
-			<rect x="0" y="10" width="22" height="22" fill="#333"></rect>
-			<text font-family="Courier New" font-size="36" fill="#888">
-				<tspan x="42.5" y="30">Unsafe</tspan>
-			</text>
+		-->
+		<g transform="translate(0, -41)">
+			<g transform="translate(22, 177)">
+				<rect x="0" y="10" width="22" height="22" fill="magenta"></rect>
+				<text font-family="Courier New" font-size="36" fill="#888">
+					<tspan x="42.5" y="30">Desync</tspan>
+				</text>
+			</g>
+			<g transform="translate(22, 218)">
+				<rect x="0" y="10" width="22" height="22" fill="#111"></rect>
+				<text font-family="Courier New" font-size="36" fill="#888">
+					<tspan x="42.5" y="30">Safe</tspan>
+				</text>
+			</g>
+			<g transform="translate(22, 259)">
+				<rect x="0" y="10" width="22" height="22" fill="#333"></rect>
+				<text font-family="Courier New" font-size="36" fill="#888">
+					<tspan x="42.5" y="30">Unsafe</tspan>
+				</text>
+			</g>
 		</g>
 	</g>
 </svg>

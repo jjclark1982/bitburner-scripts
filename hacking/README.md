@@ -14,13 +14,13 @@ Basic gameplay consists of running these operations sequentially. Running multip
 
 ![gameplay-loop](doc/gameplay-loop.svg)
 
-Scheduling them to run in parallel is a [bounded knapsack problem](https://en.wikipedia.org/wiki/Knapsack_problem) based on these constraints:
+Scheduling them to run in parallel without interfering with each other is a [bounded knapsack problem](https://en.wikipedia.org/wiki/Knapsack_problem) based on these constraints:
 
 - maximum total RAM used
 - maximum RAM used per operation
 - minimum time between effects
 
-The [standard strategy](https://bitburner.readthedocs.io/en/latest/advancedgameplay/hackingalgorithms.html) is to repeat batches of Hack-Weaken-Grow-Weaken operations, ensuring that each starts in a “safe window” when security level is predictable (*cf.* Stalefish [1]). This system considers a wider range of strategies, some of which can be better packed into available timeslots or RAM banks.
+The [standard strategy](https://bitburner.readthedocs.io/en/latest/advancedgameplay/hackingalgorithms.html) is to repeat batches of `hack`-`weaken`-`grow`-`weaken` operations, ensuring that each starts in a “safe window” when security level is predictable (*cf.* Stalefish [1]). This system considers a wider range of strategies, some of which can be better packed into available timeslots or RAM banks.
 
 ![HWGW](doc/HWGW.svg)
 
