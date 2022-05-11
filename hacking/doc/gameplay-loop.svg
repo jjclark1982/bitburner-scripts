@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="-58 429 1022 276.7388" width="1022" height="276.7388">
+  <defs>
+    <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="400">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -3 7 6" markerWidth="7" markerHeight="6" color="black">
+      <g>
+        <path d="M 4.8 0 L 0 -1.8 L 0 1.8 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <metadata> Produced by OmniGraffle 7.19.2\n2022-05-11 19:50:48 +0000</metadata>
+  <g id="Game_Loop" stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
+    <title>Game Loop</title>
+    <g id="Game_Loop_Basic_Game_Loop">
+      <title>Basic Game Loop</title>
+      <g id="Graphic_26"/>
+      <g id="Graphic_2">
+        <text transform="translate(402.26 442)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">Make Money</tspan>
+        </text>
+      </g>
+      <g id="Graphic_3">
+        <text transform="translate(517 571.5)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="13.048" y="15">Buy servers</tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="8029133e-19" y="33.448">with more RAM</tspan>
+        </text>
+      </g>
+      <g id="Graphic_4">
+        <text transform="translate(256 571.5)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">Run money-making</tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="7.424" y="33.448">programs in RAM</tspan>
+        </text>
+      </g>
+      <g id="Line_9">
+        <path d="M 325.96 566.5 C 325.96 566.5 320.80035 534.65827 341 502 C 354.10215 480.8168 373.8773 465.7511 386.1564 457.7792" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+      <g id="Line_10">
+        <path d="M 499.74 451.224 C 499.74 451.224 535.4944 466.34173 556 499 C 568.76795 519.3349 571.88555 540.5163 572.42036 553.6062" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+      <g id="Graphic_28"/>
+      <g id="Line_29">
+        <path d="M 572.12 613.396 C 572.12 613.396 555.3913 648.2515 520.14925 669.02985 C 484.9072 689.8082 447.7239 686.7388 447.7239 686.7388" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+      <g id="Line_30">
+        <path d="M 447.7239 686.7388 C 447.7239 686.7388 406.1381 685.70376 371.6418 664.9254 C 350.5465 652.2189 338.16852 635.7831 331.735 624.9308" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+    </g>
+  </g>
+</svg>

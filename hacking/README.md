@@ -10,13 +10,17 @@ The duration of each operation is determined when the operation **starts**, and 
 
 The effect of each operation is determined when the operation **ends**, and its magnitude depends on the amount of RAM allocated to the operation.
 
-Scheduling these operations for maximum profit per second is a [bounded knapsack problem](https://en.wikipedia.org/wiki/Knapsack_problem) based on these constraints:
+Basic gameplay consists of running these operations sequentially. Running multiple copies in parallel can create a positive feedback cycle in the main gameplay loop:
+
+![gameplay-loop](doc/gameplay-loop.svg)
+
+Scheduling them to run in parallel is a [bounded knapsack problem](https://en.wikipedia.org/wiki/Knapsack_problem) based on these constraints:
 
 - maximum total RAM used
 - maximum RAM used per operation
 - minimum time between effects
 
-The [basic strategy](https://bitburner.readthedocs.io/en/latest/advancedgameplay/hackingalgorithms.html) is to repeat batches of Hack-Weaken-Grow-Weaken operations in a fixed period (*cf.* Stalefish [1]). This system considers a wider range of strategies, some of which can be better packed into available timeslots or RAM banks.
+The [standard strategy](https://bitburner.readthedocs.io/en/latest/advancedgameplay/hackingalgorithms.html) is to repeat batches of Hack-Weaken-Grow-Weaken operations, ensuring that each starts in a “safe window” when security level is predictable (*cf.* Stalefish [1]). This system considers a wider range of strategies, some of which can be better packed into available timeslots or RAM banks.
 
 ![HWGW](doc/HWGW.svg)
 
