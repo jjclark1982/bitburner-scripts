@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="112 426 1079 279.7388" width="1079" height="279.7388">
+<svg xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="18 418.1306 1102 276.7388" width="1102" height="276.7388">
   <defs>
     <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="400">
       <font-face-src>
@@ -13,73 +13,77 @@
       </g>
     </marker>
   </defs>
-  <metadata> Produced by OmniGraffle 7.19.2\n2022-05-16 18:55:18 +0000</metadata>
+  <metadata> Produced by OmniGraffle 7.19.2\n2022-05-16 19:04:37 +0000</metadata>
   <g id="Game_Loop" stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
     <title>Game Loop</title>
     <g id="Game_Loop_Basic_Game_Loop">
       <title>Basic Game Loop</title>
       <g id="Graphic_26"/>
-      <g id="Graphic_2">
-        <text transform="translate(402.26 442)" fill="black">
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">Make Money</tspan>
-        </text>
+      <g id="Group_42">
+        <g id="Graphic_2">
+          <text transform="translate(751.26 431.1306)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">Make Money</tspan>
+          </text>
+        </g>
+        <g id="Graphic_3">
+          <text transform="translate(866 560.6306)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="13.048" y="15">Buy servers</tspan>
+            <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="8029133e-19" y="33.448">with more RAM</tspan>
+          </text>
+        </g>
+        <g id="Graphic_4">
+          <text transform="translate(605 560.6306)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">Run money-making</tspan>
+            <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="7.424" y="33.448">programs in RAM</tspan>
+          </text>
+        </g>
+        <g id="Line_9">
+          <path d="M 674.96 555.6306 C 674.96 555.6306 669.80035 523.78886 690 491.1306 C 703.10215 469.9474 722.8773 454.8817 735.1564 446.9098" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
+        <g id="Line_10">
+          <path d="M 848.74 440.3546 C 848.74 440.3546 884.4944 455.47233 905 488.1306 C 917.768 508.4655 920.8855 529.6469 921.4204 542.7368" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
+        <g id="Graphic_28"/>
+        <g id="Line_29">
+          <path d="M 921.12 602.5266 C 921.12 602.5266 904.3913 637.3821 869.1493 658.16045 C 833.9072 678.9388 796.7239 675.8694 796.7239 675.8694" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
+        <g id="Line_30">
+          <path d="M 796.7239 675.8694 C 796.7239 675.8694 755.1381 674.83436 720.6418 654.056 C 699.5465 641.3495 687.1685 624.9137 680.735 614.0614" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
       </g>
-      <g id="Graphic_3">
-        <text transform="translate(517 571.5)" fill="black">
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="13.048" y="15">Buy servers</tspan>
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="8029133e-19" y="33.448">with more RAM</tspan>
-        </text>
-      </g>
-      <g id="Graphic_4">
-        <text transform="translate(256 571.5)" fill="black">
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">Run money-making</tspan>
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="7.424" y="33.448">programs in RAM</tspan>
-        </text>
-      </g>
-      <g id="Line_9">
-        <path d="M 325.96 566.5 C 325.96 566.5 320.80035 534.65827 341 502 C 354.10215 480.8168 373.8773 465.7511 386.1564 457.7792" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-      </g>
-      <g id="Line_10">
-        <path d="M 499.74 451.224 C 499.74 451.224 535.4944 466.34173 556 499 C 568.76795 519.3349 571.88555 540.5163 572.42036 553.6062" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-      </g>
-      <g id="Graphic_28"/>
-      <g id="Line_29">
-        <path d="M 572.12 613.396 C 572.12 613.396 555.3913 648.2515 520.14925 669.02985 C 484.9072 689.8082 447.7239 686.7388 447.7239 686.7388" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-      </g>
-      <g id="Line_30">
-        <path d="M 447.7239 686.7388 C 447.7239 686.7388 406.1381 685.70376 371.6418 664.9254 C 350.5465 652.2189 338.16852 635.7831 331.735 624.9308" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-      </g>
-      <g id="Line_32">
-        <path d="M 737 647.57934 L 799.6772 575.1069 L 825.6614 560.9337 L 859.5197 553.84706 L 991.8031 553.84706" stroke="#0061d2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-      </g>
-      <g id="Line_33">
-        <line x1="737" y1="647.57934" x2="737" y2="447.9" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-      </g>
-      <g id="Line_34">
-        <line x1="737" y1="647.57934" x2="1005.1" y2="647.57934" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-      </g>
-      <g id="Graphic_35">
-        <text transform="translate(776.5997 620.35534)" fill="black">
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="51">RAM Allocated to Hacking</tspan>
-        </text>
-      </g>
-      <g id="Graphic_36">
-        <text transform="translate(709.776 631.0471) rotate(-90)" fill="black">
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="48316906e-20" y="15">Money Drained / Second</tspan>
-        </text>
-      </g>
-      <g id="Line_37">
-        <path d="M 737 647.57934 C 737 647.57934 761.12535 586.0425 833.5354 534.9494 C 905.9455 483.85637 992.5906 467.2329 992.5906 467.2329" stroke="#339000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-      </g>
-      <g id="Graphic_39">
-        <text transform="translate(887.5172 526.62306)" fill="black">
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="51">Sequential</tspan>
-        </text>
-      </g>
-      <g id="Graphic_40">
-        <text transform="translate(888.0977 469.67956) rotate(-15)" fill="black">
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="30553338e-20" y="51">Parallel</tspan>
-        </text>
+      <g id="Group_43">
+        <g id="Line_32">
+          <path d="M 174 649.57934 L 236.22222 583.3333 L 262.8889 568.8889 L 288.44444 561.1111 L 427.33333 561.1111" stroke="#0061d2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
+        <g id="Line_33">
+          <line x1="174" y1="649.57934" x2="174" y2="449.9" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
+        <g id="Line_34">
+          <line x1="174" y1="649.57934" x2="442.1" y2="649.57934" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
+        <g id="Graphic_35">
+          <text transform="translate(213.5997 622.35534)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="51">RAM Allocated to Hacking</tspan>
+          </text>
+        </g>
+        <g id="Graphic_36">
+          <text transform="translate(146.776 638.1672) rotate(-90)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="48316906e-20" y="15">Money Drained / Second</tspan>
+          </text>
+        </g>
+        <g id="Line_37">
+          <path d="M 174 649.57934 C 174 649.57934 217.3034 583.99676 288.44444 528.8871 C 359.5855 473.77746 425.1111 455.05524 425.1111 455.05524" stroke="#339000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        </g>
+        <g id="Graphic_39">
+          <text transform="translate(324.2931 533.8871)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="51">Sequential</tspan>
+          </text>
+        </g>
+        <g id="Graphic_40">
+          <text transform="translate(319.3811 473.6241) rotate(-28)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="30553338e-20" y="51">Parallel</tspan>
+          </text>
+        </g>
       </g>
     </g>
   </g>

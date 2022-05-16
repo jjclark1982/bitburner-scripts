@@ -10,7 +10,7 @@ The duration of each operation is determined when the operation **starts**, and 
 
 The effect of each operation is determined when the operation **ends**, and its magnitude depends on the amount of RAM allocated to the operation.
 
-Basic gameplay consists of running these operations sequentially. Running multiple copies in parallel can create a positive feedback cycle in the main gameplay loop:
+Basic gameplay consists of running these operations sequentially. Running multiple copies in parallel can create a positive feedback cycle in the gameplay loop:
 
 ![gameplay-loop](doc/gameplay-loop.svg)
 
@@ -45,6 +45,7 @@ This system consists of loosely-coupled modules:
 
 [ServerPool](../net/deploy-script.js) launches processes in available RAM banks.
 
+[BatchView](#BatchView) is a visualizer for hacking operations.
 
 ---
 
@@ -324,3 +325,33 @@ The scripts currently used by this system are:
 /botnet/worker-weaken.js
 ```
 
+---
+
+### BatchView
+
+[batch-view.js](batch-view.js) API brainstorming:
+
+```bash
+run /hacking/batch-view.js
+run hack.js
+```
+
+hack.js:
+
+```javascript
+const target = ns.args[0] || 'foodnstuff';
+const batchView = ns.getPortHandle(10).peek();
+batchView.addServerState(ns.getServer(target), Date.now());
+const job = {task: 'hack', target, startTime: Date.now(), duration: _, result: _};
+batchView.addJob(job);
+job.resultActual = await ns.hack(target);
+job.endTimeActual = Date.now();
+batchView.addServerState(ns.getServer(target), Date.now());
+```
+
+this would require:
+    ServerInfo Service to be running (if called from `do.js`)
+    BatchView to depend on PortService (maybe)
+
+since BatchView doesn't call any netscript functions, it can operate as a zombie.
+(but the kill/run button is useful for stopping animation)
