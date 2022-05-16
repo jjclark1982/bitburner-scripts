@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="-58 429 1022 276.7388" width="1022" height="276.7388">
+<svg xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="112 426 1079 279.7388" width="1079" height="279.7388">
   <defs>
     <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="400">
       <font-face-src>
@@ -13,7 +13,7 @@
       </g>
     </marker>
   </defs>
-  <metadata> Produced by OmniGraffle 7.19.2\n2022-05-11 19:50:48 +0000</metadata>
+  <metadata> Produced by OmniGraffle 7.19.2\n2022-05-16 18:55:18 +0000</metadata>
   <g id="Game_Loop" stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
     <title>Game Loop</title>
     <g id="Game_Loop_Basic_Game_Loop">
@@ -48,6 +48,38 @@
       </g>
       <g id="Line_30">
         <path d="M 447.7239 686.7388 C 447.7239 686.7388 406.1381 685.70376 371.6418 664.9254 C 350.5465 652.2189 338.16852 635.7831 331.735 624.9308" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+      <g id="Line_32">
+        <path d="M 737 647.57934 L 799.6772 575.1069 L 825.6614 560.9337 L 859.5197 553.84706 L 991.8031 553.84706" stroke="#0061d2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+      <g id="Line_33">
+        <line x1="737" y1="647.57934" x2="737" y2="447.9" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+      <g id="Line_34">
+        <line x1="737" y1="647.57934" x2="1005.1" y2="647.57934" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+      <g id="Graphic_35">
+        <text transform="translate(776.5997 620.35534)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="51">RAM Allocated to Hacking</tspan>
+        </text>
+      </g>
+      <g id="Graphic_36">
+        <text transform="translate(709.776 631.0471) rotate(-90)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="48316906e-20" y="15">Money Drained / Second</tspan>
+        </text>
+      </g>
+      <g id="Line_37">
+        <path d="M 737 647.57934 C 737 647.57934 761.12535 586.0425 833.5354 534.9494 C 905.9455 483.85637 992.5906 467.2329 992.5906 467.2329" stroke="#339000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      </g>
+      <g id="Graphic_39">
+        <text transform="translate(887.5172 526.62306)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="51">Sequential</tspan>
+        </text>
+      </g>
+      <g id="Graphic_40">
+        <text transform="translate(888.0977 469.67956) rotate(-15)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="30553338e-20" y="51">Parallel</tspan>
+        </text>
       </g>
     </g>
   </g>
