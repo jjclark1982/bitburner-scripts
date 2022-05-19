@@ -55,9 +55,9 @@ A prep batch alternates weaken and grow to bring the server to max money and min
 
 ```
 while money < max:
-	  while security > min + secMargin:
-    	  weaken
-		grow
+    while security > min + secMargin:
+        weaken
+    grow
 while security > min:
     weaken
 ```
@@ -68,11 +68,11 @@ while security > min:
 > server = new HackableServer(ns, "joesguns")
 > server.planPrepBatch({maxThreadsPerJob: 1024})
 [
-	{task: 'weaken', threads:   48, duration: 37275.3, …},
-	{task: 'grow',   threads: 1024, duration: 29820.2, …},
-	{task: 'weaken', threads:  122, duration: 37275.3, …},
-	{task: 'grow',   threads:  435, duration: 29820.2, …},
-	{task: 'weaken', threads:   66, duration: 37275.3, …}
+    {task: 'weaken', threads:   48, duration: 37275.3, …},
+    {task: 'grow',   threads: 1024, duration: 29820.2, …},
+    {task: 'weaken', threads:  122, duration: 37275.3, …},
+    {task: 'grow',   threads:  435, duration: 29820.2, …},
+    {task: 'weaken', threads:   66, duration: 37275.3, …}
 ]
 ```
 
@@ -85,8 +85,8 @@ A hacking batch is a hack operation followed by a prep batch.
 ```
 hack
 while security < min + secMargin:
-		grow
-		hack
+    grow
+    hack
 prep
 ```
 
@@ -96,10 +96,10 @@ prep
 > server = new HackableServer(ns, "joesguns").preppedCopy()
 > server.planHackingBatch({secMargin: 0})
 [
-	{task: 'hack',   threads: 11, duration:  8799.3, …},
-	{task: 'weaken', threads: 25, duration: 35197.2, …},
-	{task: 'grow',   threads: 49, duration: 28157.8, …},
-	{task: 'weaken', threads: 29, duration: 35197.2, …}
+    {task: 'hack',   threads: 11, duration:  8799.3, …},
+    {task: 'weaken', threads: 25, duration: 35197.2, …},
+    {task: 'grow',   threads: 49, duration: 28157.8, …},
+    {task: 'weaken', threads: 29, duration: 35197.2, …}
 ]
 ```
 
@@ -233,10 +233,10 @@ When scheduling a new batch:
 ```
 initialize prevEndTime to now
 for each job in the batch:
-		initialize job.endTime to prevEndTime + tDelta
-		shift job times so that job.startTime > now
-		shift job times so that job.startTime is in a safe window of expectedSecurity
-		set prevEndTime to job.endTime
+    initialize job.endTime to prevEndTime + tDelta
+    shift job times so that job.startTime > now
+    shift job times so that job.startTime is in a safe window of expectedSecurity
+    set prevEndTime to job.endTime
 append each [endTime, security] pair to expectedSecurity
 ```
 
