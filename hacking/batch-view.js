@@ -480,8 +480,8 @@ function svgEl(tagName, attributes={}, children=[]) {
 /** Insert an element into the netscript process's tail window. */
 export function logHTML(ns, el) {
     ns.tail();
-    const doc = eval("document");
+    const doc = eval('document');
     const command = ns.getScriptName() + ' ' + ns.args.join(' ');
-    const logEl = doc.querySelector(`[title="${command}"]`).parentElement.parentElement.nextElementSibling.querySelector('.MuiBox-root')
+    const logEl = doc.querySelector(`[title="${command}"]`).parentElement.nextElementSibling.querySelector('span');
     logEl.appendChild(el);
 }
