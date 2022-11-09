@@ -1,11 +1,30 @@
+/** SVG coordinates use 32-bit floating point numbers.
+ * We can use timestamps as coordinates as long as they are within a few days of the time origin.
+ * initTime acts as that origin and also a unique id for this graph in the DOM.
+ */
 let initTime = Date.now();
-/** Convert timestamps to seconds since the graph was started. This resolution works for about 24 hours. */
+
+const WIDTH_PIXELS = 800;
+const WIDTH_SECONDS_HISTORY = 10;
+const WIDTH_SECONDS_FUTURE = 6;
+const WIDTH_SECONDS = WIDTH_SECONDS_HISTORY + WIDTH_SECONDS_FUTURE;
+const HEIGHT_PIXELS = 600;
+const FOOTER_PIXELS = 50;
+
 function convertTime(t, t0=initTime) {
     return ((t - t0) / 1000);
 }
 
 function convertSecToPx(t) {
     return t * WIDTH_PIXELS / WIDTH_SECONDS;
+}
+
+function leftmostTime(now) {
+    return now - 2 * WIDTH_SECONDS_HISTORY * 1000;
+}
+
+function rightmostTime(now) {
+    return now + 2 * WIDTH_SECONDS_FUTURE * 1000;
 }
 
 const GRAPH_COLORS = {
@@ -20,10 +39,6 @@ const GRAPH_COLORS = {
     "money": "blue"
 };
 
-const WIDTH_PIXELS = 800;
-const WIDTH_SECONDS = 16;
-const HEIGHT_PIXELS = 600;
-const FOOTER_PIXELS = 50;
 
 /**
  * Job
@@ -164,7 +179,7 @@ function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minVa
     let prevServer;
     let prevTime;
     for (const [time, server] of serverSnapshots) {
-        if (time < now-(WIDTH_SECONDS*2*1000)) {
+        if (time < leftmostTime(now)) {
             continue;
         }
         // fill area under actual security
@@ -184,7 +199,7 @@ function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minVa
     if (prevServer) {
         // vertical line to previous level
         // horizontal line to current time
-        pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(now + 60000).toFixed(3)}`);
+        pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(rightmostTime(now)).toFixed(3)}`);
     }
     pathData.push(`V ${minValue} Z`);
     return svgEl('path', {
@@ -197,7 +212,7 @@ function renderProjectedPath(property="hackDifficulty", eventSnapshots=[], now, 
     let prevTime;
     let prevServer;
     for (const [time, server] of eventSnapshots) {
-        if (time < now-(WIDTH_SECONDS*2*1000)) {
+        if (time < leftmostTime(now)) {
             continue;
         }
         if (!prevServer) {
@@ -215,7 +230,7 @@ function renderProjectedPath(property="hackDifficulty", eventSnapshots=[], now, 
     if (prevServer) {
         // vertical line to previous value
         // horizontal line from previous time to future
-        pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(now + 60000).toFixed(3)}`);
+        pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(rightmostTime(now)).toFixed(3)}`);
     }
     return svgEl('path', {
         d: pathData.join(' '),
@@ -226,22 +241,26 @@ function renderProjectedPath(property="hackDifficulty", eventSnapshots=[], now, 
 function renderProfitPath(batches=[], now, scale=1) {
     // would like to graph money per second over time
     // const moneyTaken = [];
-    const totalMoneyTaken = [];
+    const totalMoneyTaken = [[0, 0]];
     let runningTotal = 0;
     for (const batch of batches) {
         for (const job of batch) {
             if (job.task == 'hack' && job.endTimeActual) {
                 // moneyTaken.push([job.endTimeActual, job.resultActual]);
-                runningTotal += job.resultActual;
+                runningTotal += job.resultActual || 0;
                 totalMoneyTaken.push([job.endTimeActual, runningTotal]);
             }
-            else if (job.task == 'hack' && !job.cancelled) {
+            else if (job.task == 'hack' && !job.cancelled && job.change) {
                 runningTotal += job.change.playerMoney;
                 totalMoneyTaken.push([job.endTime, runningTotal]);
             }
         }
     }
-    totalMoneyTaken.push([now + 30000, runningTotal]);
+    totalMoneyTaken.push([
+        Math.max(totalMoneyTaken[totalMoneyTaken.length-1][0], rightmostTime(now)),
+        runningTotal
+    ]);
+    totalMoneyTaken[0][0] = totalMoneyTaken[1][0] - 1000;
     // money taken in the last X seconds could be counted with a sliding window.
     // but the recorded events are not evenly spaced.
     const movingAverage = [];
@@ -249,14 +268,13 @@ function renderProfitPath(batches=[], now, scale=1) {
     let j = 0;
     for (let i = 0; i < totalMoneyTaken.length; i++) {
         const [time, money] = totalMoneyTaken[i];
-        while (totalMoneyTaken[j][0] <= time - 2000) {
+        while (totalMoneyTaken[j][0] <= time - 1000) {
             j++;
         }
         const profit = totalMoneyTaken[i][1] - totalMoneyTaken[j][1];
         movingAverage.push([time, profit]);
         maxProfit = Math.max(maxProfit, profit);
     }
-    eval("window").profitData = [totalMoneyTaken, runningTotal, movingAverage];
     const pathData = ["M 0,0"];
     let prevTime;
     let prevProfit;
@@ -268,7 +286,7 @@ function renderProfitPath(batches=[], now, scale=1) {
         prevTime = time;
         prevProfit = profit;
     }
-    pathData.push(`H ${convertTime(now+60000).toFixed(3)} V 0 Z`);
+    pathData.push(`H ${convertTime(rightmostTime(now)+1000).toFixed(3)} V 0`);
     return svgEl('path', {
         d: pathData.join(' '),
         "vector-effect": "non-scaling-stroke"
@@ -361,7 +379,7 @@ function renderSafetyLayer(batches=[], now) {
     let prevJob;    
     for (const batch of batches) {
         for (const job of batch) {
-            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*2*1000)) {
+            if ((job.endTimeActual || job.endTime) < leftmostTime(now)) {
                 continue;
             }
 
@@ -378,7 +396,7 @@ function renderSafetyLayer(batches=[], now) {
     }
     if (prevJob) {
         safetyLayer.appendChild(svgEl('rect', {
-            x: convertTime(prevJob.endTime), width: convertTime(10000, 0),
+            x: convertTime(prevJob.endTime), width: convertTime(2*WIDTH_SECONDS_FUTURE*1000, 0),
             y: 0, height: "100%",
             fill: (prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe
         }));
@@ -393,7 +411,7 @@ function renderJobLayer(batches=[], now) {
     for (const batch of batches) {
         for (const job of batch) {
             i = (i + 1) % ((HEIGHT_PIXELS - FOOTER_PIXELS*2) / 4);
-            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*2*1000)) {
+            if ((job.endTimeActual || job.endTime) < leftmostTime(now)) {
                 continue;
             }
             // draw the job bars

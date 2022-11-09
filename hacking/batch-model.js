@@ -242,7 +242,17 @@
         return (totalDuration / numBatchesAtOnce);
     }
 
-    convertToScripts(params={batchID:0, repeatPeriod:0}) {
+    /**
+     * Reformat jobs so that they can be launched as individual scripts with `deploy-script.js`
+     * @param {Object} params 
+     * @param {number} [params.batchID=0]
+     * @param {number} [params.repeatPeriod]
+     * @param {boolean} [params.reserveRam]
+     * @returns {Job[]}
+     */
+    convertToScripts(params) {
+        const defaults = {batchID:0};
+        params = Object.assign({}, defaults, params);
         const scripts = new Batch(this.length);
         for (const [index, originalJob] of this.entries()) {
             const job = {...originalJob};
@@ -260,7 +270,6 @@
                 job.args.push('--repeatPeriod', params.repeatPeriod);
             }
             job.args.push(`batch-${params.batchID}.${index+1}`);
-            job.allowSplit = true; // TODO: test whether this can be disabled by scheduling into future
             scripts[index] = job;
         }
         return scripts;

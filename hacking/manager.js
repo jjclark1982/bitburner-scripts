@@ -180,6 +180,7 @@ export class HackingManager {
         const actualServer = job.result.copy().reload();
         this.serverSnapshots.push([Date.now(), actualServer]);
         if (job.task == 'weaken') {
+            // TODO: recalculate duration
             return true;
         }
         if (job.task == 'hack' && !this.running) {

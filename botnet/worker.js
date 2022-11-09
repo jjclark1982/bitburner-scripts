@@ -1,7 +1,8 @@
 const FLAGS = [
     ["port", 3],
     ["id"],
-    ["tDelta", 1000]
+    ["tDelta", 1000],
+    ["timeout", 10*1000]
 ];
 
 /** @param {NS} ns **/
@@ -25,6 +26,7 @@ export class Worker {
         this.id = flags.id;
         this.portNum = flags.port;
         this.tDelta = flags.tDelta;
+        this.timeout = flags.timeout;
         this.ns = ns;
         this.scriptName = ns.getScriptName();
         this.capabilities = capabilities;
@@ -55,7 +57,7 @@ export class Worker {
         while (this.running || this.currentJob.task) {
             await ns.asleep(1000);
             // Terminate a worker that has not been used in a while.
-            if (!this.currentJob.task && this.jobQueue.length == 0 && this.elapsedTime() > 1*60*1000) {
+            if (!this.currentJob.task && this.jobQueue.length == 0 && this.elapsedTime() > this.timeout) {
                 this.running = false;
             }
         }
@@ -110,19 +112,24 @@ export class Worker {
         return true;
     }
 
+    rejectJob(job) {
+        if (!this.pool.dispatchJob(job)) {
+            console.log("Failed to re-schedule job:", job);
+            job.cancelled = true;
+        }
+    }
+
     async runNextJob(expectedJob) {
         if (!this.running) {
             return;
         }
         if (this.currentJob.task) {
-            setTimeout(()=>{
-                this.runNextJob(expectedJob);
-            }, this.tDelta);
             console.log([
                 `ERROR: Worker ${this.id} tried to start ${this.jobQueue[0]?.task} before finishing ${this.currentJob.task}`,
                 `current end: ${this.currentJob.endTime}, next start: ${this.jobQueue[0].startTime} (${this.jobQueue[0].startTime - this.currentJob.endTime})`,
                 `now: ${Date.now()}, expected start time: ${expectedJob.startTime}`
             ].join('\n'));
+            this.rejectJob(expectedJob);
             return;
         }
         
@@ -143,6 +150,11 @@ export class Worker {
         // Record actual start time.
         job.startTimeActual = Date.now();
         this.drift = job.startTimeActual - job.startTime;
+        job.endTime = job.startTimeActual + job.duration;
+        while (this.jobQueue.length > 0 && this.jobQueue[0].startTime < job.endTime) {
+            this.rejectJob(this.jobQueue.shift());
+        }
+        this.nextFreeTime = Math.max(this.nextFreeTime, job.endTime + this.tDelta);
         this.ns.print(`Starting job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
 
         // Run the task.

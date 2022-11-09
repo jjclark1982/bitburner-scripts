@@ -41,11 +41,34 @@ export async function runPrep(params) {
     const {ns, target, tDelta} = params;
     const server = new HackableServer(ns, target);
 
-    const batch = server.planPrepBatch(params);
-    ns.tprint(`batch: ${batch.longSummary()}`);
-    const scripts = batch.convertToScripts();
+    const serverPool = new ServerPool(ns, {logLevel: 4, logFunc: ns.print});
 
-    const serverPool = new ServerPool(ns, {logLevel: 2, logFunc: ns.print});
-    await serverPool.deployBatch(scripts);
-    return scripts;
+    let batchID = 0;
+    while (!server.reload().isPrepared()) {
+        batchID++;
+        const batch = server.planPrepBatch(params);
+        ns.print(`INFO: batch: ${batch.longSummary()}`);
+        const scriptJobs = batch.convertToScripts({batchID, reserveRam: true});
+
+        // await serverPool.deployBatch(scriptJobs, {requireAll: false});
+        for (const job of scriptJobs) {
+            const result = await serverPool.deploy(job, {allowSplit: true});
+            if (Array.isArray(result)) {
+                if (!result[result.length-1].pid) {
+                    break;
+                }
+            }
+            else if (!result.pid) {
+                break;
+            }
+        }
+        for (const job of scriptJobs) {
+            if (job.process?.pid) {
+                while (ns.isRunning(job.process.pid)) {
+                    await ns.asleep(1000);
+                }
+            }
+        }
+    }
+    ns.tprint(`INFO: ${server.hostname} is prepared for hacking.`);
 }
