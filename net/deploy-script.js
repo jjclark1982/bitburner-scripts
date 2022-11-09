@@ -25,19 +25,19 @@ import { ServerModel, ServerList } from '/net/server-list';
  * @param {object} job
  * @param {string} job.script - filename of script to run
  * @param {string} [job.host] - host to run on (optional)
- * @param {*} [job.threads=1] - set to 'max' to use as many threads as possible
+ * @param {(number|string)} [job.threads=1] - set to 'max' to use as many threads as possible
  * @param {string[]} [job.dependencies] - list of other scripts to copy to the host
- * @param {boolean} [job.allowSplit] - whether to allow splitting a large job into multiple processes
- * @param {boolean} [job.requireAll] - whether to abort a split job if it cannot be run entirely
  * @param {object} params
  * @param {number} [params.logLevel] - 1 for errors, 2 for warnings, 3 for info, 4 for debug
  * @param {function} [params.logFunc] - function to use for logging (default ns.tprint)
+ * @param {boolean} [params.allowSplit] - whether to allow splitting a large job into multiple processes
+ * @param {boolean} [params.requireAll] - whether to abort a split job if it cannot be run entirely
  * @returns 
  */
 export async function deploy(ns, job={}, params={}) {
-    const {host, script, threads, args, dependencies, allowSplit, requireAll} = job;
+    const {host, script, threads, args, dependencies} = job;
     const serverPool = new ServerPool(ns, params);
-    return await serverPool.deploy(job);
+    return await serverPool.deploy(job, params);
 }
 
 const FLAGS = [
@@ -67,20 +67,22 @@ export async function main(ns) {
         return;
     }
 
-    const flags = {
-        ns: ns,
-        threads: 1,
+    const options = {
+        logLevel: 4,
         allowSplit: true
     };
+    const job = {
+        threads: 1
+    };
     if (ns.args[0] == '--threads') {
-        flags.threads = ns.args[1];
+        job.threads = ns.args[1];
         ns.args = ns.args.slice(2);
     }
     if (ns.args.length > 0) {
-        flags.script = ns.args.shift();
-        flags.args = ns.args;
+        job.script = ns.args.shift();
+        job.args = ns.args;
     }
-    await deploy(ns, flags, {logLevel: 4});
+    await deploy(ns, job, options);
 }
 
 export class ServerPool extends ServerList {
@@ -120,11 +122,13 @@ export class ServerPool extends ServerList {
     /**
      * deploy
      * @param {Job} job
-     * @param {boolean} job.allowSplit - whether to allow splitting a large job into smaller processes with the same total thread count
+     * @param {Object} options
+     * @param {boolean} [options.allowSplit] - whether to allow splitting a large job into smaller processes with the same total thread count
+     * @param {boolean} [options.requireAll] - whether to allow splitting a large job into smaller processes with the same total thread count
      * @returns {object} process
      */
-    async deploy(job) {
-        let {host, server, script, threads=1, args, dependencies, allowSplit, requireAll} = job;
+    async deploy(job, options={allowSplit:false, requireAll:false}) {
+        let {host, server, script, threads=1, args, dependencies} = job;
         const {ns} = this;
         const scriptRam = ns.getScriptRam(script, 'home');
         delete this.pendingJobs[job.timeout];
@@ -148,10 +152,10 @@ export class ServerPool extends ServerList {
             else if (threads > 0) {
                 this.logError(`Failed to deploy ${threads}x ${script} on ${server.hostname} (${this.ns.nFormat(scriptRam*threads*1e9, "0.0 b")} / ${this.ns.nFormat(server.availableRam() * 1e9, "0 b")} RAM)`);
             }
-            return process;
+        return process;
         }
-        else if (allowSplit) {
-            const batch = this.splitJob({script, threads, args, requireAll});
+        else if (options.allowSplit) {
+            const batch = this.splitJob({script, threads, args}, options);
             return await this.deployBatch(batch);
         }
         else {
@@ -165,8 +169,8 @@ export class ServerPool extends ServerList {
      * @param {number} job.startTime
      * @returns {object} process
      */
-     deployLater(job) {
-        const now = Date.now();
+     deployLater(job, now) {
+        now ||= Date.now();
         job.startTime ||= now;
         job.process ||= {};
         job.timeout = setTimeout(this.deploy.bind(this, job), job.startTime - now);
@@ -178,15 +182,16 @@ export class ServerPool extends ServerList {
     /**
      * Convert a large job into a batch of smaller jobs that will fit on this pool.
      * @param {Job} job
-     * @param {boolean} job.requireAll - whether to cancel if there is not enouh RAM for the entire batch.
+     * @param {Object} options
+     * @param {boolean} [options.requireAll=false] - whether to cancel if there is not enouh RAM for the entire batch.
      * @returns {Job[]} batch of jobs
      */
-    splitJob({script, threads, args, startTime, requireAll}) {
+    splitJob({script, threads, args, startTime}, options={requireAll:false}) {
         const {ns} = this;
         const scriptRam = ns.getScriptRam(script, 'home');
         const maxThreads = this.totalThreadsAvailable(scriptRam);
 
-        if (requireAll && threads > maxThreads) {
+        if (options.requireAll && threads > maxThreads) {
             this.logError("Not enough RAM in server pool to run entire job.");
             return null;
         }
@@ -213,14 +218,16 @@ export class ServerPool extends ServerList {
     /**
      * Deploy a list of jobs, if there is enough RAM for all of them.
      * @param {Job[]} jobs - list of jobs
+     * @param {object} options
+     * @param {boolean} [options.requireAll=true] - whether to require the entire batch
      * @returns {object[]} list of processes
      */
-    async deployBatch(jobs=[]) {
+    async deployBatch(jobs=[], options={requireAll:true}) {
         const {ns} = this;
 
         const totalThreads = jobs.reduce((total, job)=>(total + job.threads), 0);
         const scriptRam = jobs.reduce((total, job)=>(Math.max(total, ns.getScriptRam(job.script))), 0);
-        if (totalThreads > this.totalThreadsAvailable(scriptRam)) {
+        if (options.requireAll && totalThreads > this.totalThreadsAvailable(scriptRam)) {
             this.logWarn(`Batch requires ${ns.nFormat(totalThreads, '0,0')} threads but server pool has only ${this.totalThreadsAvailable(scriptRam)} threads available.`);
             return null;
         }

@@ -21,5 +21,5 @@ export async function main(ns) {
     const args = [target, "--minSecurity", minSecurity, "--maxMoney", maxMoney];
 
     // ns.run(script, threads, ...args);
-    await deploy(ns, {script, threads, args, allowSplit:true}, {logLevel: 3});
+    await deploy(ns, {script, threads, args}, {allowSplit: true, logLevel: 3});
 }
