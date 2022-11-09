@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="214px" height="221px" viewBox="0 0 214 221" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Legend</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="Rectangle" stroke="#979797" x="0.5" y="0.5" width="213" height="220"></rect>
+        <g id="Group" transform="translate(22.000000, 13.000000)">
+            <rect id="Rectangle" fill="cyan" x="0" y="10" width="22" height="22"></rect>
+            <text id="Hack" font-family="CourierNewPS-BoldMT, Courier New" font-size="36" font-weight="bold" fill="#888">
+                <tspan x="42.5" y="30">Hack</tspan>
+            </text>
+        </g>
+        <g id="Group-2" transform="translate(22.000000, 51.333333)">
+            <rect id="Rectangle-Copy" fill="lightgreen" x="0" y="10" width="22" height="22"></rect>
+            <text id="Grow" font-family="CourierNewPS-BoldMT, Courier New" font-size="36" font-weight="bold" fill="#888">
+                <tspan x="42.5" y="30">Grow</tspan>
+            </text>
+        </g>
+        <g id="Group-3" transform="translate(22.000000, 89.666667)">
+            <rect id="Rectangle-Copy-2" fill="yellow" x="0" y="10" width="22" height="22"></rect>
+            <text id="Weaken" font-family="CourierNewPS-BoldMT, Courier New" font-size="36" font-weight="bold" fill="#888">
+                <tspan x="42.5" y="30">Weaken</tspan>
+            </text>
+        </g>
+        <g id="Group-4" transform="translate(22.000000, 128.000000)">
+            <rect id="Rectangle-Copy-3" fill="magenta" x="0" y="10" width="22" height="22"></rect>
+            <text id="Desync" font-family="CourierNewPS-BoldMT, Courier New" font-size="36" font-weight="bold" fill="#888">
+                <tspan x="42.5" y="30">Desync</tspan>
+            </text>
+        </g>
+        <g id="Group-4-Copy" transform="translate(22.000000, 169.000000)">
+            <rect id="Rectangle-Copy-3" fill="#333" x="0" y="10" width="22" height="22"></rect>
+            <text id="Unsafe" font-family="CourierNewPS-BoldMT, Courier New" font-size="36" font-weight="bold" fill="#888">
+                <tspan x="42.5" y="30">Unsafe</tspan>
+            </text>
+        </g>
+    </g>
+</svg>
