@@ -114,7 +114,7 @@ A cycle of batches is the maximum number of parallel batches based on these cons
 
 We calculate the number of parallel batches as the minimum of:
 
-- batch RAM / `maxTotalRam`
+- `maxTotalRam` / batch peak RAM
 - batch duration / (number of jobs * `tDelta`)
 
 ###### Example HWGW batch cycle

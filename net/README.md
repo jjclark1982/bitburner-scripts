@@ -17,15 +17,17 @@ const job = {
     script: "script.js",
     args: ["foo"],
     threads: 100,         // Optional (default 1)
-    allowSplit: true,     // Whether to allow splitting threads among different servers.
     startTime: Date.now() // Optional. Schedule the job to start at a certain time.
 };
+const options = {
+    allowSplit: true,     // Whether to allow splitting threads among different servers.
+}
 
 // Launch a batch of jobs.
 // Will cancel if there is not enough RAM for the entire batch.
 // Will adjust the `startTime` of the entire batch if any are in the past.
 const batch = [job];
-await deploy(ns, batch);
+await deploy(ns, batch, options);
 ```
 
 #### CLI Usage:
