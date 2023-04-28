@@ -383,7 +383,7 @@ solvers["Minimum Path Sum in a Triangle"] = (data) => {
 solvers["Shortest Path in a Grid"]
 */
 
-solvers["HammingCodes: Integer to encoded Binary"] = (value) => {
+solvers["HammingCodes: Integer to Encoded Binary"] = (value) => {
     // encoding following Hammings rule
     function HammingSumOfParity(_lengthOfDBits) {
         // will calculate the needed amount of parityBits 'without' the "overall"-Parity (that math took me 4 Days to get it working)
