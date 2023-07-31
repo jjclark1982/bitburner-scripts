@@ -198,7 +198,7 @@ export class ServerModel {
         return (
             this.hasAdminRights &&
             this.moneyMax > 0 &&
-            this.requiredHackingSkill <= player.hacking
+            this.requiredHackingSkill <= player.skills.hacking
         )
     }
 
