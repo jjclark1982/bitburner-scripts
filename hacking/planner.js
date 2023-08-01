@@ -22,6 +22,7 @@ const FLAGS = [
     ["tDelta", 100],
     ["maxTotalRam", 0],
     ["maxThreadsPerJob", 0],
+    ["secMargin", 0],
     ["reserveRam", true]
 ];
 
@@ -40,10 +41,15 @@ export async function main(ns) {
     ns.clearLog();
     ns.tail();
 
-    if (!(flags.maxTotalRam && flags.maxThreadsPerJob)) {
+    if (!flags.maxTotalRam) {
         const backend = servers;
         const scriptRam = 1.75;
         flags.maxTotalRam ||= (backend.totalThreadsAvailable(scriptRam) * scriptRam * 0.9);
+    }
+
+    if (!flags.maxThreadsPerJob) {
+        const backend = servers;
+        const scriptRam = 1.75;
         flags.maxThreadsPerJob ||= Math.floor(backend.maxThreadsAvailable(scriptRam) / 4);
     }
 
@@ -71,8 +77,8 @@ export class HackPlanner extends ServerList {
         }
         const plans = [];
         for (const server of servers) {
-            const bestParams = server.mostProfitableParamsSync(params);
-            const batchCycle = server.planBatchCycle(bestParams);
+            // const bestParams = server.mostProfitableParamsSync(params);
+            const batchCycle = server.planBatchCycle(params);
             batchCycle.prepTime = server.estimatePrepTime(params);
             const ONE_HOUR = 60 * 60 * 1000;
             const cycleTimeInNextHour = Math.max(1000, ONE_HOUR - batchCycle.prepTime);
@@ -179,12 +185,6 @@ export class HackableServer extends ServerModel {
         const server = this;
         const player = ns.getPlayer();
 
-        // Calculate duration based on last known security level
-        const duration = ns.formulas.hacking.hackTime(
-            {...server, hackDifficulty: this.prepDifficulty},
-            player
-        );
-
         // Calculate threads
         moneyPercent = Math.max(0, Math.min(1.0, moneyPercent));
         const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player);
@@ -200,7 +200,17 @@ export class HackableServer extends ServerModel {
         const numJobs = Math.ceil(threads / maxThreads) || 1;
         threads = Math.ceil(threads / numJobs);
 
+        return this.planHackWithThreads(threads, stock);
+    }
+
+    planHackWithThreads(threads, stock) {
+        const {ns} = this;
+        const server = this;
+        const player = ns.getPlayer();
+
         // Calculate result
+        threads = Math.floor(threads);
+        const hackPercentPerThread = ns.formulas.hacking.hackPercent(server, player);
         const effectivePercent = Math.min(1.0, threads * hackPercentPerThread);
         const moneyMult = 1 - effectivePercent;
         const moneyChange = this.moneyAvailable * -effectivePercent;
@@ -208,6 +218,12 @@ export class HackableServer extends ServerModel {
 
         const securityChange = ns.hackAnalyzeSecurity(threads);
         this.hackDifficulty += securityChange;
+
+        // Calculate duration based on last known security level
+        const duration = ns.formulas.hacking.hackTime(
+            {...server, hackDifficulty: this.prepDifficulty},
+            player
+        );
 
         // Construct job
         const job = {
@@ -382,6 +398,7 @@ export class HackableServer extends ServerModel {
      * @param {Object} params - Parameters for jobs to add to the batch. Additional values will be passed to planPrepBatch.
      * @param {number} [params.moneyPercent]
      * @param {number} [params.maxThreadsPerJob=512]
+     * @param {number} [params.maxRamPerBatch=2048]
      * @param {number} [params.secMargin=0.5] - amount of security above minimum to allow between jobs
      * @param {boolean} [params.naiveSplit=false] - whether to place all jobs of the same type together
      * @param {boolean} [params.hackStock] - whether to manipulate stock performance for 'hack' actions
@@ -391,8 +408,9 @@ export class HackableServer extends ServerModel {
      */
      planHackingBatch(params) {
         const defaults = {
-            moneyPercent: 0.05,
+            moneyPercent: null,
             maxThreadsPerJob: 512,
+            maxRamPerBatch: 2048,
             secMargin: 0.5,
             hackStock: this.getStockInfo()?.netShares < 0,
             growStock: this.getStockInfo()?.netShares >= 0,
@@ -400,8 +418,38 @@ export class HackableServer extends ServerModel {
             maxSteps: 100
         };
         params = Object.assign({}, defaults, params);
-        const {moneyPercent, maxThreadsPerJob, secMargin, hackStock, growStock, cores, maxSteps} = params;
+        const {moneyPercent, maxThreadsPerJob, maxRamPerBatch, secMargin, hackStock, growStock, cores, maxSteps} = params;
 
+        if (moneyPercent === null) {
+            // binary search to find the thread values where batch.peakRam() <= maxRamPerBatch
+            const {ns} = this;
+            const server = this;
+            const player = ns.getPlayer();
+
+            let loThreads = 1;
+            let hiThreads = Math.min(
+                maxThreadsPerJob,
+                maxRamPerBatch / 1.7,
+                Math.ceil(1 / ns.formulas.hacking.hackPercent(server, player)) // could be Infinity
+            );
+            while (hiThreads - loThreads > 1) {
+                const midThreads = Math.floor((hiThreads + loThreads) / 2);
+                const batch = new Batch();
+                batch.push(this.planHackWithThreads(midThreads, hackStock));
+                batch.push(...this.planPrepBatch(params));
+                if (batch.peakRam() > maxRamPerBatch) {
+                    hiThreads = midThreads;
+                }
+                else {
+                    loThreads = midThreads;
+                }
+            }
+            const batch = new Batch();
+            batch.push(this.planHackWithThreads(loThreads, hackStock));
+            batch.push(...this.planPrepBatch(params));
+            return batch;
+        }
+        // construct batch with specified moneyPercent and flexible maxRamPerBatch
         const batch = new Batch();
         batch.push(this.planHack(moneyPercent, maxThreadsPerJob, hackStock));
         while (this.hackDifficulty < this.minDifficulty + secMargin) {
@@ -417,7 +465,7 @@ export class HackableServer extends ServerModel {
             }
             batch.push(growJob, hackJob);
             this.reload(copy);
-    }
+        }
         batch.push(...this.planPrepBatch(params));
         return batch;
     }
@@ -449,7 +497,7 @@ export class HackableServer extends ServerModel {
      */
     planBatchCycle(params){
         const defaults = {
-            moneyPercent: 0.05,
+            moneyPercent: null,
             maxTotalRam: 16384,
             maxThreadsPerJob: 512,
             secMargin: 0.5,
@@ -462,14 +510,34 @@ export class HackableServer extends ServerModel {
         const {moneyPercent, maxTotalRam, tDelta, reserveRam, secMargin} = params;
 
         const server = this.preppedCopy(secMargin);
-        const batch = server.planHackingBatch(params);
+        let batch;
+        let numBatchesAtOnce;
 
-        const moneyPerBatch = batch.moneyTaken();
+        if (moneyPercent === null) {
+            // calculate maxRamPerBatch based on maxTotalRam and assumed HWGW duration
+            const {ns} = this;
+            const hwgwBatch = new Batch();
+            hwgwBatch.push(server.planHackWithThreads(1));
+            hwgwBatch.push(server.planWeaken());
+            hwgwBatch.push(server.planGrow());
+            hwgwBatch.push(server.planWeaken());
+            // TODO: support some flexibility in numBatchesAtOnce to maximize profit
+            numBatchesAtOnce = Math.max(1, 
+                Math.floor(hwgwBatch.maxBatchesAtOnce(maxTotalRam, tDelta, reserveRam) / 2)
+            );
+            const maxRamPerBatch = maxTotalRam / numBatchesAtOnce;
+            batch = server.planHackingBatch({...params, maxRamPerBatch});
+        }
+        else {
+            // construct batch based on given moneyPercent
+            batch = server.planHackingBatch(params);
+            numBatchesAtOnce = batch.maxBatchesAtOnce(maxTotalRam, tDelta, reserveRam);
+        }
+
         const period = batch.totalDuration(tDelta);
-
-        const numBatchesAtOnce = batch.maxBatchesAtOnce(maxTotalRam, tDelta, reserveRam);
         const timeBetweenStarts = period / numBatchesAtOnce;
 
+        const moneyPerBatch = batch.moneyTaken();
         const totalMoney = moneyPerBatch * numBatchesAtOnce;
         const moneyPerSec = totalMoney / (period / 1000);
 
