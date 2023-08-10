@@ -1,4 +1,8 @@
-// crack-all-servers.js
+// register-servers.js (2.35 GB)
+//
+// This script will register admin accounts on all servers
+// (waiting in the background for more port-opening programs to become available)
+// and then terminate after all servers are ready.
 
 export async function main(ns) {
     ns.disableLog("sleep");
@@ -57,11 +61,11 @@ export function openServer(ns, server) {
 function getClosedServers(ns) {
     // Returns an array of server objects with hasAdminRights = false
     // sorted by numOpenPortsRequired (ascending)
-    const closedServers = getAllHosts(ns).map(function(host){
+    const closedServers = getAllHostnames(ns).map(function(hostname){
         return {
-            hostname: host,
-            hasAdminRights: ns.hasRootAccess(host),
-            numOpenPortsRequired: ns.getServerNumPortsRequired(host)
+            hostname: hostname,
+            hasAdminRights: ns.hasRootAccess(hostname),
+            numOpenPortsRequired: ns.getServerNumPortsRequired(hostname)
         };
     }).filter(function(server){
         return !server.hasAdminRights;
@@ -71,20 +75,18 @@ function getClosedServers(ns) {
     return closedServers;
 }
 
-export function getAllHosts(ns) {
-    // Return an array of all hostnames.
-    getAllHosts.cache ||= {};
-    const scanned = getAllHosts.cache;
+export function getAllHostnames(ns) {
+    getAllHostnames.cache ||= new Set();
+    const scanned = getAllHostnames.cache;
     const toScan = ['home'];
     while (toScan.length > 0) {
-        const host = toScan.shift();
-        scanned[host] = true;
-        for (const nextHost of ns.scan(host)) {
-            if (!(nextHost in scanned)) {
+        const hostname = toScan.shift();
+        scanned.add(hostname);
+        for (const nextHost of ns.scan(hostname)) {
+            if (!scanned.has(nextHost)) {
                 toScan.push(nextHost);
             }
         }
     }
-    const allHosts = Object.keys(scanned);
-    return allHosts;
+    return Array.from(scanned);
 }
