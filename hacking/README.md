@@ -431,7 +431,7 @@ The scripts currently used by this system are:
 ##### Minimum Backend (single-use scripts):
 ```
 /net/deploy-script.js
-/hacking/do.js
+/hacking/worker.js
 ```
 
 ##### Alternative Backend (remote-controlled workers):
@@ -470,7 +470,7 @@ batchView.addServerState(ns.getServer(target), Date.now());
 ```
 
 this would require:
-    ServerInfo Service to be running (if called from `do.js`)
+    ServerInfo Service to be running (if called from `worker.js`)
     BatchView to depend on PortService (maybe)
 
 since BatchView doesn't call any netscript functions, it can operate as a zombie.

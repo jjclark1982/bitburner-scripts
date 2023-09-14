@@ -246,7 +246,7 @@
         const scripts = new Batch(this.length);
         for (const [index, originalJob] of this.entries()) {
             const job = {...originalJob};
-            job.script = '/hacking/do.js'; // multi-purpose hack/grow/weaken script
+            job.script = '/hacking/worker.js'; // multi-purpose hack/grow/weaken script
             job.args = [job.task, originalJob.args[0]];
             const options = originalJob.args[1] || {};
             if (options.stock) {
