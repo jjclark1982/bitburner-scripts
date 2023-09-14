@@ -34,10 +34,10 @@ import { ServerModel, ServerList } from '/net/server-list';
  * @param {boolean} [params.requireAll] - whether to abort a split job if it cannot be run entirely
  * @returns 
  */
-export async function deploy(ns, job={}, params={}) {
+export function deploy(ns, job={}, params={}) {
     const {host, script, threads, args, dependencies} = job;
     const serverPool = new ServerPool(ns, params);
-    return await serverPool.deploy(job, params);
+    return serverPool.deploy(job, params);
 }
 
 const FLAGS = [
@@ -74,15 +74,16 @@ export async function main(ns) {
     const job = {
         threads: 1
     };
-    if (ns.args[0] == '--threads') {
-        job.threads = ns.args[1];
-        ns.args = ns.args.slice(2);
+    let args = ns.args;
+    if (args[0] == '--threads') {
+        job.threads = args[1];
+        args = args.slice(2);
     }
-    if (ns.args.length > 0) {
-        job.script = ns.args.shift();
-        job.args = ns.args;
+    if (args.length > 0) {
+        job.script = args.shift();
+        job.args = args;
     }
-    await deploy(ns, job, options);
+    deploy(ns, job, options);
 }
 
 export class ServerPool extends ServerList {
@@ -127,7 +128,7 @@ export class ServerPool extends ServerList {
      * @param {boolean} [options.requireAll] - whether to allow splitting a large job into smaller processes with the same total thread count
      * @returns {object} process
      */
-    async deploy(job, options={allowSplit:false, requireAll:false}) {
+    deploy(job, options={allowSplit:false, requireAll:false}) {
         let {host, server, script, threads=1, args, dependencies} = job;
         const {ns} = this;
         const scriptRam = ns.getScriptRam(script, 'home');
@@ -145,18 +146,18 @@ export class ServerPool extends ServerList {
             }
         }
         if (server) {
-            let process = await server.deploy(job);
+            let process = server.deploy(job);
             if (process.pid) {
                 this.logDebug(`Running on ${server.hostname} with PID ${process.pid}: ${process.threads}x ${script} ${(args||[]).join(' ')}`);
             }
             else if (threads > 0) {
-                this.logError(`Failed to deploy ${threads}x ${script} on ${server.hostname} (${this.ns.nFormat(scriptRam*threads*1e9, "0.0 b")} / ${this.ns.nFormat(server.availableRam() * 1e9, "0 b")} RAM)`);
+                this.logError(`Failed to deploy ${threads}x ${script} on ${server.hostname} (${this.ns.formatRam(scriptRam*threads)} / ${this.ns.formatRam(server.availableRam())} RAM)`);
             }
         return process;
         }
         else if (options.allowSplit) {
             const batch = this.splitJob({script, threads, args}, options);
-            return await this.deployBatch(batch);
+            return this.deployBatch(batch);
         }
         else {
             this.logWarn(`No suitable server to run ${threads}x ${script} ${args||[].join(' ')}`);
@@ -228,35 +229,37 @@ export class ServerPool extends ServerList {
         const totalThreads = jobs.reduce((total, job)=>(total + job.threads), 0);
         const scriptRam = jobs.reduce((total, job)=>(Math.max(total, ns.getScriptRam(job.script))), 0);
         if (options.requireAll && totalThreads > this.totalThreadsAvailable(scriptRam)) {
-            this.logWarn(`Batch requires ${ns.nFormat(totalThreads, '0,0')} threads but server pool has only ${this.totalThreadsAvailable(scriptRam)} threads available.`);
+            this.logWarn(`Batch requires ${ns.formatNumber(totalThreads, '0,0')} threads but server pool has only ${this.totalThreadsAvailable(scriptRam)} threads available.`);
             return null;
         }
         const results = [];
+        let latestStartTime = performance.now();
         for(const job of jobs) {
             if (job.startTime) {
                 this.deployLater(job);
                 results.push(job);
+                if (job.startTime > latestStartTime) {
+                    latestStartTime = job.startTime;
+                }
             }
             else {
-                const result = await this.deploy(job);
+                const result = this.deploy(job);
                 results.push(result)
             }
         }
         if (jobs.length > 1) {
-            this.logInfo(`Deployed ${this.ns.nFormat(totalThreads, '0,0')} total threads.`);
+            this.logInfo(`Deployed ${this.ns.formatNumber(totalThreads, '0,0')} total threads.`);
         }
+        await ns.asleep(latestStartTime - performance.now());
         return results;
     }
 
     report() {
         const {ns} = this;
         let lines = [];
-        function formatRAM(ram) {
-            return ns.nFormat(ram*1e9 || 0, "0.[0] b");
-        }
         const columns = [
             {header: "Hostname", field: "hostname", width: 20, align: "left"},
-            {header: "Used RAM    ", field: ["ramUsed", "maxRam"],  format: [formatRAM], width: 17, itemWidth: 6, align:"right"}
+            {header: "Used RAM    ", field: ["ramUsed", "maxRam"],  format: [ns.formatRAM], width: 17, itemWidth: 6, align:"right"}
         ];
         columns.title = "Servers with Admin Rights";
         const servers = this.getScriptableServers();
@@ -269,16 +272,16 @@ export class ServerPool extends ServerList {
             maxRam: this.totalRam(),
         };
         lines.push(drawTable(columns, rows, [summary]));
-        lines.push(`Total RAM available: ${ns.nFormat((summary.maxRam - summary.ramUsed)*1e9, "0.[0] b")}`);
+        lines.push(`Total RAM available: ${ns.formatRam(summary.maxRam - summary.ramUsed)}`);
         const scriptRam = 1.75;
-        lines.push(`Total ${ns.nFormat(scriptRam*1e9, "0.0[0] b")} threads available: ${ns.nFormat(this.totalThreadsAvailable(scriptRam), "0,0")}`);
+        lines.push(`Total ${ns.formatNumber(scriptRam*1e9, "0.0[0] b")} threads available: ${ns.formatNumber(this.totalThreadsAvailable(scriptRam), "0,0")}`);
         lines.push(' ');
         return lines.join('\n');
     }
 }
 
 export class ScriptableServer extends ServerModel {
-    async deploy(job) {
+    deploy(job) {
         const {ns} = this;
         job.args ||= [];
         job.threads ||= 1;
@@ -297,7 +300,7 @@ export class ScriptableServer extends ServerModel {
             ramUsage: scriptRam
         });
         if (threads > 0) {
-            await ns.scp([script, ...(dependencies||[])], 'home', this.hostname);
+            ns.scp([script, ...(dependencies||[])], this.hostname, 'home');
             job.process.pid = ns.exec(script, this.hostname, threads, ...args);
             this.reload();
         }
