@@ -383,7 +383,7 @@ Batch: Array[Job], ordered by intended endTime
 
 ### Hacking Manager
 
-[manager.js](manager.js) is a frontend for executing job batches calculated by [Planner](#Hacking_Planner). It matches job `endTime` with availability on target servers. It delegates execution to a backend that can match job `startTime` with availability in RAM banks.
+[manager.js](../botnet/manager.js) is a frontend for executing job batches calculated by [Planner](#Hacking_Planner). It matches job `endTime` with availability on target servers. It delegates execution to a backend that can match job `startTime` with availability in RAM banks.
 
 It depends on [planner.js](#Hacking_Planner) and some backend such as [ThreadPool](../botnet/). The backend must implement the `dispatchJobs(batch)` method, which should return a falsey value if it is not able to run the entire batch, and may adjust the timing of the batch.
 
@@ -423,8 +423,6 @@ The scripts currently used by this system are:
 /net/server-list.js
 /hacking/batch-model.js
 /hacking/planner.js
-/hacking/manager.js
-/hacking/prep.js          (optional)
 /stocks/trader.js         (optional)
 ```
 
@@ -443,6 +441,8 @@ The scripts currently used by this system are:
 /botnet/worker-hack.js
 /botnet/worker-grow.js
 /botnet/worker-weaken.js
+/botnet/manager.js
+/botnet/prep.js           (optional)
 ```
 
 ---
