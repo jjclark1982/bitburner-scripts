@@ -1,5 +1,7 @@
 ## HVMind Distributed Computing System
 
+**Deprecation notice: This system depended on the ability to write arbitrary objects to NetScript ports, which is no longer supported.**
+
 ### ThreadPool
 
 [ThreadPool](thread-pool.js) is a [grid computing](https://en.wikipedia.org/wiki/Grid_computing) system that dispatches jobs to long-lived worker processes running in the cloud.
