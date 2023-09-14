@@ -42,10 +42,11 @@ export async function runPrep(params) {
     const server = new HackableServer(ns, target);
 
     const batch = server.planPrepBatch(params);
+    batch.setStartTime(performance.now() + 100);
     ns.tprint(`batch: ${batch.longSummary()}`);
     const scripts = batch.convertToScripts();
 
-    const serverPool = new ServerPool(ns, {logLevel: 2, logFunc: ns.print});
+    const serverPool = new ServerPool(ns, {logLevel: 4, logFunc: ns.print});
     await serverPool.deployBatch(scripts);
     return scripts;
 }
