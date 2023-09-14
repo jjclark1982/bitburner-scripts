@@ -461,12 +461,12 @@ hack.js:
 ```javascript
 const target = ns.args[0] || 'foodnstuff';
 const batchView = ns.getPortHandle(10).peek();
-batchView.addServerState(ns.getServer(target), Date.now());
-const job = {task: 'hack', target, startTime: Date.now(), duration: _, result: _};
+batchView.addServerState(ns.getServer(target), performance.now());
+const job = {task: 'hack', target, startTime: performance.now(), duration: _, result: _};
 batchView.addJob(job);
 job.resultActual = await ns.hack(target);
-job.endTimeActual = Date.now();
-batchView.addServerState(ns.getServer(target), Date.now());
+job.endTimeActual = performance.now();
+batchView.addServerState(ns.getServer(target), performance.now());
 ```
 
 this would require:

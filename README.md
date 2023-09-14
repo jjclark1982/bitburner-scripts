@@ -93,6 +93,7 @@ Would like to move most of these into `net/` or `hacking/`.
 - [x] refactor `server-pool` to have a unified interface for different deployment types
 
 
+- [x] replace most usage of `Date.now()` with `performance.now()`
 
 
 Would like to define netscript port interfaces for loosely-coupled services:

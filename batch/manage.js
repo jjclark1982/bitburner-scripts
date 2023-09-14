@@ -68,7 +68,7 @@ function getNextBatchDelay() {
             earliestStart = startTime;
         }
     }
-    return earliestStart - Date.now() - 100;
+    return earliestStart - performance.now() - 100;
 }
 
 export async function runMultiHWGW(params) {
@@ -99,7 +99,7 @@ export async function runHWGW(params) {
         const batch = server.planPrepBatch(params);
         const scripts = convertToScripts({batchID});
         await serverPool.deployBatch(scripts);
-        t0_by_target[target] = Date.now() + scripts.totalDuration(tDelta);
+        t0_by_target[target] = performance.now() + scripts.totalDuration(tDelta);
         return batch.peakThreads();
     }
     const t0 = t0_by_target[target];
@@ -130,7 +130,7 @@ function adjustSchedule(jobs=[]) {
 
     // If planned start time was in the past, shift entire batch to future
     // and update times in-place.
-    let startTimeAdjustment = Date.now() - earliestStartTime;
+    let startTimeAdjustment = performance.now() - earliestStartTime;
     if (startTimeAdjustment > 0) {
         startTimeAdjustment += 100;
         console.log(`Adjusting start time by ${startTimeAdjustment}`);

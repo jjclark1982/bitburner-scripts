@@ -64,7 +64,7 @@ export class PrepManager {
 
     async prepTarget(server) {
         const {ns, params} = this;
-        const now = Date.now() + params.tDelta;
+        const now = performance.now() + params.tDelta;
 
         // TODO: investigate infinite loop in this program when very little RAM is available. it is happening in 'manager.js' too.
 
@@ -80,7 +80,7 @@ export class PrepManager {
         }
         if (prepBatch.length > 0) {
             server.nextStartTime = prepBatch.lastEndTime();
-            await ns.asleep(prepBatch.lastEndTime() - Date.now());
+            await ns.asleep(prepBatch.lastEndTime() - performance.now());
         }
         ns.tprint(`INFO: ${server.hostname} is prepared for hacking.`);
     }

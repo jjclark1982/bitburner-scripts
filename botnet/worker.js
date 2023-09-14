@@ -29,10 +29,10 @@ export class Worker {
         this.scriptName = ns.getScriptName();
         this.capabilities = capabilities;
         this.description = `${this.shortCaps()}${this.id || '???'}`
-        this.nextFreeTime = Date.now() + flags.tDelta;
+        this.nextFreeTime = performance.now() + flags.tDelta;
         this.jobQueue = [];
         this.currentJob = {
-            startTime: Date.now()
+            startTime: performance.now()
         };
         this.running = false;
 
@@ -47,7 +47,7 @@ export class Worker {
             ns.tprint(`Worker unable to find ThreadPool on port ${this.portNum}. Exiting.`);
             return;
         }
-        this.nextFreeTime = Date.now();
+        this.nextFreeTime = performance.now();
         this.pool.registerWorker(this);
         ns.print(`Worker ${this.id} registered with thread pool. Starting work.`);
         // Block until something sets running to false
@@ -84,7 +84,7 @@ export class Worker {
         }
 
         const {ns} = this;
-        const now = Date.now();
+        const now = performance.now();
 
         // Validate job parameters.
         job.args ||= [];
@@ -121,7 +121,7 @@ export class Worker {
             console.log([
                 `ERROR: Worker ${this.id} tried to start ${this.jobQueue[0]?.task} before finishing ${this.currentJob.task}`,
                 `current end: ${this.currentJob.endTime}, next start: ${this.jobQueue[0].startTime} (${this.jobQueue[0].startTime - this.currentJob.endTime})`,
-                `now: ${Date.now()}, expected start time: ${expectedJob.startTime}`
+                `now: ${performance.now()}, expected start time: ${expectedJob.startTime}`
             ].join('\n'));
             return;
         }
@@ -134,14 +134,14 @@ export class Worker {
             if (!job.shouldStart(job)) {
                 job.cancelled = true;
                 if (this.jobQueue.length == 0) {
-                    this.nextFreeTime = Date.now();
+                    this.nextFreeTime = performance.now();
                 }
                 return;
             }
         }
 
         // Record actual start time.
-        job.startTimeActual = Date.now();
+        job.startTimeActual = performance.now();
         this.drift = job.startTimeActual - job.startTime;
         this.ns.print(`Starting job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
 
@@ -150,14 +150,14 @@ export class Worker {
         job.resultActual = await this.capabilities[job.task](...(job.args||[]));
 
         // Record actual end time.
-        job.endTimeActual = Date.now();
+        job.endTimeActual = performance.now();
         job.durationActual = job.endTimeActual - job.startTimeActual;
         this.drift = job.endTimeActual - job.endTime;
         this.ns.print(`Completed job: ${job.task} ${JSON.stringify(job.args)} (${this.drift.toFixed(0)} ms)`);
 
         // Mark this worker as idle.
         this.currentJob = {
-            startTime: Date.now()
+            startTime: performance.now()
         };
 
         // Run an 'didFinish' callback if provided.
@@ -167,7 +167,7 @@ export class Worker {
     }
 
     elapsedTime(now) {
-        now ||= Date.now();
+        now ||= performance.now();
         if (this.currentJob.startTime) {
             return now - this.currentJob.startTime;
         }
@@ -177,7 +177,7 @@ export class Worker {
     }
 
     remainingTime(now) {
-        now ||= Date.now();
+        now ||= performance.now();
         let endTime;
         if (this.currentJob.endTime) {
             endTime = this.currentJob.endTime;

@@ -170,7 +170,7 @@ export class ServerPool extends ServerList {
      * @returns {object} process
      */
      deployLater(job, now) {
-        now ||= Date.now();
+        now ||= performance.now();
         job.startTime ||= now;
         job.process ||= {};
         job.timeout = setTimeout(this.deploy.bind(this, job), job.startTime - now);

@@ -187,7 +187,7 @@
      * @param {number} tDelta - milliseconds between endTimes
      */
     ensureStartInFuture(now, tDelta) {
-        now ||= Date.now();
+        now ||= performance.now();
         if (!(this.earliestStartTime() > now)) {
             this.setStartTime(now+1, tDelta);
         }

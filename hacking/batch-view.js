@@ -1,4 +1,4 @@
-let initTime = Date.now();
+let initTime = performance.now();
 /** Convert timestamps to seconds since the graph was started. This resolution works for about 24 hours. */
 function convertTime(t, t0=initTime) {
     return ((t - t0) / 1000);
@@ -51,7 +51,7 @@ const FOOTER_PIXELS = 50;
  * @returns {SVGSVGElement}
  */
 export function renderBatches(el, batches=[], serverSnapshots=[], now) {
-    now ||= Date.now();
+    now ||= performance.now();
 
     // Render the main SVG element if needed
     el ||= svgEl(

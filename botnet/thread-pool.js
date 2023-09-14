@@ -46,7 +46,7 @@ export async function main(ns) {
                 {threads: 20},
                 {threads: 30},
                 {threads: 40},
-                {threads: 50, startTime: Date.now() + 1000}
+                {threads: 50, startTime: performance.now() + 1000}
             ];
             await threadPool.getWorkers(spec);
             await ns.asleep(2000);
@@ -88,7 +88,7 @@ export class ThreadPool extends PortService {
         }
         // Update batch schedule after getting workers
         if (typeof(batch.ensureStartInFuture === 'function')) {
-            batch.ensureStartInFuture(Date.now());
+            batch.ensureStartInFuture(performance.now());
         }
         // Dispatch each job
         const results = [];
@@ -146,7 +146,7 @@ export class ThreadPool extends PortService {
      */
     async getWorker({threads, startTime, task, exclude}) {
         exclude ||= {};
-        startTime ||= Date.now();
+        startTime ||= performance.now();
         const capabilities = task ? [task] : [];
         const matchingWorkers = Object.values(this.workers).filter((worker)=>(
             !exclude[worker.id] && 
@@ -305,7 +305,7 @@ export class ThreadPool extends PortService {
             if (!t) { return ''; }
             return ns.nFormat(t, "0a");
         }
-        const now = Date.now();
+        const now = performance.now();
         const columns = [
             {header: "Worker", field: "description"},
             {header: " Threads ", field: "threads", format: [formatThreads]},
@@ -334,7 +334,7 @@ function getScriptWithCapabilities(caps) {
 }
 
 function workerReport(worker, now) {
-    now ||= Date.now();
+    now ||= performance.now();
     return {
         description: worker.description || worker.id,
         threads: [worker.currentJob?.threads, worker.process?.threads],

@@ -38,7 +38,7 @@ export async function main(ns) {
         return;
     }
 
-    let now = Date.now();
+    let now = performance.now();
     let startTime = flags.startTime || now;
     while (startTime >= now) {
         // Wait until startTime.
@@ -47,12 +47,12 @@ export async function main(ns) {
         }
 
         // Run the task.
-        if (flags.verbose) { ns.tprint(`  [${formatTimestamp()}] Starting ${task} ${args.join(' ')} ${JSON.stringify(options)} (${formatTimeDiff(Date.now(), startTime)})`); }
+        if (flags.verbose) { ns.tprint(`  [${formatTimestamp()}] Starting ${task} ${args.join(' ')} ${JSON.stringify(options)} (${formatTimeDiff(performance.now(), startTime)})`); }
         await ns[task](args[0], options);
         if (flags.verbose) { ns.tprint(`  [${formatTimestamp()}] Finished ${task} ${args.join(' ')}`); }
 
         // Update startTime if repeat is enabled.
-        now = Date.now();
+        now = performance.now();
         if (flags.repeatPeriod > 0) {
             const numPeriods = Math.ceil((now - startTime) / flags.repeatPeriod);
             startTime += numPeriods * flags.repeatPeriod;

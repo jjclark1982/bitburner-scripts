@@ -74,14 +74,14 @@ export class HackingManager {
         this.batchID = 0;
         this.allBatches = [];
         this.serverSnapshots = [];
-        this.t0 = Date.now();
+        this.t0 = performance.now();
 
         this.targets = [];
         this.plans = {};
         const planner = new HackPlanner(ns, params);
         for (const plan of planner.mostProfitableServers(params, targets)) {
             const target = plan.server;
-            target.expectedSecurity = [[Date.now(), target.hackDifficulty]];
+            target.expectedSecurity = [[performance.now(), target.hackDifficulty]];
             this.targets.push(target);
             this.plans[target.hostname] = plan;
         }
@@ -115,7 +115,7 @@ export class HackingManager {
         const {ns} = this;
         const batchCycle = this.plans[server.hostname];
         const params = batchCycle.params;
-        const now = Date.now() + params.tDelta;
+        const now = performance.now() + params.tDelta;
         const prevServer = server.copy();
         const batchID = this.batchID++;
 
@@ -172,13 +172,13 @@ export class HackingManager {
             server.nextStartTime = batch.earliestStartTime() - params.tDelta + batchCycle.timeBetweenStarts; // TODO: update timeBetweenStarts based on current RAM
         }
         this.allBatches.push(batch);
-        await ns.asleep(server.nextStartTime - Date.now()); // this should be timeBetweenStarts before the following batch's earliest start
+        await ns.asleep(server.nextStartTime - performance.now()); // this should be timeBetweenStarts before the following batch's earliest start
     }
 
     shouldStart(job) {
         const {ns} = this;
         const actualServer = job.result.copy().reload();
-        this.serverSnapshots.push([Date.now(), actualServer]);
+        this.serverSnapshots.push([performance.now(), actualServer]);
         if (job.task == 'weaken') {
             return true;
         }
@@ -206,7 +206,7 @@ export class HackingManager {
         }
         const expectedServer = job.result;
         const actualServer = job.result.copy().reload();
-        this.serverSnapshots.push([Date.now(), actualServer]);
+        this.serverSnapshots.push([performance.now(), actualServer]);
         if (actualServer.hackDifficulty > expectedServer.hackDifficulty) {
             ns.print(`WARNING: desync detected after batch ${this.batchID}. Reloading server state and adjusting parameters.`);
             server.reload(actualServer);
@@ -214,7 +214,7 @@ export class HackingManager {
             const newParams = server.mostProfitableParamsSync(this.params);
             this.plans[server.hostname] = server.planBatchCycle(newParams);
             server.reload();
-            server.expectedSecurity = [[Date.now(), server.hackDifficulty]];
+            server.expectedSecurity = [[performance.now(), server.hackDifficulty]];
         }
         // console.log(`Finished batch ${batchID}. Expected security:`, job.result.hackDifficulty, "Actual:", job.result.copy().reload().hackDifficulty);
     }

@@ -17,7 +17,7 @@ const job = {
     script: "script.js",
     args: ["foo"],
     threads: 100,         // Optional (default 1)
-    startTime: Date.now() // Optional. Schedule the job to start at a certain time.
+    startTime: performance.now() // Optional. Schedule the job to start at a certain time.
 };
 const options = {
     allowSplit: true,     // Whether to allow splitting threads among different servers.

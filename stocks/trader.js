@@ -155,7 +155,7 @@ export class StockTrader {
     update() {
         // Run at most once per minute.
         // TODO: match this to actual stock tick time. Does it have readable bonusTime like other mechanics?
-        const now = Date.now();
+        const now = performance.now();
         if (now < this.lastUpdateTime + 1*60*1000) {
             return;
         }
