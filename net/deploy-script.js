@@ -235,7 +235,7 @@ export class ServerPool extends ServerList {
         const results = [];
         let latestStartTime = performance.now();
         for(const job of jobs) {
-            if (job.startTime) {
+            if (options.async && job.startTime) {
                 this.deployLater(job);
                 results.push(job);
                 if (job.startTime > latestStartTime) {
@@ -250,7 +250,9 @@ export class ServerPool extends ServerList {
         if (jobs.length > 1) {
             this.logInfo(`Deployed ${this.ns.formatNumber(totalThreads, '0,0')} total threads.`);
         }
-        await ns.asleep(latestStartTime - performance.now());
+        if (options.async) {
+            await ns.asleep(latestStartTime - performance.now());
+        }
         return results;
     }
 

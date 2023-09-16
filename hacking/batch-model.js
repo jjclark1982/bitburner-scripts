@@ -151,7 +151,7 @@
         for (const job of this) {
             job.endTime = endTime;
             endTime += tDelta;
-            job.startTime = job.endTime - job.duration;
+            job.startTime = job.endTime - job.duration - (job.additionalMsec || 0);
         }
     }
 
@@ -169,6 +169,20 @@
             if (earliestStart < startTime) {
                 this.adjustSchedule(startTime - earliestStart);
             }
+        }
+    }
+
+    /**
+     * Set all `additionalMsec` values so that all jobs have the same `startTime`.
+     * @param {number} startTime
+     */
+    setAdditionalMsec(startTime=null) {
+        if (startTime === null) {
+            startTime = this.earliestStartTime();
+        }
+        for (const job of this) {
+            job.additionalMsec = job.endTime - job.duration - startTime;
+            job.startTime = job.endTime - job.duration - job.additionalMsec;
         }
     }
 
@@ -252,12 +266,18 @@
             if (options.stock) {
                 job.args.push('--stock');
             }
-            if (params.reserveRam && job.startTime) {
+            if (job.additionalMsec !== null && job.additionalMsec >= 0) {
+                job.args.push('--additionalMsec', job.additionalMsec);
+            }
+            else if (params.reserveRam && job.startTime) {
                 job.args.push('--startTime', job.startTime);
                 delete job.startTime;
             }
             if (params.repeatPeriod) {
                 job.args.push('--repeatPeriod', params.repeatPeriod);
+            }
+            if (params.verbose) {
+                job.args.push('--verbose');
             }
             job.args.push(`batch-${params.batchID}.${index+1}`);
             job.allowSplit = true; // TODO: test whether this can be disabled by scheduling into future

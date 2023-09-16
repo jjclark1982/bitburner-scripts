@@ -4,7 +4,8 @@ import { HackPlanner, HackableServer } from "/hacking/planner";
 const FLAGS = [
     ["help", false],
     ["tDelta", 1000],
-    ["reserveRam", true]
+    ["reserveRam", true],
+    ["verbose", false]
 ];
 
 export function autocomplete(data, args) {
@@ -42,11 +43,13 @@ export async function runPrep(params) {
     const server = new HackableServer(ns, target);
 
     const batch = server.planPrepBatch(params);
-    batch.setStartTime(performance.now() + 100);
+    batch.setStartTime(performance.now() + 100, tDelta);
+    batch.setAdditionalMsec();
     ns.tprint(`batch: ${batch.longSummary()}`);
-    const scripts = batch.convertToScripts();
+    const scripts = batch.convertToScripts({...params, batchID:0, repeatPeriod:0});
 
     const serverPool = new ServerPool(ns, {logLevel: 4, logFunc: ns.print});
-    await serverPool.deployBatch(scripts);
+    const processes = await serverPool.deployBatch(scripts);
+    Object.assign(globalThis, {batch, scripts});
     return scripts;
 }

@@ -1,6 +1,7 @@
 const FLAGS = [
     ["startTime", 0],
     ["repeatPeriod", 0],
+    ["additionalMsec", 0],
     ["stock", false],
     ["verbose", false],
     ["help", false],
@@ -25,7 +26,10 @@ export async function main(ns) {
     const flags = ns.flags(FLAGS);
     const task = flags._.shift();
     const args = flags._;
-    const options = {stock: flags.stock};
+    const options = {
+        additionalMsec: flags.additionalMsec,
+        stock: flags.stock
+    };
 
     if (flags.help || !TASKS.includes(task) || args.length < 1) {
         ns.tprint([
@@ -60,7 +64,7 @@ export async function main(ns) {
     }
 }
 
-function formatTimestamp(timestamp, precision=2) {
+function formatTimestamp(timestamp, precision=3) {
     timestamp ||= new Date();
     let timeStr = timestamp.toTimeString().slice(0,8);
     if (precision > 0) {
