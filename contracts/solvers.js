@@ -594,3 +594,37 @@ solvers["Proper 2-Coloring of a Graph"] = ([N, edges]) => {
     //If this code is reached, there exists a proper 2-coloring of the input graph.
     return coloring;
 };
+
+solvers["Compression I: RLE Compression"] = (data) => {
+    // get the first character
+    var pos = 0;
+    var i = 1;
+    var length = data.length;
+    var compression = "";
+
+    // go through each letter
+    while ( pos < length ) {            
+        // Check each letter to see if it matches the next
+        if ( data.charAt(pos) == data.charAt(pos+1) ) {
+            // add a position increase for that letter
+            i++;
+        } else {
+            // check if there are more than 10 iterations
+            if ( i > 9 ) {
+                // How many 9's
+                var split = Math.floor(i/9);
+                for ( var n=0; n < split; n++ ) {
+                    compression += "9"+data.charAt(pos);
+                }
+                //Add the remaining number left
+                compression += (i - (split*9))+data.charAt(pos);
+            } else {
+                // if the next letter doesn't match then we need to write out to the compression string
+                compression += i + data.charAt(pos);
+            }
+            i = 1;
+        }
+        pos++;
+    }
+    return compression;
+}
