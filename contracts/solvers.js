@@ -148,6 +148,17 @@ solvers["Merge Overlapping Intervals"] = (data) => {
     }
     result.push([start, end]);
 
+    function convert2DArrayToString(arr){
+        const components = [];
+        arr.forEach((e) => {
+            let s= e.toString();
+            s = ["[", s, "]"].join("");
+            components.push(s);
+        });
+    
+        return components.join(",").replace(/\s/g, "");
+    }
+    
     const sanitizedResult = convert2DArrayToString(result);
     return sanitizedResult;
 };
@@ -525,14 +536,3 @@ solvers["Proper 2-Coloring of a Graph"] = ([N, edges]) => {
     //If this code is reached, there exists a proper 2-coloring of the input graph.
     return coloring;
 };
-
-function convert2DArrayToString(arr){
-    const components = [];
-    arr.forEach((e) => {
-        let s= e.toString();
-        s = ["[", s, "]"].join("");
-        components.push(s);
-    });
-
-    return components.join(",").replace(/\s/g, "");
-}
