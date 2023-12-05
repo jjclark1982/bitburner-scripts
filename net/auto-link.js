@@ -24,7 +24,7 @@ function getNeighborNodes(hostname, path) {
   const neighborNodes = ns.scan(hostname).filter(
     (h)=>!path.includes(h)
   ).map((h)=>(
-    React.createElement(ServerNode, { hostname: h, path: [...path, hostname] }))
+    React.createElement(ServerNode, { key: h, hostname: h, path: [...path, hostname] }))
   );
   return neighborNodes;
 };
@@ -42,7 +42,7 @@ function ServerNode({ hostname, path }) {
   }, hostname);
   return React.createElement(
     "div",
-    {key: hostname, style: {paddingLeft: "1em"}},
+    { key: hostname, style: { paddingLeft: "1em" } },
     [hostnameEl, neighbors]
   );
 }
