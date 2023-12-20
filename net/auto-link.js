@@ -9,7 +9,7 @@ export async function main(_ns) {
   ns.clearLog();
   ns.tail();
   
-  ns.printRaw(React.createElement(ServerNode, {hostname: "home"}));  
+  ns.printRaw(React.createElement(ServerNode, {hostname: "home"}));
   await ns.asleep(24*60*60*1000);
 }
 
@@ -21,11 +21,11 @@ function getConnectCommand(path) {
 }
 
 function getNeighborNodes(hostname, path) {
-  const neighborNodes = ns.scan(hostname).filter(
-    (h)=>!path.includes(h)
-  ).map((h)=>(
-    React.createElement(ServerNode, { key: h, hostname: h, path: [...path, hostname] }))
-  );
+  const neighborNodes = ns.scan(hostname).filter((h)=>(
+    !path.includes(h)
+  )).map((h)=>(
+    React.createElement(ServerNode, { key: h, hostname: h, path: [...path, hostname] })
+  ));
   return neighborNodes;
 };
 
