@@ -1,4 +1,4 @@
-import { AugmentationNames } from "augmentations/info.js";
+import { ALL_AUGMENTATIONS } from "augmentations/info.js";
 
 const FLAGS = [
     ["help", false],
@@ -6,7 +6,7 @@ const FLAGS = [
 
 export function autocomplete(data, args) {
     data.flags(FLAGS);
-    return ["player", "bitnode", "gang", "augmentations", ...AugmentationNames, ...data.servers];
+    return ["player", "bitnode", "gang", "augmentations", ...ALL_AUGMENTATIONS, ...data.servers];
 }
 
 /** @param {NS} ns **/
@@ -31,7 +31,7 @@ export async function main(ns) {
         return;
     }
 
-    if (AugmentationNames.includes(args._.join(' '))) {
+    if (ALL_AUGMENTATIONS.includes(args._.join(' '))) {
         ns.run("/augmentations/info.js", 1, ...args._);
         return;
     }
