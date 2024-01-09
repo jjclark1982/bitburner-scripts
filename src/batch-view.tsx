@@ -6,7 +6,7 @@ const ReactDOM = globalThis.ReactDOM as typeof ReactDomNamespace;
 
 // ----- constants ----- 
 
-type TimeMs = ReturnType<typeof performance.now> & { __dimension: "time" };
+type TimeMs = ReturnType<typeof performance.now> & { __dimension: "time", __units: "milliseconds" };
 type TimeSeconds = number & { __dimension: "time", __units: "seconds" };
 type TimePixels = number & { __dimension: "time", __units: "pixels" };
 type Pixels = number & { __units: "pixels" };
@@ -42,6 +42,32 @@ const WIDTH_SECONDS = 16 as TimeSeconds;
 const HEIGHT_PIXELS = 600 as Pixels;
 const FOOTER_PIXELS = 50 as Pixels;
 
+// ----- types -----
+
+/**
+ * Job
+ */
+interface Job {
+    jobID: string | number;
+    rowID: number;
+    task: "hack" | "grow" | "weaken";
+    duration: TimeMs;
+    startTime: TimeMs;
+    startTimeActual: TimeMs;
+    endTime: TimeMs;
+    endTimeActual: TimeMs;
+    cancelled: boolean;
+    result: {
+        hackDifficulty: number;
+        minDifficulty: number;
+    };
+    resultActual: number;
+    change: {
+        playerMoney: number;
+    };
+}
+
+
 // ----- main -----
 
 const FLAGS: [string, string | number | boolean | string[]][] = [
@@ -59,6 +85,7 @@ export async function main(ns: NS) {
     ns.disableLog('sleep');
     ns.clearLog();
     ns.tail();
+    ns.resizeTail(810, 640);
 
     const flags = ns.flags(FLAGS);
     if (flags.help) {
@@ -72,32 +99,121 @@ export async function main(ns: NS) {
 
     const portNum = flags.port as number || ns.pid;
     const port = ns.getPortHandle(portNum);
-    port.clear();
-
-    const graphEl = <GraphFrame ns={ns}>
-        <GraphData port={port} />
-    </GraphFrame>;
-    ns.printRaw(graphEl);
-
+    // port.clear();
     ns.print(`Listening on Port ${portNum}`);
+
+    const batchView = <BatchView ns={ns} portNum={portNum} />;
+    ns.printRaw(batchView);
+
     while (true) {
         await port.nextWrite();
     }
 }
 
-function GraphFrame({ns, children}:{ns:NS, children: React.ReactNode}): React.ReactElement {
-    const [now, setNow] = React.useState(performance.now());
-    const requestRef = React.useRef<number>();
-    React.useEffect(() => {
-        ns.atExit(()=>cancelAnimationFrame(requestRef.current as number));
-        const animate = ()=>{
-            setNow(performance.now());
-            requestRef.current = requestAnimationFrame(animate);
+interface BatchViewProps {
+    ns: NS;
+    portNum: number;
+}
+interface BatchViewState {
+    running: boolean;
+    now: TimeMs;
+}
+export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
+    port: NetscriptPort;
+    jobs: Map<string | number, Job>;
+    nRows: number;
+
+    constructor(props: BatchViewProps){
+        super(props);
+        const { ns, portNum } = props;
+        this.state = {
+            running: true,
+            now: performance.now() as TimeMs
         };
-        requestRef.current = requestAnimationFrame(animate);
-        return () => cancelAnimationFrame(requestRef.current as number);
-      }, []); // Make sure the effect runs only once
-  
+        this.port = ns.getPortHandle(portNum);
+        this.jobs = new Map();
+        this.nRows = 0;
+    }
+
+    componentDidMount() {
+        const { ns } = this.props;
+        this.setState({running: true});
+        ns.atExit(()=>{
+            this.setState({running: false});
+        });
+        this.readPort();
+        this.animate();
+        // Object.assign(globalThis, {batchView: this});
+    }
+
+    componentWillUnmount() {
+        this.setState({running: false});
+    }
+
+    addJob(job: Job) {
+        if (job.jobID === undefined) {
+            while (this.jobs.has(this.nRows)) {
+                this.nRows += 1;
+            }
+            job.jobID = this.nRows;
+        }
+        if (this.jobs.has(job.jobID)) {
+            job = Object.assign(this.jobs.get(job.jobID) as Job, job);
+        }
+        else {
+            job.rowID = this.nRows;
+            this.nRows += 1;
+        }
+        this.jobs.set(job.jobID, job);
+        this.cleanJobs();
+    }
+
+    cleanJobs() {
+        // filter out jobs with endtime in past
+        if (this.jobs.size > 200) {
+            for (const jobID of this.jobs.keys()) {
+                const job = this.jobs.get(jobID) as Job;
+                if ((job.endTimeActual ?? job.endTime) < this.state.now-(WIDTH_SECONDS*2*1000)) {
+                    this.jobs.delete(jobID);
+                }
+            }
+        }
+    }
+
+    readPort = ()=>{
+        if (!this.state.running) return;
+        while(!this.port.empty()) {
+            const job = JSON.parse(this.port.read() as string);
+            this.addJob(job);
+        }
+        this.port.nextWrite().then(this.readPort);
+    }
+
+    animate = ()=>{
+        if (!this.state.running) return;
+        this.setState({now: performance.now() as TimeMs});
+        requestAnimationFrame(this.animate);
+    }
+
+    render() {
+        const { ns } = this.props;
+
+        const displayJobs = [...this.jobs.values()]
+
+        return (
+            <GraphFrame now={this.state.now}>
+                <SafetyLayer jobs={displayJobs} />
+                <JobLayer jobs={displayJobs} />
+                <SecLayer jobs={displayJobs} />
+                <MoneyLayer jobs={displayJobs} />
+            </GraphFrame>
+        )
+    }
+}
+
+
+function GraphFrame({now, children}:{now:TimeMs, children: React.ReactNode}): React.ReactElement {
+    // TODO: initTime is used as unique DOM ID and as rendering origin but it is poorly suited for both
 
     return (
         <svg version="1.1" xmlns="http://www.w3.org/2000/svg"
@@ -107,7 +223,7 @@ function GraphFrame({ns, children}:{ns:NS, children: React.ReactNode}): React.Re
             viewBox={`${convertSecToPx(-10 as TimeSeconds)} 0 ${WIDTH_PIXELS} ${HEIGHT_PIXELS}`}
         >
             <defs>
-                <clipPath id={`hide-future-${ns.pid}`} clipPathUnits="userSpaceOnUse">
+                <clipPath id={`hide-future-${initTime}`} clipPathUnits="userSpaceOnUse">
                     <rect id="hide-future-rect"
                         x={convertTime(now-60000 as TimeMs)}
                         width={convertTime(60000 as TimeMs, 0 as TimeMs)}
@@ -135,7 +251,7 @@ function GraphLegend(): React.ReactElement {
         <g id="Legend" transform="translate(-490, 10), scale(.5, .5)">
             <rect x={1} y={1} width={275} height={392} fill="black" stroke="#979797" />
             {Object.entries(GRAPH_COLORS).map(([label, color], i)=>(
-                <g transform={`translate(22, ${13 + 41*i})`}>
+                <g key={label} transform={`translate(22, ${13 + 41*i})`}>
                     <rect x={0} y={0} width={22} height={22} fill={color} />
                     <text fontFamily="Courier New" fontSize={36} fill="#888">
                         <tspan x={42.5} y={30}>{label.substring(0,1).toUpperCase()+label.substring(1)}</tspan>
@@ -146,68 +262,65 @@ function GraphLegend(): React.ReactElement {
     );
 }
 
-function GraphData({port}:{port:NetscriptPort}) {
-    const jobIDs = React.useRef<Array<string | number>>([]);
-    const jobs = React.useRef<Map<string | number, Job>>(new Map());
-    const [lastUpdate, setLastUpdate] = React.useState(performance.now())
-    const [reRender, setReRender] = React.useState(false);
-    React.useEffect(()=>{
-        let isMounted = true;
-        const readPort = ()=>{
-            if (!isMounted) return;
-            port.nextWrite().then(readPort);
-            if (port.empty()) return;
-            let job = JSON.parse(port.read() as string);
-            if (jobs.current.has(job.id)) {
-                job = Object.assign(jobs.current.get(job.id) as Partial<Job>, job);
-            }
-            else {
-                jobIDs.current.push(job.id);
-                jobs.current.set(job.id, job);
-            }
-            setLastUpdate(performance.now());
-        };
-        port.nextWrite().then(readPort);
-        return ()=>{isMounted = false};
-    }, []);
-    const displayJobs = [...jobs.current.values()];
-    if (displayJobs.length > 125) {
-        displayJobs.splice(0, -100);
-    }
 
+function SafetyLayer({jobs}: {jobs: Job[]}): React.ReactNode {
+    return <g id="safetyLayer" />;
+}
+
+function JobLayer({jobs}: {jobs: Job[]}) {
     return (
-        <>
-            <g id="safetyLayer" />
-            <JobLayer jobs={displayJobs} />
-            {/* <g id="jobLayer"><rect x={0} y={200} width={5} height={10} fill="cyan" /></g> */}
-            <g id="secLayer" />
-            <g id="moneyLayer" />
-        </>
+        <g id="jobLayer">
+            {jobs.map((job: Job)=>(<JobBar job={job} key={job.jobID} />))}
+        </g>
     );
 }
 
-
-/**
- * Job
- */
-interface Job {
-    id: string | number;
-    task: "hack" | "grow" | "weaken";
-    duration: number;
-    startTime: number;
-    startTimeActual: number;
-    endTime: number;
-    endTimeActual: number;
-    cancelled: boolean;
-    result: {
-        hackDifficulty: number;
-        minDifficulty: number;
+function JobBar({job}: {job: Job}): React.ReactNode {
+    const y = ((job.rowID + 1) % ((HEIGHT_PIXELS - FOOTER_PIXELS*2) / 4)) * 4;
+    let jobBar = null;
+    if (job.startTime && job.duration) {
+        jobBar = (<rect
+            x={convertTime(job.startTime)} width={convertTime(job.duration, 0)}
+            y={0} height={2}
+            fill={GRAPH_COLORS[job.cancelled ? 'cancelled' : job.task]}
+        />)
     };
-    resultActual: number;
-    change: {
-        playerMoney: number;
-    };
+    let startErrorBar = null;
+    if (job.startTimeActual) {
+        const [t1, t2] = [job.startTime, job.startTimeActual].sort((a,b)=>a-b);
+        startErrorBar = (<rect
+            x={convertTime(t1)} width={convertTime(t2-t1, 0)}
+            y={0} height={1}
+            fill={GRAPH_COLORS.desync}
+         />);
+    }
+    let endErrorBar = null;
+    if (job.endTimeActual) {
+        const [t1, t2] = [job.endTime, job.endTimeActual].sort((a,b)=>a-b);
+        endErrorBar = (<rect
+            x={convertTime(t1)} width={convertTime(t2-t1, 0)}
+            y={0} height={1}
+            fill={GRAPH_COLORS.desync}
+         />);
+    }
+    return (
+        <g transform={`translate(0 ${y})`}>
+            {jobBar}
+            {startErrorBar}
+            {endErrorBar}
+        </g>
+    );
 }
+
+function SecLayer({jobs}: {jobs: Job[]}): React.ReactNode {
+    return <g id="secLayer" />
+}
+
+function MoneyLayer({jobs}: {jobs: Job[]}): React.ReactNode {
+    return <g id="moneyLayer" />
+}
+
+// ----- pre-React version -----
 
 /**
  * renderBatches - create an SVG element with a graph of jobs
@@ -550,44 +663,6 @@ function renderSafetyLayer(batches=[], now) {
         }));
     }
     return safetyLayer;
-}
-
-function JobLayer({jobs}: {jobs: Job[]}) {
-    const now = performance.now() as TimeMs;
-    return (
-        <g id="jobLayer">
-            {jobs.map((job: Job, i)=>{
-                i = (i + 1) % ((HEIGHT_PIXELS - FOOTER_PIXELS*2) / 4);
-                if ((job.endTimeActual ?? job.endTime) < now-(WIDTH_SECONDS*2*1000) || !job.task) {
-                    return null;
-                }
-                // draw the job bars
-                const color = job.cancelled ? GRAPH_COLORS.cancelled : GRAPH_COLORS[job.task];
-                return (<rect
-                    x={convertTime(job.startTime)} width={convertTime(job.duration, 0)}
-                    y={i*4} height={2}
-                    fill={color}
-                />);
-                // draw the error bars
-                if (job.startTimeActual) {
-                    const [t1, t2] = [job.startTime, job.startTimeActual].sort((a,b)=>a-b);
-                    jobLayer.appendChild(svgEl('rect', {
-                        x: convertTime(t1), width: convertTime(t2-t1, 0),
-                        y: i*4, height: 1,
-                        fill: GRAPH_COLORS.desync
-                    }));
-                }
-                if (job.endTimeActual) {
-                    const [t1, t2] = [job.endTime, job.endTimeActual].sort((a,b)=>a-b);
-                    jobLayer.appendChild(svgEl('rect', {
-                        x: convertTime(t1), width: convertTime(t2-t1, 0),
-                        y: i*4, height: 1,
-                        fill: GRAPH_COLORS.desync
-                    }));
-                }
-            })}
-        </g>
-    );
 }
 
 function renderJobLayer(batches=[], now) {
