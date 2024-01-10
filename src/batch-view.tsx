@@ -1,4 +1,4 @@
-import type { NS, NetscriptPort } from '@ns';
+import type { NS, NetscriptPort, Server } from '@ns';
 import type ReactNamespace from 'react/index';
 import type ReactDomNamespace from 'react-dom';
 const React = globalThis.React as typeof ReactNamespace;
@@ -44,9 +44,7 @@ const FOOTER_PIXELS = 50 as Pixels;
 
 // ----- types -----
 
-/**
- * Job
- */
+
 interface Job {
     jobID: string | number;
     rowID: number;
@@ -57,16 +55,22 @@ interface Job {
     endTime: TimeMs;
     endTimeActual: TimeMs;
     cancelled: boolean;
-    result: {
-        hackDifficulty: number;
-        minDifficulty: number;
-    };
+    serverBefore: ServerInfo;
+    serverAfter: ServerInfo;
     resultActual: number;
     change: {
         playerMoney: number;
     };
 }
 
+interface ServerInfo {
+    moneyAvailable: number;
+    moneyMax: number;
+    hackDifficulty: number;
+    minDifficulty: number;
+}
+
+type ServerSnapshot = [TimeMs, ServerInfo];
 
 // ----- main -----
 
@@ -198,15 +202,20 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     }
 
     render() {
-        const { ns } = this.props;
-
         const displayJobs = [...this.jobs.values()]
-
+        const serverPredictions = displayJobs.map((job)=>(
+            [job.endTime as TimeMs, job.serverAfter as Server] as ServerSnapshot
+        )).filter(([t, s])=>!!s).sort((a,b)=>a[0]-b[0]);
+        // TODO: create example of user providing actual [time, server] observations
+        const serverObservations = displayJobs.map((job)=>(
+            [job.startTime as TimeMs, job.serverBefore as Server] as ServerSnapshot
+        )).filter(([t, s])=>!!s).sort((a,b)=>a[0]-b[0]);
+    
         return (
             <GraphFrame now={this.state.now}>
-                <SafetyLayer jobs={displayJobs} />
+                <SafetyLayer serverPredictions={serverPredictions} />
                 <JobLayer jobs={displayJobs} />
-                <SecLayer jobs={displayJobs} />
+                <SecurityLayer serverPredictions={serverPredictions} serverObservations={serverObservations} />
                 <MoneyLayer jobs={displayJobs} />
             </GraphFrame>
         )
@@ -225,10 +234,8 @@ function GraphFrame({now, children}:{now:TimeMs, children: React.ReactNode}): Re
             <defs>
                 <clipPath id={`hide-future-${initTime}`} clipPathUnits="userSpaceOnUse">
                     <rect id="hide-future-rect"
-                        x={convertTime(now-60000 as TimeMs)}
-                        width={convertTime(60000 as TimeMs, 0 as TimeMs)}
-                        y={0}
-                        height={50}
+                        x={convertTime(now-60000 as TimeMs)} width={convertTime(60000 as TimeMs, 0 as TimeMs)}
+                        y={0} height={50}
                     />
                 </clipPath>
             </defs>
@@ -262,29 +269,30 @@ function GraphLegend(): React.ReactElement {
     );
 }
 
-function SafetyLayer({jobs}: {jobs: Job[]}): React.ReactNode {
-    let prevJob: Job | undefined;
-    jobs = jobs.filter((job)=>(job.result !== undefined));
+function SafetyLayer({serverPredictions}: {serverPredictions: ServerSnapshot[]}): React.ReactNode {
+    let prevTime: TimeMs | undefined;
+    let prevServer: ServerInfo | undefined;
     return (
         <g id="safetyLayer">
-            {jobs.map((job: Job)=>{
+            {serverPredictions.map(([time, server], i)=>{
                 let el = null;
                 // shade the background based on secLevel
-                if (prevJob && job.endTime > prevJob.endTime) {
-                    el = (<rect key={job.jobID}
-                        x={convertTime(prevJob.endTime)} width={convertTime(job.endTime - prevJob.endTime, 0)}
+                if (prevTime && time > prevTime) {
+                    el = (<rect key={i}
+                        x={convertTime(prevTime)} width={convertTime(time - prevTime, 0)}
                         y={0} height="100%"
-                        fill={(prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe}
+                        fill={(prevServer.hackDifficulty > prevServer.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe}
                     />);
                 }
-                prevJob = job;
+                prevTime = time;
+                prevServer = server;
                 return el;
             })}
-            {prevJob && (
+            {prevServer && (
                 <rect key="remainder"
-                    x={convertTime(prevJob.endTime)} width={convertTime(10000, 0)}
+                    x={convertTime(prevTime)} width={convertTime(10000, 0)}
                     y={0} height="100%"
-                    fill={(prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe}
+                    fill={(prevServer.hackDifficulty > prevServer.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe}
                 />
             )}
         </g>
@@ -336,8 +344,86 @@ function JobBar({job}: {job: Job}): React.ReactNode {
     );
 }
 
-function SecLayer({jobs}: {jobs: Job[]}): React.ReactNode {
-    return <g id="secLayer" />
+interface SecurityLayerProps {
+    serverPredictions?: ServerSnapshot[];
+    serverObservations?: ServerSnapshot[]
+}
+function SecurityLayer({serverPredictions, serverObservations}:SecurityLayerProps): React.ReactNode {
+    serverPredictions ??= [];
+    serverObservations ??= [];
+    let minSec = 0;
+    let maxSec = 1;
+    for (const snapshots of [serverPredictions, serverObservations]) {
+        for (const [time, server] of snapshots) {
+            minSec = Math.min(minSec, server.hackDifficulty);
+            maxSec = Math.max(maxSec, server.hackDifficulty);
+        }
+    }
+
+    const observedPath = computePathData("hackDifficulty", serverObservations, minSec, true);
+    const observedLayer = (
+        <g id="observedSec"
+            transform={`translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`}
+            fill={"dark"+GRAPH_COLORS.security}
+            // "fill-opacity": 0.5,
+            clipPath={`url(#hide-future-${initTime})`}
+        >
+            <path d={observedPath.join(" ")} />
+        </g>
+    );
+
+    const predictedPath = computePathData("hackDifficulty", serverPredictions);
+    const predictedLayer = (
+        <g id="predictedSec"
+            transform={`translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`}
+            stroke={GRAPH_COLORS.security}
+            fill="none"
+            strokeWidth={2}
+            strokeLinejoin="bevel"
+        >
+            <path d={predictedPath.join(" ")} vectorEffect="non-scaling-stroke" />
+        </g>
+    );
+
+    return (
+        <g id="secLayer" transform={`translate(0 ${HEIGHT_PIXELS - 2*FOOTER_PIXELS})`}>
+            {observedLayer}
+            {predictedLayer}
+        </g>
+    );
+}
+
+function computePathData(field:keyof(ServerInfo)="hackDifficulty", serverSnapshots:ServerSnapshot[]=[], minValue=0, shouldClose=false, scale=1) {
+    const pathData = [];
+    let prevTime: TimeMs | undefined;
+    let prevServer: ServerInfo | undefined;
+    for (const [time, server] of serverSnapshots) {
+        if (!prevServer) {
+            // start line at first projected time and value
+            pathData.push(`M ${convertTime(time).toFixed(3)},${(server[field]*scale).toFixed(2)}`);
+        }
+        if (prevServer) {
+            // vertical line to previous level
+            // horizontal line to current time
+            pathData.push(`V ${(prevServer[field]*scale).toFixed(2)}`, `H ${convertTime(time).toFixed(3)}`);
+        }
+        prevServer = server;
+        prevTime = time;
+    }
+    // fill in area between last snapshot and "now" cursor
+    if (prevServer) {
+        // vertical line to previous level
+        // horizontal line to current time
+        pathData.push(`V ${(prevServer[field]*scale).toFixed(2)}`, `H ${convertTime(prevTime + 600000).toFixed(3)}`);
+        if (shouldClose) {
+            // fill area under actual security
+            pathData.push(`V ${(minValue*scale).toFixed(2)}`);
+            const minTime = serverSnapshots[0][0];
+            pathData.push(`H ${convertTime(minTime).toFixed(3)}`);
+            pathData.push('Z');
+        }
+    }
+    return pathData;
 }
 
 function MoneyLayer({jobs}: {jobs: Job[]}): React.ReactNode {
@@ -415,116 +501,6 @@ export function renderBatches(el: HTMLElement, batches=[], serverSnapshots=[], n
     return el;
 }
 
-function renderSecurityLayer(eventSnapshots=[], serverSnapshots=[], now) {
-    let minSec = 0;
-    let maxSec = 1;
-    for (const snapshots of [eventSnapshots, serverSnapshots]) {
-        for (const [time, server] of snapshots) {
-            minSec = Math.min(minSec, server.hackDifficulty);
-            maxSec = Math.max(maxSec, server.hackDifficulty);
-        }
-    }
-
-    const observedLayer = svgEl(
-        "g", {
-            id: "observedSec",
-            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`,
-            fill: "dark"+GRAPH_COLORS.security,
-            // "fill-opacity": 0.5,
-            "clip-path": `url(#hide-future-${initTime})`
-        }, [
-            renderObservedPath("hackDifficulty", serverSnapshots, minSec, now)
-        ]
-    );
-
-    const projectedLayer = svgEl(
-        "g", {
-            id: "projectedSec",
-            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`,
-            stroke: GRAPH_COLORS.security,
-            fill: "none",
-            "stroke-width": 2,
-            "stroke-linejoin":"bevel"
-        }, [
-            renderProjectedPath("hackDifficulty", eventSnapshots, now)
-        ]
-    );
-
-    const secLayer = svgEl("g", {
-            id: "secLayer",
-            transform: `translate(0 ${HEIGHT_PIXELS - 2*FOOTER_PIXELS})`
-        }, [
-            observedLayer,
-            projectedLayer
-        ]
-    );
-
-    return secLayer;
-}
-
-function renderObservedPath(property="hackDifficulty", serverSnapshots=[], minValue=0, now, scale=1) {
-    const pathData = [];
-    let prevServer;
-    let prevTime;
-    for (const [time, server] of serverSnapshots) {
-        if (time < now-(WIDTH_SECONDS*2*1000)) {
-            continue;
-        }
-        // fill area under actual security
-        if (!prevServer) {
-            // start at bottom left
-            pathData.push(`M ${convertTime(time).toFixed(3)},${(minValue*scale).toFixed(2)}`);
-        }
-        if (prevServer) {
-            // vertical line to previous level
-            // horizontal line to current time
-            pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(time).toFixed(3)}`);
-        }
-        prevServer = server;
-        prevTime = time;
-    }
-    // fill in area between last snapshot and "now" cursor
-    if (prevServer) {
-        // vertical line to previous level
-        // horizontal line to current time
-        pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(now + 60000).toFixed(3)}`);
-    }
-    pathData.push(`V ${minValue} Z`);
-    return svgEl('path', {
-        d: pathData.join(' ')
-    });
-}
-
-function renderProjectedPath(property="hackDifficulty", eventSnapshots=[], now, scale=1) {
-    const pathData = [];
-    let prevTime;
-    let prevServer;
-    for (const [time, server] of eventSnapshots) {
-        if (time < now-(WIDTH_SECONDS*2*1000)) {
-            continue;
-        }
-        if (!prevServer) {
-            // start line at first projected time and value
-            pathData.push(`M ${convertTime(time).toFixed(3)},${(server[property]*scale).toFixed(2)}`);
-        }
-        if (prevServer && time > prevTime) {
-            // vertical line to previous value
-            // horizontal line from previous time to current time
-            pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(time).toFixed(3)}`);
-        }
-        prevTime = time;
-        prevServer = server;
-    }
-    if (prevServer) {
-        // vertical line to previous value
-        // horizontal line from previous time to future
-        pathData.push(`V ${(prevServer[property]*scale).toFixed(2)}`, `H ${convertTime(now + 60000).toFixed(3)}`);
-    }
-    return svgEl('path', {
-        d: pathData.join(' '),
-        "vector-effect": "non-scaling-stroke"
-    });
-}
 
 function renderProfitPath(batches=[], now, scale=1) {
     // would like to graph money per second over time
@@ -650,144 +626,11 @@ function renderMoneyLayer(eventSnapshots=[], serverSnapshots=[], now) {
             "stroke-width": 2,
             "stroke-linejoin":"bevel"
         }, [
-            renderProjectedPath("moneyAvailable", eventSnapshots, now, scale)
+            computeProjectedPath("moneyAvailable", eventSnapshots, now, scale)
         ]
     );
     moneyLayer.append(projectedLayer);
 
     return moneyLayer;
 }
-
-function renderSafetyLayer(batches=[], now) {
-    const safetyLayer = svgEl('g', {id:"safetyLayer"});
-
-    let prevJob;    
-    for (const batch of batches) {
-        for (const job of batch) {
-            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*2*1000)) {
-                continue;
-            }
-
-            // shade the background based on secLevel
-            if (prevJob && job.endTime > prevJob.endTime) {
-                safetyLayer.appendChild(svgEl('rect', {
-                    x: convertTime(prevJob.endTime), width: convertTime(job.endTime - prevJob.endTime, 0),
-                    y: 0, height: "100%",
-                    fill: (prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe
-                }));
-            }
-            prevJob = job;
-        }
-    }
-    if (prevJob) {
-        safetyLayer.appendChild(svgEl('rect', {
-            x: convertTime(prevJob.endTime), width: convertTime(10000, 0),
-            y: 0, height: "100%",
-            fill: (prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe
-        }));
-    }
-    return safetyLayer;
-}
-
-function renderJobLayer(batches=[], now) {
-    const jobLayer = svgEl('g', {id:"jobLayer"});
-
-    let i = 0;
-    for (const batch of batches) {
-        for (const job of batch) {
-            i = (i + 1) % ((HEIGHT_PIXELS - FOOTER_PIXELS*2) / 4);
-            if ((job.endTimeActual || job.endTime) < now-(WIDTH_SECONDS*2*1000)) {
-                continue;
-            }
-            // draw the job bars
-            let color = GRAPH_COLORS[job.task];
-            if (job.cancelled) {
-                color = GRAPH_COLORS.cancelled;
-            }
-            jobLayer.appendChild(svgEl('rect', {
-                x: convertTime(job.startTime), width: convertTime(job.duration, 0),
-                y: i*4, height: 2,
-                fill: color
-            }));
-            // draw the error bars
-            if (job.startTimeActual) {
-                const [t1, t2] = [job.startTime, job.startTimeActual].sort((a,b)=>a-b);
-                jobLayer.appendChild(svgEl('rect', {
-                    x: convertTime(t1), width: convertTime(t2-t1, 0),
-                    y: i*4, height: 1,
-                    fill: GRAPH_COLORS.desync
-                }));
-            }
-            if (job.endTimeActual) {
-                const [t1, t2] = [job.endTime, job.endTimeActual].sort((a,b)=>a-b);
-                jobLayer.appendChild(svgEl('rect', {
-                    x: convertTime(t1), width: convertTime(t2-t1, 0),
-                    y: i*4, height: 1,
-                    fill: GRAPH_COLORS.desync
-                }));
-            }
-        }
-        // space between batches
-        i++;
-    }
-    return jobLayer;
-}
-
-function renderLegend() {
-    const legendEl = svgEl('g',
-        {id: "Legend", transform: "translate(-480, 10), scale(.5, .5)"},
-        [['rect', {x: 1, y: 1, width: 275, height: 392, fill: "black", stroke: "#979797"}]]
-    );
-    let y = 13;
-    for (const [label, color] of Object.entries(GRAPH_COLORS)) {
-        legendEl.appendChild(svgEl('g', {transform: `translate(22, ${y})`}, [
-            ['rect', {x:0, y:10, width: 22, height: 22, fill: color}],
-            ['text', {"font-family":"Courier New", "font-size":36, fill: "#888"}, [
-                ['tspan', {x:42.5, y:30}, [label.substring(0,1).toUpperCase()+label.substring(1)]]
-            ]]
-        ]));
-        y += 41;
-    }
-    return legendEl;
-}
-
-/* ---------- library functions ---------- */
-
-/** Create an SVG Element that can be displayed in the DOM. */
-function svgEl(tagName, attributes={}, children=[]) {
-    const doc = eval("document");
-    const xmlns = 'http://www.w3.org/2000/svg';
-    const el = doc.createElementNS(xmlns, tagName);
-    // support exporting outerHTML
-    if (tagName.toLowerCase() == 'svg') {
-        attributes['xmlns'] = xmlns;
-    }
-    // set all attributes
-    for (const [name, val] of Object.entries(attributes)) {
-        el.setAttribute(name, val);
-    }
-    // append all children
-    for (let child of children) {
-        // recursively construct child elements
-        if (Array.isArray(child)) {
-            child = svgEl(...child);
-        }
-        else if (typeof(child) == 'string') {
-            child = doc.createTextNode(child);
-        }
-        el.appendChild(child);
-    }
-    return el;
-}
-
-/** Insert an element into the netscript process's tail window. */
-export function logHTML(ns, el) {
-    ns.tail();
-    const doc = eval('document');
-    const command = ns.getScriptName() + ' ' + ns.args.join(' ');
-    const logEl = doc.querySelector(`[title="${command}"]`).parentElement.nextElementSibling.querySelector('span');
-    logEl.appendChild(el);
-}
-
-/* ----- */
 
