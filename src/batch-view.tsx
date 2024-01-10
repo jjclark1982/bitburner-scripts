@@ -110,6 +110,8 @@ export async function main(ns: NS) {
     }
 }
 
+// ----- BatchView -----
+
 interface BatchViewProps {
     ns: NS;
     portNum: number;
@@ -211,10 +213,8 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     }
 }
 
-
 function GraphFrame({now, children}:{now:TimeMs, children: React.ReactNode}): React.ReactElement {
     // TODO: initTime is used as unique DOM ID and as rendering origin but it is poorly suited for both
-
     return (
         <svg version="1.1" xmlns="http://www.w3.org/2000/svg"
             width={WIDTH_PIXELS}
@@ -262,9 +262,33 @@ function GraphLegend(): React.ReactElement {
     );
 }
 
-
 function SafetyLayer({jobs}: {jobs: Job[]}): React.ReactNode {
-    return <g id="safetyLayer" />;
+    let prevJob: Job | undefined;
+    jobs = jobs.filter((job)=>(job.result !== undefined));
+    return (
+        <g id="safetyLayer">
+            {jobs.map((job: Job)=>{
+                let el = null;
+                // shade the background based on secLevel
+                if (prevJob && job.endTime > prevJob.endTime) {
+                    el = (<rect key={job.jobID}
+                        x={convertTime(prevJob.endTime)} width={convertTime(job.endTime - prevJob.endTime, 0)}
+                        y={0} height="100%"
+                        fill={(prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe}
+                    />);
+                }
+                prevJob = job;
+                return el;
+            })}
+            {prevJob && (
+                <rect key="remainder"
+                    x={convertTime(prevJob.endTime)} width={convertTime(10000, 0)}
+                    y={0} height="100%"
+                    fill={(prevJob.result.hackDifficulty > prevJob.result.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe}
+                />
+            )}
+        </g>
+    );
 }
 
 function JobLayer({jobs}: {jobs: Job[]}) {
@@ -280,7 +304,7 @@ function JobBar({job}: {job: Job}): React.ReactNode {
     let jobBar = null;
     if (job.startTime && job.duration) {
         jobBar = (<rect
-            x={convertTime(job.startTime)} width={convertTime(job.duration, 0)}
+            x={convertTime(job.startTime)} width={convertTime(job.duration, 0 as TimeMs)}
             y={0} height={2}
             fill={GRAPH_COLORS[job.cancelled ? 'cancelled' : job.task]}
         />)
@@ -289,7 +313,7 @@ function JobBar({job}: {job: Job}): React.ReactNode {
     if (job.startTimeActual) {
         const [t1, t2] = [job.startTime, job.startTimeActual].sort((a,b)=>a-b);
         startErrorBar = (<rect
-            x={convertTime(t1)} width={convertTime(t2-t1, 0)}
+            x={convertTime(t1)} width={convertTime(t2-t1 as TimeMs, 0 as TimeMs)}
             y={0} height={1}
             fill={GRAPH_COLORS.desync}
          />);
@@ -298,7 +322,7 @@ function JobBar({job}: {job: Job}): React.ReactNode {
     if (job.endTimeActual) {
         const [t1, t2] = [job.endTime, job.endTimeActual].sort((a,b)=>a-b);
         endErrorBar = (<rect
-            x={convertTime(t1)} width={convertTime(t2-t1, 0)}
+            x={convertTime(t1)} width={convertTime(t2-t1 as TimeMs, 0 as TimeMs)}
             y={0} height={1}
             fill={GRAPH_COLORS.desync}
          />);
