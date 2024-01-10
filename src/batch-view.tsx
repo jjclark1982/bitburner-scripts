@@ -1,43 +1,62 @@
 /*
 
-Usage: 
+Usage
+-----
+
+Start the batch viewer script from the command line:
 
     run batch-view.js --port 10
 
-API: Display action timing
+Then send messages to it from other scripts.
 
-    const msg = {
-        type: 'action',
+Example: Display action timing (hack / grow / weaken)
+
+    ns.writePort(10, JSON.stringify({
+        type: 'hack',
         jobID: 1,
-        action: 'hack',
         startTime: performance.now(),
         duration: ns.getHackTime(target),
-    };
-    ns.tryWritePort(10, JSON.stringify(msg));
+    }));
 
-API: Display observed security/money level
+Example: Update an action that has already been displayed
 
-    const msg = {
+    ns.writePort(10, JSON.stringify({
+        jobID: 1,
+        startTimeActual: performance.now(),
+    }));
+    await ns.hack(target);
+    ns.writePort(10, JSON.stringify({
+        jobID: 1,
+        endTimeActual: performance.now(),
+    }));
+
+Example: Display a blank row between actions (to visually separate batches)
+
+    ns.writePort(10, JSON.stringify({
+        type: 'spacer',
+    }));
+
+Example: Display observed security / money level
+
+    ns.writePort(10, JSON.stringify({
         type: 'observed',
         time: performance.now(),
         minDifficulty: ns.getServerMinSecurityLevel(target),
         hackDifficulty: ns.getServerSecurityLevel(target),
         moneyMax: ns.getServerMaxMoney(target),
         moneyAvailable: ns.getServerMoneyAvailable(target),
-    };
-    ns.tryWritePort(10, JSON.stringify(msg));
+    }));
 
-API: Display expected security/money level (varies by action type and your strategy)
+Example: Display expected security / money level (varies by action type and your strategy)
 
-    const msg = {
+    ns.writePort(10, JSON.stringify({
         type: 'expected',
         time: job.startTime + job.duration,
         minDifficulty: ns.getServerMinSecurityLevel(target),
         hackDifficulty: ns.getServerSecurityLevel(target) + ns.hackAnalyzeSecurity(job.threads),
         moneyMax: ns.getServerMaxMoney(target),
         moneyAvailable: Math.max(0, ns.getServerMaxMoney(target) - ns.hackAnalyze(target) * job.threads * ns.hackAnalyzeChance(target)),
-    };
-    ns.tryWritePort(10, JSON.stringify(msg));
+    }));
 
 */
 
