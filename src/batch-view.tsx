@@ -1,8 +1,49 @@
+/*
+
+Usage: 
+
+    run batch-view.js --port 10
+
+API: Display action timing
+
+    const msg = {
+        type: 'action',
+        jobID: 1,
+        action: 'hack',
+        startTime: performance.now(),
+        duration: ns.getHackTime(target),
+    };
+    ns.tryWritePort(10, JSON.stringify(msg));
+
+API: Display observed security/money level
+
+    const msg = {
+        type: 'observed',
+        time: performance.now(),
+        minDifficulty: ns.getServerMinSecurityLevel(target),
+        hackDifficulty: ns.getServerSecurityLevel(target),
+        moneyMax: ns.getServerMaxMoney(target),
+        moneyAvailable: ns.getServerMoneyAvailable(target),
+    };
+    ns.tryWritePort(10, JSON.stringify(msg));
+
+API: Display expected security/money level (varies by action type and your strategy)
+
+    const msg = {
+        type: 'expected',
+        time: job.startTime + job.duration,
+        minDifficulty: ns.getServerMinSecurityLevel(target),
+        hackDifficulty: ns.getServerSecurityLevel(target) + ns.hackAnalyzeSecurity(job.threads),
+        moneyMax: ns.getServerMaxMoney(target),
+        moneyAvailable: Math.max(0, ns.getServerMaxMoney(target) - ns.hackAnalyze(target) * job.threads * ns.hackAnalyzeChance(target)),
+    };
+    ns.tryWritePort(10, JSON.stringify(msg));
+
+*/
+
 import type { NS, NetscriptPort, Server } from '@ns';
 import type ReactNamespace from 'react/index';
-import type ReactDomNamespace from 'react-dom';
 const React = globalThis.React as typeof ReactNamespace;
-const ReactDOM = globalThis.ReactDOM as typeof ReactDomNamespace;
 
 // ----- constants ----- 
 
