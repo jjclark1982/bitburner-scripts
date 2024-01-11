@@ -222,13 +222,19 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         ns.atExit(()=>{
             this.setState({running: false});
         });
-        this.readPort();
         this.animate();
+        this.readPort();
         // Object.assign(globalThis, {batchView: this});
     }
 
     componentWillUnmount() {
         this.setState({running: false});
+    }
+
+    animate = ()=>{
+        if (!this.state.running) return;
+        this.setState({now: performance.now() as TimeMs});
+        requestAnimationFrame(this.animate);
     }
 
     readPort = ()=>{
@@ -295,22 +301,9 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         }
     }
 
-    animate = ()=>{
-        if (!this.state.running) return;
-        this.setState({now: performance.now() as TimeMs});
-        requestAnimationFrame(this.animate);
-    }
-
     render() {
         const displayJobs = [...this.jobs.values()]
 
-        // const serverPredictions = displayJobs.map((job)=>(
-        //     [job.endTime as TimeMs, job.serverAfter as Server] as ServerSnapshot
-        // )).filter(([t, s])=>!!s).sort((a,b)=>a[0]-b[0]);
-        // const serverObservations = displayJobs.map((job)=>(
-        //     [job.startTime as TimeMs, job.serverBefore as Server] as ServerSnapshot
-        // )).filter(([t, s])=>!!s).sort((a,b)=>a[0]-b[0]);
-    
         return (
             <GraphFrame now={this.state.now}>
                 <SafetyLayer expectedServers={this.expectedServers} />
