@@ -265,11 +265,11 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         }
         else if (msg.type == "expected") {
             this.expectedServers.push(msg);
-            // TODO: sort by time and remove expired items
+            this.expectedServers = this.cleanServers(this.expectedServers);
         }
         else if (msg.type == "observed") {
             this.observedServers.push(msg);
-            // TODO: sort by time and remove expired items
+            this.observedServers = this.cleanServers(this.observedServers);
         }
         else if (msg.jobID !== undefined || msg.type == 'hack' || msg.type == 'grow' || msg.type == 'weaken') {
             this.addJob(msg);
@@ -303,16 +303,25 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         this.cleanJobs();
     }
 
+    expiryTime() {
+        return (this.state.now-(WIDTH_SECONDS*2*1000));
+    }
+
     cleanJobs() {
         // Filter out expired jobs (endTime more than 2 screens in the past)
         if (this.jobs.size > 200) {
             for (const jobID of this.jobs.keys()) {
                 const job = this.jobs.get(jobID) as Job;
-                if ((job.endTimeActual ?? job.endTime) < this.state.now-(WIDTH_SECONDS*2*1000)) {
+                if ((job.endTimeActual ?? job.endTime) < this.expiryTime()) {
                     this.jobs.delete(jobID);
                 }
             }
         }
+    }
+
+    cleanServers<T extends ServerMessage>(servers: T[]): T[] {
+        // TODO: insert item into sorted list instead of re-sorting each time
+        return servers.filter((s)=>s.time > this.expiryTime()).sort((a,b)=>a.time - b.time);
     }
 
     render() {
