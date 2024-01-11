@@ -167,6 +167,7 @@ export function autocomplete(data: any, args: string[]) {
 /** @param {NS} ns **/
 export async function main(ns: NS) {
     ns.disableLog('sleep');
+    ns.disableLog('asleep');
     ns.clearLog();
     ns.tail();
     ns.resizeTail(810, 640);
@@ -184,10 +185,11 @@ export async function main(ns: NS) {
     const debug = flags.debug as boolean;
 
     const batchView = <BatchView ns={ns} portNum={portNum} debug={debug} />;
+    ns.print(`Listening on Port ${portNum}`);
     ns.printRaw(batchView);
 
     while (true) {
-        await ns.asleep(60*60*1000);
+        await ns.asleep(60*1000);
     }
 }
 
@@ -234,7 +236,6 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         ns.atExit(()=>{
             this.setState({running: false});
         });
-        ns.print(`Listening on Port ${portNum}`);
         this.animate();
         this.readPort();
     }
