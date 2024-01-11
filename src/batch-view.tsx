@@ -58,6 +58,15 @@ Example: Display expected security / money level (varies by action type and your
         moneyAvailable: Math.max(0, ns.getServerMaxMoney(target) - ns.hackAnalyze(target) * job.threads * ns.hackAnalyzeChance(target)),
     }));
 
+You can also send an array of such messages in a single port write. For example:
+
+    ns.writePort(10, JSON.stringify([
+        {jobID: '1.1', type: 'hack',   ...},
+        {jobID: '1.2', type: 'weaken', ...},
+        {jobID: '1.3', type: 'grow',   ...},
+        {jobID: '1.4', type: 'weaken', ...},
+    ]));
+
 */
 
 // ----- Public API Types -----
@@ -253,8 +262,15 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     readPort = ()=>{
         if (!this.state.running) return;
         while(!this.port.empty()) {
-            const msg: BatchViewMessage = JSON.parse(this.port.read() as string);
-            this.receiveMessage(msg);
+            const msg: BatchViewMessage | BatchViewMessage[] = JSON.parse(this.port.read() as string);
+            if (Array.isArray(msg)) {
+                for (const m of msg) {
+                    this.receiveMessage(m);
+                }
+            }
+            else {
+                this.receiveMessage(msg);
+            }
         }
         this.port.nextWrite().then(this.readPort);
     }
