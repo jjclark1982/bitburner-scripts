@@ -106,34 +106,6 @@ const FOOTER_PIXELS = 50 as Pixels;
 // TODO: review use of 600000, 60000, and WIDTH_SECONDS as clipping limits.
 
 
-// ----- types -----
-
-interface Job {
-    jobID: JobID;
-    rowID: number;
-    type: "hack" | "grow" | "weaken";
-    duration: TimeMs;
-    startTime: TimeMs;
-    startTimeActual: TimeMs;
-    endTime: TimeMs;
-    endTimeActual: TimeMs;
-    cancelled: boolean;
-    // serverBefore: ServerInfo;
-    // serverAfter: ServerInfo;
-    resultActual: number;
-    // change: {
-    //     playerMoney: number;
-    // };
-}
-
-// interface ServerInfo {
-//     moneyAvailable: number;
-//     moneyMax: number;
-//     hackDifficulty: number;
-//     minDifficulty: number;
-// }
-// type ServerSnapshot = [TimeMs, ServerInfo];
-
 // ----- main -----
 
 const FLAGS: [string, string | number | boolean | string[]][] = [
@@ -157,7 +129,7 @@ export async function main(ns: NS) {
     if (flags.help) {
         ns.tprint([
             `USAGE`,
-            `> run ${ns.getScriptName()} --port 1`,
+            `> run ${ns.getScriptName()} --port 10`,
             ' '
         ].join("\n"));
         return;
@@ -180,8 +152,8 @@ export async function main(ns: NS) {
 
 type JobID = number | string;
 interface ActionMessage {
-    jobID: JobID;
     type: "hack" | "grow" | "weaken";
+    jobID?: JobID;
     duration: TimeMs;
     startTime: TimeMs;
     startTimeActual?: TimeMs;
@@ -193,24 +165,25 @@ interface ActionMessage {
 interface SpacerMessage {
     type: "spacer"
 }
-interface ServerSecurityMessage {
+interface ServerMessage {
+    type: "expected" | "observed";
     time: TimeMs;
     hackDifficulty: number;
     minDifficulty: number;
-}
-interface ServerMoneyMessage {
-    time: TimeMs
     moneyAvailable: number;
     moneyMax: number;
 }
-type ServerMessage = ServerSecurityMessage | ServerMoneyMessage
 type ExpectedServerMessage = ServerMessage & {
     type: "expected"
 }
 type ObservedServerMessage = ServerMessage & {
     type: "observed"
 }
-type BatchViewMessage = ActionMessage | SpacerMessage | ExpectedServerMessage | ObservedServerMessage;
+type BatchViewMessage = ActionMessage | SpacerMessage | ServerMessage;
+
+type Job = ActionMessage & {
+    rowID: number
+}
 
 interface BatchViewProps {
     ns: NS;
