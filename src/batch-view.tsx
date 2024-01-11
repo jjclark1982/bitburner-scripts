@@ -155,7 +155,8 @@ const FOOTER_PIXELS = 50 as Pixels;
 
 const FLAGS: [string, string | number | boolean | string[]][] = [
     ["help", false],
-    ["port", 0]
+    ["port", 0],
+    ["debug", false],
 ];
 
 export function autocomplete(data: any, args: string[]) {
@@ -180,8 +181,9 @@ export async function main(ns: NS) {
         return;
     }
     const portNum = flags.port as number || ns.pid;
+    const debug = flags.debug as boolean;
 
-    const batchView = <BatchView ns={ns} portNum={portNum} />;
+    const batchView = <BatchView ns={ns} portNum={portNum} debug={debug} />;
     ns.printRaw(batchView);
 
     while (true) {
@@ -194,6 +196,7 @@ export async function main(ns: NS) {
 interface BatchViewProps {
     ns: NS;
     portNum: number;
+    debug?: boolean;
 }
 interface BatchViewState {
     running: boolean;
@@ -210,7 +213,7 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
 
     constructor(props: BatchViewProps){
         super(props);
-        const { ns, portNum } = props;
+        const { ns, portNum, debug } = props;
         this.state = {
             running: true,
             now: performance.now() as TimeMs,
@@ -220,6 +223,9 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         this.jobs = new Map();
         this.expectedServers = [];
         this.observedServers = [];
+        if (debug) {
+            Object.assign(globalThis, {batchView: this});
+        }
     }
 
     componentDidMount() {
@@ -231,7 +237,6 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         ns.print(`Listening on Port ${portNum}`);
         this.animate();
         this.readPort();
-        // Object.assign(globalThis, {batchView: this});
     }
 
     componentWillUnmount() {
