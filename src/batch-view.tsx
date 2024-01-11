@@ -179,10 +179,12 @@ type ExpectedServerMessage = ServerMessage & {
 type ObservedServerMessage = ServerMessage & {
     type: "observed"
 }
-type BatchViewMessage = ActionMessage | SpacerMessage | ServerMessage;
+type BatchViewMessage = ActionMessage | SpacerMessage | ExpectedServerMessage | ObservedServerMessage;
 
-type Job = ActionMessage & {
-    rowID: number
+interface Job extends ActionMessage {
+    jobID: JobID;
+    rowID: number;
+    endTime: TimeMs;
 }
 
 interface BatchViewProps {
@@ -195,7 +197,7 @@ interface BatchViewState {
 }
 export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     port: NetscriptPort;
-    jobs: Map<string | number, Job>;
+    jobs: Map<JobID, Job>;
     sequentialRowID: number = 0;
     sequentialJobID: number = 0;
     expectedServers: ExpectedServerMessage[];
@@ -256,7 +258,7 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     }
 
     addJob(msg: ActionMessage) {
-        // assign sequential ID if needed
+        // Assign sequential ID if needed
         let jobID = msg.jobID;
         if (jobID === undefined) {
             while (this.jobs.has(this.sequentialJobID)) {
@@ -264,22 +266,25 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
             }
             jobID = this.sequentialJobID;
         }
-        // load existing data if present
-        let job = this.jobs.get(jobID);
+        const job = this.jobs.get(jobID);
         if (job === undefined) {
-            job = {
+            // Create new job record with required fields
+            this.jobs.set(jobID, {
                 jobID: jobID,
-                rowID: this.sequentialRowID++
-            } as Job;
+                rowID: this.sequentialRowID++,
+                endTime: msg.startTime + msg.duration as TimeMs,
+                ...msg
+            });
         }
-        // merge updates from message
-        job = Object.assign(job, msg);
-        this.jobs.set(msg.jobID, job);
+        else {
+            // Merge updates into existing job record
+            Object.assign(job, msg);
+        }
         this.cleanJobs();
     }
 
     cleanJobs() {
-        // filter out jobs with endtime in past
+        // Filter out jobs with endtime in past
         if (this.jobs.size > 200) {
             for (const jobID of this.jobs.keys()) {
                 const job = this.jobs.get(jobID) as Job;
