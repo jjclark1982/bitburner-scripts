@@ -101,36 +101,38 @@ const WIDTH_PIXELS = 800 as TimePixels;
 const WIDTH_SECONDS = 16 as TimeSeconds;
 const HEIGHT_PIXELS = 600 as Pixels;
 const FOOTER_PIXELS = 50 as Pixels;
+// TODO: use a context for these scale factors. support setting them by args and scroll-gestures.
+// const ScreenContext = React.createContext({WIDTH_PIXELS, WIDTH_SECONDS, HEIGHT_PIXELS, FOOTER_PIXELS});
+// TODO: review use of 600000, 60000, and WIDTH_SECONDS as clipping limits.
+
 
 // ----- types -----
 
-
 interface Job {
-    jobID: string | number;
+    jobID: JobID;
     rowID: number;
-    task: "hack" | "grow" | "weaken";
+    type: "hack" | "grow" | "weaken";
     duration: TimeMs;
     startTime: TimeMs;
     startTimeActual: TimeMs;
     endTime: TimeMs;
     endTimeActual: TimeMs;
     cancelled: boolean;
-    serverBefore: ServerInfo;
-    serverAfter: ServerInfo;
+    // serverBefore: ServerInfo;
+    // serverAfter: ServerInfo;
     resultActual: number;
-    change: {
-        playerMoney: number;
-    };
+    // change: {
+    //     playerMoney: number;
+    // };
 }
 
-interface ServerInfo {
-    moneyAvailable: number;
-    moneyMax: number;
-    hackDifficulty: number;
-    minDifficulty: number;
-}
-
-type ServerSnapshot = [TimeMs, ServerInfo];
+// interface ServerInfo {
+//     moneyAvailable: number;
+//     moneyMax: number;
+//     hackDifficulty: number;
+//     minDifficulty: number;
+// }
+// type ServerSnapshot = [TimeMs, ServerInfo];
 
 // ----- main -----
 
@@ -176,6 +178,40 @@ export async function main(ns: NS) {
 
 // ----- BatchView -----
 
+type JobID = number | string;
+interface ActionMessage {
+    jobID: JobID;
+    type: "hack" | "grow" | "weaken";
+    duration: TimeMs;
+    startTime: TimeMs;
+    startTimeActual?: TimeMs;
+    endTime?: TimeMs;
+    endTimeActual?: TimeMs;
+    cancelled?: boolean;
+    result?: number;
+}
+interface SpacerMessage {
+    type: "spacer"
+}
+interface ServerSecurityMessage {
+    time: TimeMs;
+    hackDifficulty: number;
+    minDifficulty: number;
+}
+interface ServerMoneyMessage {
+    time: TimeMs
+    moneyAvailable: number;
+    moneyMax: number;
+}
+type ServerMessage = ServerSecurityMessage | ServerMoneyMessage
+type ExpectedServerMessage = ServerMessage & {
+    type: "expected"
+}
+type ObservedServerMessage = ServerMessage & {
+    type: "observed"
+}
+type BatchViewMessage = ActionMessage | SpacerMessage | ExpectedServerMessage | ObservedServerMessage;
+
 interface BatchViewProps {
     ns: NS;
     portNum: number;
@@ -187,7 +223,10 @@ interface BatchViewState {
 export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     port: NetscriptPort;
     jobs: Map<string | number, Job>;
-    nRows: number;
+    sequentialRowID: number = 0;
+    sequentialJobID: number = 0;
+    expectedServers: ExpectedServerMessage[];
+    observedServers: ObservedServerMessage[];
 
     constructor(props: BatchViewProps){
         super(props);
@@ -198,7 +237,8 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         };
         this.port = ns.getPortHandle(portNum);
         this.jobs = new Map();
-        this.nRows = 0;
+        this.expectedServers = [];
+        this.observedServers = [];
     }
 
     componentDidMount() {
@@ -216,21 +256,52 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         this.setState({running: false});
     }
 
-    addJob(job: Job) {
-        if (job.jobID === undefined) {
-            while (this.jobs.has(this.nRows)) {
-                this.nRows += 1;
+    readPort = ()=>{
+        if (!this.state.running) return;
+        while(!this.port.empty()) {
+            const msg: BatchViewMessage = JSON.parse(this.port.read() as string);
+            this.receiveMessage(msg);
+        }
+        this.port.nextWrite().then(this.readPort);
+    }
+
+    receiveMessage(msg: BatchViewMessage) {
+        if (msg.type == "spacer") {
+            this.sequentialRowID += 1;
+        }
+        else if (msg.type == "expected") {
+            this.expectedServers.push(msg);
+            // TODO: sort by time and remove very old items
+        }
+        else if (msg.type == "observed") {
+            this.observedServers.push(msg);
+            // TODO: sort by time and remove very old items
+        }
+        else if (msg.jobID !== undefined || msg.type == 'hack' || msg.type == 'grow' || msg.type == 'weaken') {
+            this.addJob(msg);
+        }
+    }
+
+    addJob(msg: ActionMessage) {
+        // assign sequential ID if needed
+        let jobID = msg.jobID;
+        if (jobID === undefined) {
+            while (this.jobs.has(this.sequentialJobID)) {
+                this.sequentialJobID += 1;
             }
-            job.jobID = this.nRows;
+            jobID = this.sequentialJobID;
         }
-        if (this.jobs.has(job.jobID)) {
-            job = Object.assign(this.jobs.get(job.jobID) as Job, job);
+        // load existing data if present
+        let job = this.jobs.get(jobID);
+        if (job === undefined) {
+            job = {
+                jobID: jobID,
+                rowID: this.sequentialRowID++
+            } as Job;
         }
-        else {
-            job.rowID = this.nRows;
-            this.nRows += 1;
-        }
-        this.jobs.set(job.jobID, job);
+        // merge updates from message
+        job = Object.assign(job, msg);
+        this.jobs.set(msg.jobID, job);
         this.cleanJobs();
     }
 
@@ -246,15 +317,6 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         }
     }
 
-    readPort = ()=>{
-        if (!this.state.running) return;
-        while(!this.port.empty()) {
-            const job = JSON.parse(this.port.read() as string);
-            this.addJob(job);
-        }
-        this.port.nextWrite().then(this.readPort);
-    }
-
     animate = ()=>{
         if (!this.state.running) return;
         this.setState({now: performance.now() as TimeMs});
@@ -263,20 +325,20 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
 
     render() {
         const displayJobs = [...this.jobs.values()]
-        const serverPredictions = displayJobs.map((job)=>(
-            [job.endTime as TimeMs, job.serverAfter as Server] as ServerSnapshot
-        )).filter(([t, s])=>!!s).sort((a,b)=>a[0]-b[0]);
-        // TODO: create example of user providing actual [time, server] observations
-        const serverObservations = displayJobs.map((job)=>(
-            [job.startTime as TimeMs, job.serverBefore as Server] as ServerSnapshot
-        )).filter(([t, s])=>!!s).sort((a,b)=>a[0]-b[0]);
+
+        // const serverPredictions = displayJobs.map((job)=>(
+        //     [job.endTime as TimeMs, job.serverAfter as Server] as ServerSnapshot
+        // )).filter(([t, s])=>!!s).sort((a,b)=>a[0]-b[0]);
+        // const serverObservations = displayJobs.map((job)=>(
+        //     [job.startTime as TimeMs, job.serverBefore as Server] as ServerSnapshot
+        // )).filter(([t, s])=>!!s).sort((a,b)=>a[0]-b[0]);
     
         return (
             <GraphFrame now={this.state.now}>
-                <SafetyLayer serverPredictions={serverPredictions} />
+                <SafetyLayer expectedServers={this.expectedServers} />
                 <JobLayer jobs={displayJobs} />
-                <SecurityLayer serverPredictions={serverPredictions} serverObservations={serverObservations} />
-                <MoneyLayer jobs={displayJobs} />
+                <SecurityLayer expectedServers={this.expectedServers} observedServers={this.observedServers} />
+                <MoneyLayer expectedServers={this.expectedServers} observedServers={this.observedServers} />
             </GraphFrame>
         )
     }
@@ -329,28 +391,26 @@ function GraphLegend(): React.ReactElement {
     );
 }
 
-function SafetyLayer({serverPredictions}: {serverPredictions: ServerSnapshot[]}): React.ReactNode {
-    let prevTime: TimeMs | undefined;
-    let prevServer: ServerInfo | undefined;
+function SafetyLayer({expectedServers}: {expectedServers: ExpectedServerMessage[]}): React.ReactNode {
+    let prevServer: ExpectedServerMessage | undefined;
     return (
         <g id="safetyLayer">
-            {serverPredictions.map(([time, server], i)=>{
+            {expectedServers.map((server, i)=>{
                 let el = null;
                 // shade the background based on secLevel
-                if (prevTime && time > prevTime) {
+                if (prevServer && server.time > prevServer.time) {
                     el = (<rect key={i}
-                        x={convertTime(prevTime)} width={convertTime(time - prevTime, 0)}
+                        x={convertTime(prevServer.time)} width={convertTime(server.time - prevServer.time, 0)}
                         y={0} height="100%"
                         fill={(prevServer.hackDifficulty > prevServer.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe}
                     />);
                 }
-                prevTime = time;
                 prevServer = server;
                 return el;
             })}
             {prevServer && (
                 <rect key="remainder"
-                    x={convertTime(prevTime)} width={convertTime(10000, 0)}
+                    x={convertTime(prevServer.time)} width={convertTime(600000, 0)}
                     y={0} height="100%"
                     fill={(prevServer.hackDifficulty > prevServer.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe}
                 />
@@ -374,7 +434,7 @@ function JobBar({job}: {job: Job}): React.ReactNode {
         jobBar = (<rect
             x={convertTime(job.startTime)} width={convertTime(job.duration, 0 as TimeMs)}
             y={0} height={2}
-            fill={GRAPH_COLORS[job.cancelled ? 'cancelled' : job.task]}
+            fill={GRAPH_COLORS[job.cancelled ? 'cancelled' : job.type]}
         />)
     };
     let startErrorBar = null;
@@ -404,35 +464,39 @@ function JobBar({job}: {job: Job}): React.ReactNode {
     );
 }
 
+type TimeValue = [TimeMs, number];
 interface SecurityLayerProps {
-    serverPredictions?: ServerSnapshot[];
-    serverObservations?: ServerSnapshot[]
+    expectedServers: ExpectedServerMessage[];
+    observedServers: ObservedServerMessage[]
 }
-function SecurityLayer({serverPredictions, serverObservations}:SecurityLayerProps): React.ReactNode {
-    serverPredictions ??= [];
-    serverObservations ??= [];
+function SecurityLayer({expectedServers, observedServers}:SecurityLayerProps): React.ReactNode {
+    expectedServers ??= [];
+    observedServers ??= [];
     let minSec = 0;
     let maxSec = 1;
-    for (const snapshots of [serverPredictions, serverObservations]) {
-        for (const [time, server] of snapshots) {
+    for (const snapshots of [expectedServers, observedServers]) {
+        for (const server of snapshots) {
             minSec = Math.min(minSec, server.hackDifficulty);
             maxSec = Math.max(maxSec, server.hackDifficulty);
         }
     }
 
-    const observedPath = computePathData("hackDifficulty", serverObservations, minSec, true);
+    const observedEvents = observedServers.map((server)=>[server.time, server.hackDifficulty]) as TimeValue[];
+    const shouldClosePath = true;
+    const observedPath = computePathData(observedEvents, minSec, shouldClosePath);
     const observedLayer = (
         <g id="observedSec"
             transform={`translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`}
             fill={"dark"+GRAPH_COLORS.security}
-            // "fill-opacity": 0.5,
+            // fillOpacity: 0.5,
             clipPath={`url(#hide-future-${initTime})`}
         >
             <path d={observedPath.join(" ")} />
         </g>
     );
 
-    const predictedPath = computePathData("hackDifficulty", serverPredictions);
+    const expectedEvents = expectedServers.map((server)=>[server.time, server.hackDifficulty]) as TimeValue[];
+    const predictedPath = computePathData(expectedEvents);
     const predictedLayer = (
         <g id="predictedSec"
             transform={`translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`}
@@ -453,32 +517,29 @@ function SecurityLayer({serverPredictions, serverObservations}:SecurityLayerProp
     );
 }
 
-function computePathData(field:keyof(ServerInfo)="hackDifficulty", serverSnapshots:ServerSnapshot[]=[], minValue=0, shouldClose=false, scale=1) {
+function computePathData(events: TimeValue[], minValue=0, shouldClose=false, scale=1) {
     const pathData = [];
-    let prevTime: TimeMs | undefined;
-    let prevServer: ServerInfo | undefined;
-    for (const [time, server] of serverSnapshots) {
-        if (!prevServer) {
-            // start line at first projected time and value
-            pathData.push(`M ${convertTime(time).toFixed(3)},${(server[field]*scale).toFixed(2)}`);
-        }
-        if (prevServer) {
-            // vertical line to previous level
-            // horizontal line to current time
-            pathData.push(`V ${(prevServer[field]*scale).toFixed(2)}`, `H ${convertTime(time).toFixed(3)}`);
-        }
-        prevServer = server;
-        prevTime = time;
+    if (events.length > 0) {
+        const [time, value] = events[0];
+        // start line at first projected time and value
+        pathData.push(`M ${convertTime(time).toFixed(3)},${(value*scale).toFixed(2)}`);
     }
-    // fill in area between last snapshot and "now" cursor
-    if (prevServer) {
-        // vertical line to previous level
+    for (const [time, value] of events) {
         // horizontal line to current time
-        pathData.push(`V ${(prevServer[field]*scale).toFixed(2)}`, `H ${convertTime(prevTime + 600000).toFixed(3)}`);
+        pathData.push(`H ${convertTime(time).toFixed(3)}`)
+        // vertical line to new level
+        pathData.push(`V ${(value*scale).toFixed(2)}`);
+    }
+    // fill in area between last snapshot and right side (area after "now" cursor will be clipped later)
+    if (events.length > 0) {
+        const [time, value] = events[events.length-1];
+        // vertical line to previous level
+        // horizontal line to future time
+        pathData.push(`V ${(value*scale).toFixed(2)}`, `H ${convertTime(time + 600000).toFixed(3)}`);
         if (shouldClose) {
             // fill area under actual security
             pathData.push(`V ${(minValue*scale).toFixed(2)}`);
-            const minTime = serverSnapshots[0][0];
+            const minTime = events[0][0];
             pathData.push(`H ${convertTime(minTime).toFixed(3)}`);
             pathData.push('Z');
         }
@@ -486,7 +547,7 @@ function computePathData(field:keyof(ServerInfo)="hackDifficulty", serverSnapsho
     return pathData;
 }
 
-function MoneyLayer({jobs}: {jobs: Job[]}): React.ReactNode {
+function MoneyLayer(props: SecurityLayerProps): React.ReactNode {
     return <g id="moneyLayer" />
 }
 
