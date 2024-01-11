@@ -60,11 +60,7 @@ Example: Display expected security / money level (varies by action type and your
 
 */
 
-import type { NS, NetscriptPort, Server } from '@ns';
-import type ReactNamespace from 'react/index';
-const React = globalThis.React as typeof ReactNamespace;
-
-// ----- API Interface -----
+// ----- Public API Types -----
 
 type JobID = number | string;
 interface ActionMessage {
@@ -99,6 +95,10 @@ type BatchViewMessage = ActionMessage | SpacerMessage | ExpectedServerMessage | 
 
 // ----- Internal Types -----
 
+import type { NS, NetscriptPort, Server } from '@ns';
+import type ReactNamespace from 'react/index';
+const React = globalThis.React as typeof ReactNamespace;
+
 interface Job extends ActionMessage {
     jobID: JobID;
     rowID: number;
@@ -113,6 +113,9 @@ type TimeValue = [TimeMs, number];
 
 // ----- Constants ----- 
 
+// TODO: initTime is used as unique DOM ID and as rendering origin but it is poorly suited for both.
+//  The script PID would work better as a unique DOM ID.
+//  The Public API could require performance-epoch times, which won't need to be adjusted.
 let initTime = performance.now() as TimeMs;
 /**
  * Convert timestamps to seconds since the graph was started.
@@ -128,27 +131,27 @@ function convertSecToPx(t: TimeSeconds): TimePixels {
 }
 
 const GRAPH_COLORS = {
-    "hack": "cyan",
-    "grow": "lightgreen",
-    "weaken": "yellow",
-    "cancelled": "red",
-    "desync": "magenta",
-    "safe": "#111",
-    "unsafe": "#333",
-    "security": "red",
-    "money": "blue"
+    hack: "cyan",
+    grow: "lightgreen",
+    weaken: "yellow",
+    cancelled: "red",
+    desync: "magenta",
+    safe: "#111",
+    unsafe: "#333",
+    security: "red",
+    money: "blue"
 };
 
+// TODO: use a context for these scale factors. support setting them by args and scroll-gestures.
+// const ScreenContext = React.createContext({WIDTH_PIXELS, WIDTH_SECONDS, HEIGHT_PIXELS, FOOTER_PIXELS});
+// TODO: review use of 600000, 60000, 1000, 10, and WIDTH_SECONDS as clipping limits.
 const WIDTH_PIXELS = 800 as TimePixels;
 const WIDTH_SECONDS = 16 as TimeSeconds;
 const HEIGHT_PIXELS = 600 as Pixels;
 const FOOTER_PIXELS = 50 as Pixels;
-// TODO: use a context for these scale factors. support setting them by args and scroll-gestures.
-// const ScreenContext = React.createContext({WIDTH_PIXELS, WIDTH_SECONDS, HEIGHT_PIXELS, FOOTER_PIXELS});
-// TODO: review use of 600000, 60000, and WIDTH_SECONDS as clipping limits.
 
 
-// ----- Main CLI Program -----
+// ----- Main Program -----
 
 const FLAGS: [string, string | number | boolean | string[]][] = [
     ["help", false],
@@ -190,7 +193,7 @@ export async function main(ns: NS) {
     }
 }
 
-// ----- BatchView -----
+// ----- BatchView Component -----
 
 interface BatchViewProps {
     ns: NS;
@@ -199,6 +202,7 @@ interface BatchViewProps {
 interface BatchViewState {
     running: boolean;
     now: TimeMs;
+    dataUpdates: number;
 }
 export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     port: NetscriptPort;
@@ -213,7 +217,8 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         const { ns, portNum } = props;
         this.state = {
             running: true,
-            now: performance.now() as TimeMs
+            now: performance.now() as TimeMs,
+            dataUpdates: 0,
         };
         this.port = ns.getPortHandle(portNum);
         this.jobs = new Map();
@@ -257,15 +262,16 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         }
         else if (msg.type == "expected") {
             this.expectedServers.push(msg);
-            // TODO: sort by time and remove very old items
+            // TODO: sort by time and remove expired items
         }
         else if (msg.type == "observed") {
             this.observedServers.push(msg);
-            // TODO: sort by time and remove very old items
+            // TODO: sort by time and remove expired items
         }
         else if (msg.jobID !== undefined || msg.type == 'hack' || msg.type == 'grow' || msg.type == 'weaken') {
             this.addJob(msg);
         }
+        this.setState({dataUpdates: this.state.dataUpdates + 1});
     }
 
     addJob(msg: ActionMessage) {
@@ -279,7 +285,7 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         }
         const job = this.jobs.get(jobID);
         if (job === undefined) {
-            // Create new job record with required fields
+            // Create new Job record with required fields
             this.jobs.set(jobID, {
                 jobID: jobID,
                 rowID: this.sequentialRowID++,
@@ -295,7 +301,7 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     }
 
     cleanJobs() {
-        // Filter out jobs with endtime in past
+        // Filter out expired jobs (endTime more than 2 screens in the past)
         if (this.jobs.size > 200) {
             for (const jobID of this.jobs.keys()) {
                 const job = this.jobs.get(jobID) as Job;
@@ -307,12 +313,10 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     }
 
     render() {
-        const displayJobs = [...this.jobs.values()]
-
         return (
             <GraphFrame now={this.state.now}>
                 <SafetyLayer expectedServers={this.expectedServers} />
-                <JobLayer jobs={displayJobs} />
+                <JobLayer jobs={[...this.jobs.values()]} />
                 <SecurityLayer expectedServers={this.expectedServers} observedServers={this.observedServers} />
                 <MoneyLayer expectedServers={this.expectedServers} observedServers={this.observedServers} />
             </GraphFrame>
@@ -321,7 +325,6 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
 }
 
 function GraphFrame({now, children}:{now:TimeMs, children: React.ReactNode}): React.ReactElement {
-    // TODO: initTime is used as unique DOM ID and as rendering origin but it is poorly suited for both
     return (
         <svg version="1.1" xmlns="http://www.w3.org/2000/svg"
             width={WIDTH_PIXELS}
@@ -376,7 +379,7 @@ function SafetyLayer({expectedServers}: {expectedServers: ExpectedServerMessage[
                 // shade the background based on secLevel
                 if (prevServer && server.time > prevServer.time) {
                     el = (<rect key={i}
-                        x={convertTime(prevServer.time)} width={convertTime(server.time - prevServer.time, 0)}
+                        x={convertTime(prevServer.time)} width={convertTime(server.time - prevServer.time as TimeMs, 0 as TimeMs)}
                         y={0} height="100%"
                         fill={(prevServer.hackDifficulty > prevServer.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe}
                     />);
@@ -386,7 +389,7 @@ function SafetyLayer({expectedServers}: {expectedServers: ExpectedServerMessage[
             })}
             {prevServer && (
                 <rect key="remainder"
-                    x={convertTime(prevServer.time)} width={convertTime(600000, 0)}
+                    x={convertTime(prevServer.time)} width={convertTime(600000 as TimeMs, 0 as TimeMs)}
                     y={0} height="100%"
                     fill={(prevServer.hackDifficulty > prevServer.minDifficulty) ? GRAPH_COLORS.unsafe : GRAPH_COLORS.safe}
                 />
@@ -508,9 +511,8 @@ function computePathData(events: TimeValue[], minValue=0, shouldClose=false, sca
     // fill in area between last snapshot and right side (area after "now" cursor will be clipped later)
     if (events.length > 0) {
         const [time, value] = events[events.length-1];
-        // vertical line to previous level
         // horizontal line to future time
-        pathData.push(`V ${(value*scale).toFixed(2)}`, `H ${convertTime(time + 600000).toFixed(3)}`);
+        pathData.push(`H ${convertTime(time + 600000 as TimeMs).toFixed(3)}`);
         if (shouldClose) {
             // fill area under actual security
             pathData.push(`V ${(minValue*scale).toFixed(2)}`);
