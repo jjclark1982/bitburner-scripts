@@ -64,12 +64,54 @@ import type { NS, NetscriptPort, Server } from '@ns';
 import type ReactNamespace from 'react/index';
 const React = globalThis.React as typeof ReactNamespace;
 
-// ----- constants ----- 
+// ----- API Interface -----
+
+type JobID = number | string;
+interface ActionMessage {
+    type: "hack" | "grow" | "weaken";
+    jobID?: JobID;
+    duration: TimeMs;
+    startTime: TimeMs;
+    startTimeActual?: TimeMs;
+    endTime?: TimeMs;
+    endTimeActual?: TimeMs;
+    cancelled?: boolean;
+    result?: number;
+}
+interface SpacerMessage {
+    type: "spacer"
+}
+interface ServerMessage {
+    type: "expected" | "observed";
+    time: TimeMs;
+    hackDifficulty: number;
+    minDifficulty: number;
+    moneyAvailable: number;
+    moneyMax: number;
+}
+type ExpectedServerMessage = ServerMessage & {
+    type: "expected"
+}
+type ObservedServerMessage = ServerMessage & {
+    type: "observed"
+}
+type BatchViewMessage = ActionMessage | SpacerMessage | ExpectedServerMessage | ObservedServerMessage;
+
+// ----- Internal Types -----
+
+interface Job extends ActionMessage {
+    jobID: JobID;
+    rowID: number;
+    endTime: TimeMs;
+}
 
 type TimeMs = ReturnType<typeof performance.now> & { __dimension: "time", __units: "milliseconds" };
 type TimeSeconds = number & { __dimension: "time", __units: "seconds" };
 type TimePixels = number & { __dimension: "time", __units: "pixels" };
 type Pixels = number & { __units: "pixels" };
+type TimeValue = [TimeMs, number];
+
+// ----- Constants ----- 
 
 let initTime = performance.now() as TimeMs;
 /**
@@ -106,7 +148,7 @@ const FOOTER_PIXELS = 50 as Pixels;
 // TODO: review use of 600000, 60000, and WIDTH_SECONDS as clipping limits.
 
 
-// ----- main -----
+// ----- Main CLI Program -----
 
 const FLAGS: [string, string | number | boolean | string[]][] = [
     ["help", false],
@@ -149,43 +191,6 @@ export async function main(ns: NS) {
 }
 
 // ----- BatchView -----
-
-type JobID = number | string;
-interface ActionMessage {
-    type: "hack" | "grow" | "weaken";
-    jobID?: JobID;
-    duration: TimeMs;
-    startTime: TimeMs;
-    startTimeActual?: TimeMs;
-    endTime?: TimeMs;
-    endTimeActual?: TimeMs;
-    cancelled?: boolean;
-    result?: number;
-}
-interface SpacerMessage {
-    type: "spacer"
-}
-interface ServerMessage {
-    type: "expected" | "observed";
-    time: TimeMs;
-    hackDifficulty: number;
-    minDifficulty: number;
-    moneyAvailable: number;
-    moneyMax: number;
-}
-type ExpectedServerMessage = ServerMessage & {
-    type: "expected"
-}
-type ObservedServerMessage = ServerMessage & {
-    type: "observed"
-}
-type BatchViewMessage = ActionMessage | SpacerMessage | ExpectedServerMessage | ObservedServerMessage;
-
-interface Job extends ActionMessage {
-    jobID: JobID;
-    rowID: number;
-    endTime: TimeMs;
-}
 
 interface BatchViewProps {
     ns: NS;
@@ -435,7 +440,6 @@ function JobBar({job}: {job: Job}): React.ReactNode {
     );
 }
 
-type TimeValue = [TimeMs, number];
 interface SecurityLayerProps {
     expectedServers: ExpectedServerMessage[];
     observedServers: ObservedServerMessage[]
@@ -467,23 +471,23 @@ function SecurityLayer({expectedServers, observedServers}:SecurityLayerProps): R
     );
 
     const expectedEvents = expectedServers.map((server)=>[server.time, server.hackDifficulty]) as TimeValue[];
-    const predictedPath = computePathData(expectedEvents);
-    const predictedLayer = (
-        <g id="predictedSec"
+    const expectedPath = computePathData(expectedEvents);
+    const expectedLayer = (
+        <g id="expectedSec"
             transform={`translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxSec - minSec)})`}
             stroke={GRAPH_COLORS.security}
             fill="none"
             strokeWidth={2}
             strokeLinejoin="bevel"
         >
-            <path d={predictedPath.join(" ")} vectorEffect="non-scaling-stroke" />
+            <path d={expectedPath.join(" ")} vectorEffect="non-scaling-stroke" />
         </g>
     );
 
     return (
         <g id="secLayer" transform={`translate(0 ${HEIGHT_PIXELS - 2*FOOTER_PIXELS})`}>
             {observedLayer}
-            {predictedLayer}
+            {expectedLayer}
         </g>
     );
 }
@@ -518,211 +522,48 @@ function computePathData(events: TimeValue[], minValue=0, shouldClose=false, sca
     return pathData;
 }
 
-function MoneyLayer(props: SecurityLayerProps): React.ReactNode {
-    return <g id="moneyLayer" />
-}
-
-// ----- pre-React version -----
-
-/**
- * renderBatches - create an SVG element with a graph of jobs
- * @param {SVGSVGElement} [el] - SVG element to reuse. Will be created if it does not exist yet.
- * @param {Job[][]} batches - array of arrays of jobs
- * @param {number} [now] - current time (optional)
- * @returns {SVGSVGElement}
- */
-export function renderBatches(el: HTMLElement, batches=[], serverSnapshots=[], now: TimeMs) {
-    now ||= performance.now() as TimeMs;
-
-    // Render the main SVG element if needed
-    el ||= svgEl(
-        "svg",
-        {
-            version: "1.1", width:WIDTH_PIXELS, height: HEIGHT_PIXELS,
-            // Set the viewBox for 10 seconds of history, 6 seconds of future.
-            viewBox: `${convertSecToPx(-10)} 0 ${WIDTH_PIXELS} ${HEIGHT_PIXELS}`
-        },
-        [
-            ["defs", {}, [
-                ["clipPath", {id:`hide-future-${initTime}`, clipPathUnits: "userSpaceOnUse"}, [
-                    ["rect", {id:"hide-future-rect", x:convertTime(now-60000), width:convertTime(60000,0), y:0, height: 50}]
-                ]]
-            ]],
-            // ["rect", {id:"background", x:convertSecToPx(-10), width:"100%", height:"100%", fill:GRAPH_COLORS.safe}],
-            ["g", {id:"timeCoordinates"}, [
-                ["g", {id:"safetyLayer"}],
-                ["g", {id:"jobLayer"}],
-                ["g", {id:"secLayer"}],
-                ["g", {id:"moneyLayer"}]
-            ]],
-            // ["rect", {id:"divider-1", x:convertSecToPx(-10), width:"100%", y:HEIGHT_PIXELS-FOOTER_PIXELS, height:1, fill: "white"}],
-            // ["rect", {id:"divider-2", x:convertSecToPx(-10), width:"100%", y:HEIGHT_PIXELS-2*FOOTER_PIXELS, height:1, fill: "white"}],
-            ["rect", {id:"cursor", x:0, width:1, y:0, height: "100%", fill: "white"}],
-            renderLegend()
-        ]
-    );
-
-    // Update the time coordinates every frame
-    const dataEl = el.getElementById("timeCoordinates");
-    dataEl.setAttribute('transform',
-        `scale(${WIDTH_PIXELS / WIDTH_SECONDS} 1) translate(${convertTime(initTime-now, 0)} 0)`
-    );
-    el.getElementById("hide-future-rect").setAttribute('x', convertTime(now-60000));
-    
-    // Only update the main data every 250 ms
-    const lastUpdate = dataEl.getAttribute('data-last-update') || 0;
-    if (now - lastUpdate < 250) {
-        return el;
-    }
-    dataEl.setAttribute('data-last-update', now);
-
-    const eventSnapshots = batches.flat().map((job)=>(
-        [job.endTime, job.result]
-    ));
-    
-    // Render each job background and foreground
-    while(dataEl.firstChild) {
-        dataEl.removeChild(dataEl.firstChild);
-    }
-    dataEl.appendChild(renderSafetyLayer(batches, now));
-    dataEl.appendChild(renderJobLayer(batches, now));
-    dataEl.appendChild(renderSecurityLayer(eventSnapshots, serverSnapshots, now));
-    // dataEl.appendChild(renderMoneyLayer(eventSnapshots, serverSnapshots, now));
-    dataEl.appendChild(renderProfitLayer(batches, now));
-
-    return el;
-}
-
-
-function renderProfitPath(batches=[], now, scale=1) {
-    // would like to graph money per second over time
-    // const moneyTaken = [];
-    const totalMoneyTaken = [];
-    let runningTotal = 0;
-    for (const batch of batches) {
-        for (const job of batch) {
-            if (job.task == 'hack' && job.endTimeActual) {
-                // moneyTaken.push([job.endTimeActual, job.resultActual]);
-                runningTotal += job.resultActual;
-                totalMoneyTaken.push([job.endTimeActual, runningTotal]);
-            }
-            else if (job.task == 'hack' && !job.cancelled) {
-                runningTotal += job.change.playerMoney;
-                totalMoneyTaken.push([job.endTime, runningTotal]);
-            }
-        }
-    }
-    totalMoneyTaken.push([now + 30000, runningTotal]);
-    // money taken in the last X seconds could be counted with a sliding window.
-    // but the recorded events are not evenly spaced.
-    const movingAverage = [];
-    let maxProfit = 0;
-    let j = 0;
-    for (let i = 0; i < totalMoneyTaken.length; i++) {
-        const [time, money] = totalMoneyTaken[i];
-        while (totalMoneyTaken[j][0] <= time - 2000) {
-            j++;
-        }
-        const profit = totalMoneyTaken[i][1] - totalMoneyTaken[j][1];
-        movingAverage.push([time, profit]);
-        maxProfit = Math.max(maxProfit, profit);
-    }
-    eval("window").profitData = [totalMoneyTaken, runningTotal, movingAverage];
-    const pathData = ["M 0,0"];
-    let prevTime;
-    let prevProfit;
-    for (const [time, profit] of movingAverage) {
-        // pathData.push(`L ${convertTime(time).toFixed(3)},${(scale * profit/maxProfit).toFixed(3)}`);
-        if (prevProfit) {
-            pathData.push(`C ${convertTime((prevTime*3 + time)/4).toFixed(3)},${(scale * prevProfit/maxProfit).toFixed(3)} ${convertTime((prevTime + 3*time)/4).toFixed(3)},${(scale * profit/maxProfit).toFixed(3)} ${convertTime(time).toFixed(3)},${(scale * profit/maxProfit).toFixed(3)}`)
-        }
-        prevTime = time;
-        prevProfit = profit;
-    }
-    pathData.push(`H ${convertTime(now+60000).toFixed(3)} V 0 Z`);
-    return svgEl('path', {
-        d: pathData.join(' '),
-        "vector-effect": "non-scaling-stroke"
-    });
-}
-
-function renderProfitLayer(batches=[], now) {
-    const profitPath = renderProfitPath(batches, now);
-    const observedProfit = svgEl(
-        "g", {
-            id: "observedProfit",
-            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS})`,
-            fill: "dark"+GRAPH_COLORS.money,
-            "clip-path": `url(#hide-future-${initTime})`
-        }, [
-            profitPath
-        ]
-    );
-    const projectedProfit = svgEl(
-        "g", {
-            id: "projectedProfit",
-            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS})`,
-            fill: "none",
-            stroke: GRAPH_COLORS.money,
-            "stroke-width": 2,
-            "stroke-linejoin":"round"
-        }, [
-            profitPath.cloneNode()
-        ]
-    );
-    const profitLayer = svgEl(
-        "g", {
-            id: "profitLayer",
-            transform: `translate(0 ${HEIGHT_PIXELS - FOOTER_PIXELS})`
-        }, [
-            observedProfit,
-            projectedProfit
-        ]
-    );
-    return profitLayer;
-}
-
-function renderMoneyLayer(eventSnapshots=[], serverSnapshots=[], now) {
-    const moneyLayer = svgEl("g", {
-        id: "moneyLayer",
-        transform: `translate(0 ${HEIGHT_PIXELS - FOOTER_PIXELS})`
-    });
-
-    if (serverSnapshots.length == 0) {
-        return moneyLayer;
-    }
+function MoneyLayer({expectedServers, observedServers}: SecurityLayerProps): React.ReactNode {
+    expectedServers ??= [];
+    observedServers ??= [];
+    if (expectedServers.length == 0 && observedServers.length == 0) return null;
     let minMoney = 0;
-    let maxMoney = serverSnapshots[0][1].moneyMax;
+    let maxMoney = (expectedServers[0] || observedServers[0]).moneyMax;
     const scale = 1/maxMoney;
     maxMoney *= 1.1
 
-    const observedLayer = svgEl(
-        "g", {
-            id: "observedMoney",
-            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney) / scale})`,
-            fill: "dark"+GRAPH_COLORS.money,
-            // "fill-opacity": 0.5,
-            "clip-path": `url(#hide-future-${initTime})`
-        }, [
-            renderObservedPath("moneyAvailable", serverSnapshots, minMoney, now, scale)
-        ]
+    const observedEvents = observedServers.map((server)=>[server.time, server.moneyAvailable]) as TimeValue[];
+    let shouldClosePath = true;
+    const observedPath = computePathData(observedEvents, minMoney, shouldClosePath, scale);
+    const observedLayer = (
+        <g id="observedMoney"
+            transform={`translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney) / scale})`}
+            fill={"dark"+GRAPH_COLORS.money}
+            // fillOpacity: 0.5,
+            clipPath={`url(#hide-future-${initTime})`}
+        >
+            <path d={observedPath.join(" ")} />
+        </g>
     );
-    moneyLayer.append(observedLayer);
 
-    const projectedLayer = svgEl(
-        "g", {
-            id: "projectedMoney",
-            transform: `translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney) / scale})`,
-            stroke: GRAPH_COLORS.money,
-            fill: "none",
-            "stroke-width": 2,
-            "stroke-linejoin":"bevel"
-        }, [
-            computeProjectedPath("moneyAvailable", eventSnapshots, now, scale)
-        ]
+    const expectedEvents = expectedServers.map((server)=>[server.time, server.moneyAvailable]) as TimeValue[];
+    shouldClosePath = false;
+    const expectedPath = computePathData(expectedEvents, minMoney, shouldClosePath, scale);
+    const expectedLayer = (
+        <g id="expectedMoney"
+            transform={`translate(0 ${FOOTER_PIXELS}) scale(1 ${-FOOTER_PIXELS / (maxMoney - minMoney) / scale})`}
+            stroke={GRAPH_COLORS.money}
+            fill="none"
+            strokeWidth={2}
+            strokeLinejoin="bevel"
+        >
+            <path d={expectedPath.join(" ")} vectorEffect="non-scaling-stroke" />
+        </g>
     );
-    moneyLayer.append(projectedLayer);
 
-    return moneyLayer;
+    return (
+        <g id="moneyLayer" transform={`translate(0 ${HEIGHT_PIXELS - FOOTER_PIXELS})`}>
+            {observedLayer}
+            {expectedLayer}
+        </g>
+    );
 }
-
