@@ -179,17 +179,13 @@ export async function main(ns: NS) {
         ].join("\n"));
         return;
     }
-
     const portNum = flags.port as number || ns.pid;
-    const port = ns.getPortHandle(portNum);
-    // port.clear();
-    ns.print(`Listening on Port ${portNum}`);
 
     const batchView = <BatchView ns={ns} portNum={portNum} />;
     ns.printRaw(batchView);
 
     while (true) {
-        await port.nextWrite();
+        await ns.asleep(60*60*1000);
     }
 }
 
@@ -227,11 +223,12 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     }
 
     componentDidMount() {
-        const { ns } = this.props;
+        const { ns, portNum } = this.props;
         this.setState({running: true});
         ns.atExit(()=>{
             this.setState({running: false});
         });
+        ns.print(`Listening on Port ${portNum}`);
         this.animate();
         this.readPort();
         // Object.assign(globalThis, {batchView: this});
