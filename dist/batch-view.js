@@ -89,7 +89,6 @@ const GRAPH_COLORS = {
     hack: "cyan",
     grow: "lightgreen",
     weaken: "yellow",
-    cancelled: "red",
     desync: "magenta",
     safe: "#111",
     unsafe: "#333",
@@ -324,7 +323,7 @@ function JobBar({ job }) {
     const y = ((job.rowID + 1) % ((HEIGHT_PIXELS - FOOTER_PIXELS * 2) / 4)) * 4;
     let jobBar = null;
     if (job.startTime && job.duration) {
-        jobBar = (React.createElement("rect", { x: convertTime(job.startTime), width: convertTime(job.duration, 0), y: 0, height: 2, fill: GRAPH_COLORS[job.cancelled ? 'cancelled' : job.type] }));
+        jobBar = (React.createElement("rect", { x: convertTime(job.startTime), width: convertTime(job.duration, 0), y: 0, height: 2, fill: job.color ?? GRAPH_COLORS[job.type] }));
     }
     ;
     let startErrorBar = null;

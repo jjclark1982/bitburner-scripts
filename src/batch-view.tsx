@@ -80,7 +80,7 @@ interface ActionMessage {
     startTimeActual?: TimeMs;
     endTime?: TimeMs;
     endTimeActual?: TimeMs;
-    cancelled?: boolean;
+    color?: string;
     result?: number;
 }
 type UpdateMessage = Partial<ActionMessage> & {
@@ -146,7 +146,6 @@ const GRAPH_COLORS = {
     hack: "cyan",
     grow: "lightgreen",
     weaken: "yellow",
-    cancelled: "red",
     desync: "magenta",
     safe: "#111",
     unsafe: "#333",
@@ -464,7 +463,7 @@ function JobBar({job}: {job: Job}): React.ReactNode {
         jobBar = (<rect
             x={convertTime(job.startTime)} width={convertTime(job.duration, 0 as TimeMs)}
             y={0} height={2}
-            fill={GRAPH_COLORS[job.cancelled ? 'cancelled' : job.type]}
+            fill={job.color ?? GRAPH_COLORS[job.type]}
         />)
     };
     let startErrorBar = null;
