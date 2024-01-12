@@ -360,7 +360,7 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         const [earliestTime, latestTime] = this.validTimeRange();
         // Filter out expired jobs (endTime more than 2 screens in the past)
         if (this.jobs.size > 200) {
-            for (const jobID of this.jobs.values()) {
+            for (const jobID of this.jobs.keys()) {
                 const job = this.jobs.get(jobID) as Job;
                 if (!(job.endTime > earliestTime)) {
                     this.jobs.delete(jobID);
