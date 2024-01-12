@@ -71,7 +71,7 @@ You can also send an array of such messages in a single port write. For example:
 
 // ----- Public API Types -----
 
-type JobID = number | string;
+type JobID = any;
 interface ActionMessage {
     type: "hack" | "grow" | "weaken";
     jobID?: JobID;
@@ -82,6 +82,9 @@ interface ActionMessage {
     endTimeActual?: TimeMs;
     cancelled?: boolean;
     result?: number;
+}
+type UpdateMessage = Partial<ActionMessage> & {
+    jobID: JobID;
 }
 interface SpacerMessage {
     type: "spacer"
@@ -100,7 +103,7 @@ type ExpectedServerMessage = ServerMessage & {
 type ObservedServerMessage = ServerMessage & {
     type: "observed"
 }
-type BatchViewMessage = ActionMessage | SpacerMessage | ExpectedServerMessage | ObservedServerMessage;
+type BatchViewMessage = ActionMessage | UpdateMessage | SpacerMessage | ExpectedServerMessage | ObservedServerMessage;
 
 // ----- Internal Types -----
 
@@ -262,14 +265,17 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     readPort = ()=>{
         if (!this.state.running) return;
         while(!this.port.empty()) {
-            const msg: BatchViewMessage | BatchViewMessage[] = JSON.parse(this.port.read() as string);
-            if (Array.isArray(msg)) {
-                for (const m of msg) {
-                    this.receiveMessage(m);
-                }
+            let msgs: BatchViewMessage | BatchViewMessage[] = JSON.parse(this.port.read() as string);
+            if (!Array.isArray(msgs)) {
+                msgs = [msgs];
             }
-            else {
-                this.receiveMessage(msg);
+            for (const msg of msgs) {
+                try {
+                    this.receiveMessage(msg);
+                }
+                catch (e) {
+                    this.props.ns.print('Error parsing message ', msg, ': ', e);
+                }
             }
         }
         this.port.nextWrite().then(this.readPort);
@@ -290,10 +296,13 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         else if (msg.jobID !== undefined || msg.type == 'hack' || msg.type == 'grow' || msg.type == 'weaken') {
             this.addJob(msg);
         }
+        else {
+            throw new Error(`Unrecognized message type: ${msg.type}:`);
+        }
         this.setState({dataUpdates: this.state.dataUpdates + 1});
     }
 
-    addJob(msg: ActionMessage) {
+    addJob(msg: ActionMessage | UpdateMessage) {
         // Assign sequential ID if needed
         let jobID = msg.jobID;
         if (jobID === undefined) {
@@ -302,14 +311,24 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
             }
             jobID = this.sequentialJobID;
         }
+        for (const field of ['startTime', 'duration'] as const) {
+            if (!msg[field]) {
+                throw new Error(`Missing required field '${field}': ${msg[field]}`);
+            }
+        }
+        for (const field of ['startTime', 'duration', 'endTime', 'startTimeActual', 'endTimeActual'] as const) {
+            if (typeof msg[field] != 'number' || msg[field] as number > this.validTimeRange()[1]) {
+                throw new Error(`Invalid value for '${field}': ${msg[field]}. Expected a value from performance.now().`);
+            }
+        }
         const job = this.jobs.get(jobID);
         if (job === undefined) {
             // Create new Job record with required fields
             this.jobs.set(jobID, {
                 jobID: jobID,
                 rowID: this.sequentialRowID++,
-                endTime: msg.startTime + msg.duration as TimeMs,
-                ...msg
+                endTime: (msg.startTime||0) + (msg.duration||0) as TimeMs,
+                ...(msg as ActionMessage)
             });
         }
         else {
@@ -319,16 +338,19 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         this.cleanJobs();
     }
 
-    expiryTime() {
-        return (this.state.now-(WIDTH_SECONDS*2*1000));
+    validTimeRange() {
+        // up to 2 screens in the past
+        // up to 30 days in the future
+        return [this.state.now-(WIDTH_SECONDS*2*1000), 1000*60*60*24*30];
     }
 
     cleanJobs() {
+        const [earliestTime, latestTime] = this.validTimeRange();
         // Filter out expired jobs (endTime more than 2 screens in the past)
         if (this.jobs.size > 200) {
-            for (const jobID of this.jobs.keys()) {
+            for (const jobID of this.jobs.values()) {
                 const job = this.jobs.get(jobID) as Job;
-                if ((job.endTimeActual ?? job.endTime) < this.expiryTime()) {
+                if (!(job.endTime > earliestTime)) {
                     this.jobs.delete(jobID);
                 }
             }
@@ -336,8 +358,9 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     }
 
     cleanServers<T extends ServerMessage>(servers: T[]): T[] {
+        const [earliestTime, latestTime] = this.validTimeRange();
         // TODO: insert item into sorted list instead of re-sorting each time
-        return servers.filter((s)=>s.time > this.expiryTime()).sort((a,b)=>a.time - b.time);
+        return servers.filter((s)=>s.time > earliestTime).sort((a,b)=>a.time - b.time);
     }
 
     render() {
