@@ -82,15 +82,15 @@ export function reportOnAugmentation(ns, augName) {
 export function reportOnPlayer(ns) {
     const report = [];
     const sourceFiles = {};
-    for (const sourceFile of ns.getOwnedSourceFiles().sort((a,b)=>a.n-b.n)) {
+    for (const sourceFile of ns.singularity.getOwnedSourceFiles().sort((a,b)=>a.n-b.n)) {
         sourceFiles[`SourceFile${sourceFile.n}`] = sourceFile.lvl;
     }
     report.push("Source Files: " + JSON.stringify(sourceFiles, null, 2));
 
-    const installedAugs = ns.getOwnedAugmentations(false);
+    const installedAugs = ns.singularity.getOwnedAugmentations(false);
     report.push("Installed Augmentations: " + JSON.stringify(installedAugs, null, 2));
 
-    const purchasedAugs = ns.getOwnedAugmentations(true).filter(function(aug){
+    const purchasedAugs = ns.singularity.getOwnedAugmentations(true).filter(function(aug){
         return !installedAugs.includes(aug);
     });
     report.push("Purchased Augmentations: " + JSON.stringify(purchasedAugs, null, 2));
@@ -104,7 +104,7 @@ export function getAllAugmentations(ns) {
     const augs = {};
     // const factions = ns.getPlayer().factions;
     for (const faction of ALL_FACTIONS) {
-        for (const augName of ns.getAugmentationsFromFaction(faction)) {
+        for (const augName of ns.singularity.getAugmentationsFromFaction(faction)) {
             augs[augName] ||= getAugmentationInfo(ns, augName);
         }
     }
@@ -114,14 +114,14 @@ export function getAllAugmentations(ns) {
 export function getAugmentationInfo(ns, augName) {
     const aug = {};
     aug.name = augName;
-    aug.installed = ns.getOwnedAugmentations().includes(aug.name);
-    aug.purchased = !aug.installed && ns.getOwnedAugmentations(true).includes(aug.name);
+    aug.installed = ns.singularity.getOwnedAugmentations().includes(aug.name);
+    aug.purchased = !aug.installed && ns.singularity.getOwnedAugmentations(true).includes(aug.name);
 
-    aug.repReq = ns.getAugmentationRepReq(aug.name);
-    aug.price = ns.getAugmentationPrice(aug.name);  // TODO: estimate future prices with MultipleAugMultiplier = 1.9;
-    aug.prereqs = ns.getAugmentationPrereq(aug.name);
+    aug.repReq = ns.singularity.getAugmentationRepReq(aug.name);
+    aug.price = ns.singularity.getAugmentationPrice(aug.name);  // TODO: estimate future prices with MultipleAugMultiplier = 1.9;
+    aug.prereqs = ns.singularity.getAugmentationPrereq(aug.name);
 
-    aug.stats = ns.getAugmentationStats(aug.name);
+    aug.stats = ns.singularity.getAugmentationStats(aug.name);
     aug.value = getAugmentationValue(ns, aug);
 
     aug.factions = getAugmentationFactions(ns, aug.name);
@@ -143,8 +143,8 @@ export function isAugmentationSpecial(aug) {
 export function getAugmentationFactions(ns, augName) {
     const factions = {};
     for (const faction of ALL_FACTIONS) {
-        if (ns.getAugmentationsFromFaction(faction).includes(augName)) {
-            factions[faction] = [ns.getFactionRep(faction), ns.getAugmentationRepReq(augName)];
+        if (ns.singularity.getAugmentationsFromFaction(faction).includes(augName)) {
+            factions[faction] = [ns.singularity.getFactionRep(faction), ns.singularity.getAugmentationRepReq(augName)];
         }
     }
     return factions;

@@ -102,7 +102,7 @@ export async function graftAugs(ns, domains) {
 
 export function getGraftableAugs(ns, {domains, canAfford}) {
     const allAugs = Object.values(getAllAugmentations(ns));
-    const ownedAugs = ns.getOwnedAugmentations(true);
+    const ownedAugs = ns.singularity.getOwnedAugmentations(true);
     const exclude = ["The Red Pill", "NeuroFlux Governor"];
 
     let graftableAugs = allAugs.filter((aug)=>(
@@ -139,7 +139,7 @@ export function estimateGraftValues(ns, aug) {
         value: {}
     };
     aug.stats = {};
-    for (const [key, value] of Object.entries(ns.getAugmentationStats(aug.name))) {
+    for (const [key, value] of Object.entries(ns.singularity.getAugmentationStats(aug.name))) {
         aug.stats[key] = value * EntropyEffect;
         // TODO: check whether 'cost' ones get inverted in future versions
     }

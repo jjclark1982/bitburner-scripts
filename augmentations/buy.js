@@ -79,7 +79,7 @@ export async function buyAugs(ns, domains) {
             ns.tprint(`Purchased '${aug.name}' from ${aug.canPurchaseFrom} for ${ns.nFormat(aug.price, "$0.0a")}`);
         }
         selectedAugs = selectAugs(ns, domains, plannedAugs);
-        if (ns.getAugmentationPrice("NeuroFlux Governor") < ns.getPlayer().money) {
+        if (ns.singularity.getAugmentationPrice("NeuroFlux Governor") < ns.getPlayer().money) {
             delete plannedAugs["NeuroFlux Governor"];
         }
         while (selectedAugs.length > 0 && selectedAugs[0].name in plannedAugs) {
@@ -117,7 +117,7 @@ export function selectAugs(ns, domains, plannedAugs) {
     for (const aug of Object.keys(plannedAugs)) {
         exclude[aug] = true;
     }
-    for (const aug of ns.getOwnedAugmentations(true)) {
+    for (const aug of ns.singularity.getOwnedAugmentations(true)) {
         exclude[aug] = true;
     }
     exclude["NeuroFlux Governor"] = false;
@@ -159,7 +159,7 @@ export function getKnownAugs(ns, plannedAugs) {
 }
 
 export function canPurchaseFrom(ns, aug, plannedAugs={}) {
-    const ownedAugs = ns.getOwnedAugmentations(true);
+    const ownedAugs = ns.singularity.getOwnedAugmentations(true);
     for (const prereq of aug.prereqs) {
         if (!(ownedAugs.includes(prereq) || prereq in plannedAugs)) {
             return null;

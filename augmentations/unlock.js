@@ -95,7 +95,7 @@ export async function unlockAugs(ns, domains) {
 
 export function getFutureAugs(ns, {domains, requireWorkable}) {
     const allAugs = Object.values(getAllAugmentations(ns));
-    const ownedAugs = ns.getOwnedAugmentations(true);
+    const ownedAugs = ns.singularity.getOwnedAugmentations(true);
 
     const futureAugs = allAugs.map(function(aug){
         aug.canPurchaseFrom = canPurchaseFrom(ns, aug);
