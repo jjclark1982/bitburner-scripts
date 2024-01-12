@@ -273,7 +273,7 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
                     this.receiveMessage(msg);
                 }
                 catch (e) {
-                    this.props.ns.print('Error parsing message ', msg, ': ', e);
+                    this.props.ns.print('Error parsing message ', msg, `: ${e}`);
                 }
             }
         }
@@ -310,30 +310,31 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
             }
             jobID = this.sequentialJobID;
         }
-        for (const field of ['startTime', 'duration'] as const) {
-            if (!msg[field]) {
-                throw new Error(`Missing required field '${field}': ${msg[field]}`);
-            }
-        }
-        for (const field of ['startTime', 'duration', 'endTime', 'startTimeActual', 'endTimeActual'] as const) {
-            if (typeof msg[field] != 'number' || msg[field] as number > this.validTimeRange()[1]) {
-                throw new Error(`Invalid value for '${field}': ${msg[field]}. Expected a value from performance.now().`);
-            }
-        }
-        const job = this.jobs.get(jobID);
+        let job = this.jobs.get(jobID);
         if (job === undefined) {
             // Create new Job record with required fields
-            this.jobs.set(jobID, {
+            job = {
                 jobID: jobID,
                 rowID: this.sequentialRowID++,
                 endTime: (msg.startTime||0) + (msg.duration||0) as TimeMs,
                 ...(msg as ActionMessage)
-            });
+            };
         }
         else {
             // Merge updates into existing job record
             Object.assign(job, msg);
         }
+        for (const field of ['startTime', 'duration'] as const) {
+            if (!job[field]) {
+                throw new Error(`Missing required field '${field}': ${job[field]}`);
+            }
+        }
+        for (const field of ['startTime', 'duration', 'endTime', 'startTimeActual', 'endTimeActual'] as const) {
+            if (typeof job[field] != 'number' || job[field] as number > this.validTimeRange()[1]) {
+                throw new Error(`Invalid value for '${field}': ${job[field]}. Expected a value from performance.now().`);
+            }
+        }
+        this.jobs.set(jobID, job);
         this.cleanJobs();
     }
 
