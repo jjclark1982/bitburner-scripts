@@ -261,23 +261,24 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         requestAnimationFrame(this.animate);
     }
 
-    readPort = ()=>{
-        if (!this.state.running) return;
-        while(!this.port.empty()) {
-            let msgs: BatchViewMessage | BatchViewMessage[] = JSON.parse(this.port.read() as string);
-            if (!Array.isArray(msgs)) {
-                msgs = [msgs];
-            }
-            for (const msg of msgs) {
-                try {
-                    this.receiveMessage(msg);
+    readPort = async ()=>{
+        while (this.state.running) {
+            while(!this.port.empty()) {
+                let msgs: BatchViewMessage | BatchViewMessage[] = JSON.parse(this.port.read() as string);
+                if (!Array.isArray(msgs)) {
+                    msgs = [msgs];
                 }
-                catch (e) {
-                    this.props.ns.print('Error parsing message ', msg, `: ${e}`);
+                for (const msg of msgs) {
+                    try {
+                        this.receiveMessage(msg);
+                    }
+                    catch (e) {
+                        console.error(`${this.props.ns.getScriptName()}: Error parsing message `, msg, e);
+                    }
                 }
             }
+            await this.port.nextWrite();
         }
-        this.port.nextWrite().then(this.readPort);
     }
 
     receiveMessage(msg: BatchViewMessage) {
@@ -313,6 +314,14 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         let job = this.jobs.get(jobID);
         if (job === undefined) {
             // Create new Job record with required fields
+            if (msg.jobID !== undefined) {
+                for (const field of ['type', 'startTime', 'duration'] as const) {
+                    if (msg[field] === undefined) {
+                        console.warn(`Tried to update a non-existing jobID`, msg);
+                        return;
+                    }
+                }
+            }
             job = {
                 jobID: jobID,
                 rowID: this.sequentialRowID++,
@@ -322,15 +331,18 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
         }
         else {
             // Merge updates into existing job record
-            Object.assign(job, msg);
+            job = {
+                ...job,
+                ...msg
+            };
         }
-        for (const field of ['startTime', 'duration'] as const) {
-            if (!job[field]) {
-                throw new Error(`Missing required field '${field}': ${job[field]}`);
+        for (const field of ['type', 'startTime', 'duration'] as const) {
+            if (job[field] === undefined) {
+                throw new Error(`Missing required field '${field}'`);
             }
         }
         for (const field of ['startTime', 'duration', 'endTime', 'startTimeActual', 'endTimeActual'] as const) {
-            if (typeof job[field] != 'number' || job[field] as number > this.validTimeRange()[1]) {
+            if (job[field] !== undefined && job[field] as number > this.validTimeRange()[1]) {
                 throw new Error(`Invalid value for '${field}': ${job[field]}. Expected a value from performance.now().`);
             }
         }
