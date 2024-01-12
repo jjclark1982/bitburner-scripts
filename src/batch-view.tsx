@@ -359,12 +359,13 @@ export class BatchView extends React.Component<BatchViewProps, BatchViewState> {
     cleanJobs() {
         const [earliestTime, latestTime] = this.validTimeRange();
         // Filter out expired jobs (endTime more than 2 screens in the past)
-        if (this.jobs.size > 200) {
-            for (const jobID of this.jobs.keys()) {
-                const job = this.jobs.get(jobID) as Job;
-                if (!(job.endTime > earliestTime)) {
-                    this.jobs.delete(jobID);
-                }
+        for (const jobID of this.jobs.keys()) {
+            const job = this.jobs.get(jobID) as Job;
+            if (!(job.endTime > earliestTime)) {
+                this.jobs.delete(jobID);
+            }
+            else if (job.rowID < this.sequentialRowID-120) {
+                this.jobs.delete(jobID);
             }
         }
     }
@@ -563,7 +564,7 @@ function computePathData(events: TimeValue[], minValue=0, shouldClose=false, sca
     if (events.length > 0) {
         const [time, value] = events[0];
         // start line at first projected time and value
-        pathData.push(`M ${convertTime(time).toFixed(3)},${(value*scale).toFixed(2)}`);
+        pathData.push(`M ${convertTime(time).toFixed(3)},${(minValue*scale).toFixed(2)}`);
     }
     for (const [time, value] of events) {
         // horizontal line to current time
